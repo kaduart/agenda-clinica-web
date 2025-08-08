@@ -1,10 +1,13 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Agenda Clínica Fonoinova</title>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600&family=Playfair+Display:wght@500&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600&family=Playfair+Display:wght@500&display=swap"
+        rel="stylesheet">
     <style>
         :root {
             --primary: #26977b;
@@ -22,13 +25,13 @@
             --bg: #f8fafc;
             --card-bg: #ffffff;
         }
-        
+
         * {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
         }
-        
+
         body {
             font-family: 'Montserrat', sans-serif;
             background-color: var(--bg);
@@ -36,7 +39,7 @@
             line-height: 1.6;
             padding: 20px;
         }
-        
+
         .container {
             max-width: 1200px;
             margin: 0 auto;
@@ -45,26 +48,26 @@
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
             overflow: hidden;
         }
-        
+
         header {
             background: linear-gradient(135deg, var(--primary), var(--secondary));
             color: white;
             padding: 25px 30px;
             border-radius: 12px 12px 0 0;
         }
-        
+
         h1 {
             font-family: 'Playfair Display', serif;
             font-size: 2rem;
             font-weight: 500;
             margin-bottom: 5px;
         }
-        
+
         .subtitle {
             font-size: 0.9rem;
             opacity: 0.9;
         }
-        
+
         .toolbar {
             display: flex;
             justify-content: space-between;
@@ -75,17 +78,17 @@
             border-bottom: 1px solid var(--border);
             background-color: var(--card-bg);
         }
-        
+
         .filters {
             display: flex;
             gap: 15px;
             flex-wrap: wrap;
         }
-        
+
         .filter-group {
             position: relative;
         }
-        
+
         .filter-group label {
             position: absolute;
             top: -10px;
@@ -95,8 +98,8 @@
             font-size: 0.75rem;
             color: var(--text-light);
         }
-        
-        .filter-group input, 
+
+        .filter-group input,
         .filter-group select {
             padding: 10px 15px;
             border: 1px solid var(--border);
@@ -106,19 +109,19 @@
             background-color: var(--card-bg);
             transition: all 0.3s ease;
         }
-        
-        .filter-group input:focus, 
+
+        .filter-group input:focus,
         .filter-group select:focus {
             outline: none;
             border-color: var(--primary);
             box-shadow: 0 0 0 3px var(--primary-light);
         }
-        
+
         .actions {
             display: flex;
             gap: 10px;
         }
-        
+
         button {
             display: inline-flex;
             align-items: center;
@@ -132,34 +135,34 @@
             cursor: pointer;
             transition: all 0.3s ease;
         }
-        
+
         .btn-primary {
             background-color: var(--primary);
             color: white;
         }
-        
+
         .btn-primary:hover {
             background-color: var(--secondary);
             transform: translateY(-2px);
         }
-        
+
         .btn-outline {
             background-color: transparent;
             border: 1px solid var(--primary);
             color: var(--primary);
         }
-        
+
         .btn-outline:hover {
             background-color: var(--primary-light);
         }
-        
+
         .days-filter {
             display: flex;
             gap: 8px;
             padding: 0 20px 15px;
             overflow-x: auto;
         }
-        
+
         .day-btn {
             flex: 0 0 auto;
             padding: 8px 15px;
@@ -171,21 +174,21 @@
             cursor: pointer;
             transition: all 0.3s ease;
         }
-        
+
         .day-btn.active {
             background-color: var(--primary);
             color: white;
         }
-        
+
         .day-btn:hover:not(.active) {
             background-color: #d6e3ff;
         }
-        
+
         table {
             width: 100%;
             border-collapse: collapse;
         }
-        
+
         thead th {
             background-color: var(--primary-light);
             color: var(--primary);
@@ -195,21 +198,21 @@
             position: sticky;
             top: 0;
         }
-        
+
         tbody tr {
             border-bottom: 1px solid var(--border);
             transition: background-color 0.2s ease;
         }
-        
+
         tbody tr:hover {
             background-color: var(--primary-light);
         }
-        
+
         td {
             padding: 15px;
             vertical-align: middle;
         }
-        
+
         .status {
             display: inline-block;
             padding: 5px 12px;
@@ -217,49 +220,49 @@
             font-size: 0.8rem;
             font-weight: 500;
         }
-        
+
         .status.confirmed {
             background-color: var(--accent-light);
             color: var(--accent);
         }
-        
+
         .status.pending {
             background-color: var(--warning-light);
             color: var(--warning);
         }
-        
+
         .status.canceled {
             background-color: var(--danger-light);
             color: var(--danger);
         }
-        
+
         .action-btn {
             padding: 6px 12px;
             font-size: 0.85rem;
             border-radius: 6px;
         }
-        
+
         .action-btn.edit {
             background-color: var(--warning-light);
             color: var(--warning);
         }
-        
+
         .action-btn.delete {
             background-color: var(--danger-light);
             color: var(--danger);
         }
-        
+
         .action-btn:hover {
             opacity: 0.8;
             transform: translateY(-1px);
         }
-        
+
         .empty-state {
             padding: 50px 20px;
             text-align: center;
             color: var(--text-light);
         }
-        
+
         /* Modal */
         .modal {
             position: fixed;
@@ -276,12 +279,12 @@
             visibility: hidden;
             transition: all 0.3s ease;
         }
-        
+
         .modal.active {
             opacity: 1;
             visibility: visible;
         }
-        
+
         .modal-content {
             background-color: var(--card-bg);
             border-radius: 12px;
@@ -293,11 +296,11 @@
             transform: translateY(20px);
             transition: transform 0.3s ease;
         }
-        
+
         .modal.active .modal-content {
             transform: translateY(0);
         }
-        
+
         .modal-header {
             padding: 20px;
             border-bottom: 1px solid var(--border);
@@ -305,13 +308,13 @@
             justify-content: space-between;
             align-items: center;
         }
-        
+
         .modal-title {
             font-size: 1.3rem;
             font-weight: 600;
             color: var(--primary);
         }
-        
+
         .close-btn {
             background: none;
             border: none;
@@ -319,22 +322,22 @@
             cursor: pointer;
             color: var(--text-light);
         }
-        
+
         .modal-body {
             padding: 20px;
         }
-        
+
         .form-group {
             margin-bottom: 20px;
         }
-        
+
         .form-group label {
             display: block;
             margin-bottom: 8px;
             font-weight: 500;
             color: var(--text);
         }
-        
+
         .form-group input,
         .form-group select,
         .form-group textarea {
@@ -345,7 +348,7 @@
             font-family: inherit;
             transition: all 0.3s ease;
         }
-        
+
         .form-group input:focus,
         .form-group select:focus,
         .form-group textarea:focus {
@@ -353,12 +356,12 @@
             border-color: var(--primary);
             box-shadow: 0 0 0 3px var(--primary-light);
         }
-        
+
         .form-group textarea {
             min-height: 80px;
             resize: vertical;
         }
-        
+
         .modal-footer {
             padding: 20px;
             border-top: 1px solid var(--border);
@@ -366,7 +369,7 @@
             justify-content: flex-end;
             gap: 10px;
         }
-        
+
         /* Estilos para a paginação */
         .pagination-controls {
             display: flex;
@@ -376,7 +379,7 @@
             background-color: var(--card-bg);
             border-top: 1px solid var(--border);
         }
-        
+
         .pagination-controls button {
             padding: 8px 16px;
             border: 1px solid var(--border);
@@ -386,17 +389,17 @@
             cursor: pointer;
             transition: all 0.3s ease;
         }
-        
+
         .pagination-controls button:hover:not(:disabled) {
             background-color: var(--primary-light);
             border-color: var(--primary);
         }
-        
+
         .pagination-controls button:disabled {
             opacity: 0.5;
             cursor: not-allowed;
         }
-        
+
         /* Estilos para a lista de profissionais */
         #professionals-list {
             list-style: none;
@@ -407,7 +410,7 @@
             max-height: 200px;
             overflow-y: auto;
         }
-        
+
         #professionals-list li {
             padding: 10px 15px;
             border-bottom: 1px solid var(--border);
@@ -415,41 +418,41 @@
             justify-content: space-between;
             align-items: center;
         }
-        
+
         #professionals-list li:last-child {
             border-bottom: none;
         }
-        
+
         #professionals-list li:hover {
             background-color: var(--primary-light);
         }
-        
+
         /* Responsividade */
         @media (max-width: 768px) {
             .toolbar {
                 flex-direction: column;
                 align-items: flex-start;
             }
-            
+
             .filters {
                 width: 100%;
                 flex-direction: column;
             }
-            
+
             .filter-group {
                 width: 100%;
             }
-            
+
             .filter-group input,
             .filter-group select {
                 width: 100%;
             }
-            
+
             .actions {
                 width: 100%;
                 justify-content: flex-end;
             }
-            
+
             table {
                 display: block;
                 overflow-x: auto;
@@ -457,27 +460,28 @@
         }
     </style>
 </head>
+
 <body>
     <div class="container">
         <header>
             <h1>Agenda Clínica Fono Inova</h1>
             <p class="subtitle">Controle completo de agendamentos • Clínica Fonoinova</p>
         </header>
-        
+
         <div class="toolbar">
             <div class="filters">
                 <div class="filter-group">
                     <label for="date-filter">Data</label>
                     <input type="date" id="date-filter">
                 </div>
-                
+
                 <div class="filter-group">
                     <label for="professional-filter">Profissional</label>
                     <select id="professional-filter">
                         <option value="">Todos</option>
                     </select>
                 </div>
-                
+
                 <div class="filter-group">
                     <label for="status-filter">Status</label>
                     <select id="status-filter">
@@ -488,7 +492,7 @@
                     </select>
                 </div>
             </div>
-            
+
             <div class="actions">
                 <button class="btn-outline" id="search-btn">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -513,7 +517,7 @@
                 </button>
             </div>
         </div>
-        
+
         <div class="days-filter">
             <button class="day-btn" data-day="0">Dom</button>
             <button class="day-btn" data-day="1">Seg</button>
@@ -523,7 +527,7 @@
             <button class="day-btn" data-day="5">Sex</button>
             <button class="day-btn" data-day="6">Sáb</button>
         </div>
-        
+
         <table>
             <thead>
                 <tr>
@@ -541,14 +545,14 @@
                 <!-- Os agendamentos serão carregados dinamicamente aqui -->
             </tbody>
         </table>
-        
+
         <div class="pagination-controls" style="display: none;">
             <button id="prev-page-btn" disabled>Anterior</button>
             <span id="page-info">Página 1 de 1</span>
             <button id="next-page-btn" disabled>Próximo</button>
         </div>
     </div>
-    
+
     <!-- Modal para adicionar/editar agendamentos -->
     <div class="modal" id="appointment-modal">
         <div class="modal-content">
@@ -556,30 +560,30 @@
                 <h3 class="modal-title">Novo Agendamento</h3>
                 <button class="close-btn">&times;</button>
             </div>
-            
+
             <div class="modal-body">
                 <div class="form-group">
                     <label for="patient-name">Paciente</label>
                     <input type="text" id="patient-name" placeholder="Nome completo do paciente">
                 </div>
-                
+
                 <div class="form-group">
                     <label for="responsible">Responsável</label>
                     <input type="text" id="responsible" placeholder="Nome do responsável">
                 </div>
-                
+
                 <div class="form-row" style="display: flex; gap: 15px;">
                     <div class="form-group" style="flex: 1;">
                         <label for="appointment-date">Data</label>
                         <input type="date" id="appointment-date">
                     </div>
-                    
+
                     <div class="form-group" style="flex: 1;">
                         <label for="appointment-time">Horário</label>
                         <input type="time" id="appointment-time">
                     </div>
                 </div>
-                
+
                 <div class="form-row" style="display: flex; gap: 15px;">
                     <div class="form-group" style="flex: 1;">
                         <label for="professional">Profissional</label>
@@ -587,17 +591,18 @@
                             <!-- Preenchido dinamicamente -->
                         </select>
                     </div>
-                    
+
                     <div class="form-group" style="flex: 1;">
                         <label for="specialty">Especialidade</label>
                         <select id="specialty">
                             <option>Fonoaudiologia</option>
                             <option>Psicologia</option>
                             <option>Terapia Ocupacional</option>
+                            <option>Fisioterapia</option>
                         </select>
                     </div>
                 </div>
-                
+
                 <div class="form-group">
                     <label for="status">Status</label>
                     <select id="status">
@@ -606,20 +611,20 @@
                         <option value="canceled">Cancelado</option>
                     </select>
                 </div>
-                
+
                 <div class="form-group">
                     <label for="notes">Observações</label>
                     <textarea id="notes" placeholder="Anotações importantes sobre o atendimento"></textarea>
                 </div>
             </div>
-            
+
             <div class="modal-footer">
                 <button class="btn-outline close-btn">Cancelar</button>
                 <button class="btn-primary" id="save-appointment">Salvar Agendamento</button>
             </div>
         </div>
     </div>
-    
+
     <!-- Modal para gerenciar profissionais -->
     <div class="modal" id="professionals-modal">
         <div class="modal-content">
@@ -627,7 +632,7 @@
                 <h3 class="modal-title">Gerenciar Profissionais</h3>
                 <button class="close-btn">&times;</button>
             </div>
-            
+
             <div class="modal-body">
                 <div class="form-group">
                     <label for="new-professional">Adicionar Profissional</label>
@@ -636,13 +641,13 @@
                         <button class="btn-primary" id="add-professional-btn">Adicionar</button>
                     </div>
                 </div>
-                
+
                 <div class="form-group">
                     <label>Profissionais Cadastrados</label>
                     <ul id="professionals-list"></ul>
                 </div>
             </div>
-            
+
             <div class="modal-footer">
                 <button class="btn-outline close-btn">Fechar</button>
             </div>
@@ -658,7 +663,7 @@
         let editingId = null;
         let currentPage = 1;
         const itemsPerPage = 20;
-        
+
         // Elementos DOM
         const appointmentModal = document.getElementById('appointment-modal');
         const professionalsModal = document.getElementById('professionals-modal');
@@ -672,20 +677,20 @@
         const nextPageBtn = document.getElementById('next-page-btn');
         const pageInfo = document.getElementById('page-info');
         const paginationControls = document.querySelector('.pagination-controls');
-        
+
         // Inicialização
         document.addEventListener('DOMContentLoaded', () => {
             // Configurar data atual como padrão no filtro
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('date-filter').value = today;
-            
+
             // Carregar dados iniciais
             loadInitialData();
-            
+
             // Configurar eventos
             setupEventListeners();
         });
-        
+
         function setupEventListeners() {
             // Modal de agendamentos
             openModalBtn.addEventListener('click', () => {
@@ -695,34 +700,34 @@
                 appointmentModal.classList.add('active');
                 document.body.style.overflow = 'hidden';
             });
-            
+
             // Modal de profissionais
             manageProfessionalsBtn.addEventListener('click', () => {
                 renderProfessionalsList();
                 professionalsModal.classList.add('active');
                 document.body.style.overflow = 'hidden';
             });
-            
+
             // Fechar modais
             closeModalBtns.forEach(btn => {
                 btn.addEventListener('click', closeAllModals);
             });
-            
+
             // Fechar ao clicar fora do modal
             appointmentModal.addEventListener('click', (e) => {
                 if (e.target === appointmentModal) closeAllModals();
             });
-            
+
             professionalsModal.addEventListener('click', (e) => {
                 if (e.target === professionalsModal) closeAllModals();
             });
-            
+
             // Salvar agendamento
             saveAppointmentBtn.addEventListener('click', saveAppointment);
-            
+
             // Adicionar profissional
             addProfessionalBtn.addEventListener('click', addProfessional);
-            
+
             // Filtros por dia da semana
             document.querySelectorAll('.day-btn').forEach(btn => {
                 btn.addEventListener('click', () => {
@@ -731,7 +736,7 @@
                     filterByDay(parseInt(btn.dataset.day));
                 });
             });
-            
+
             // Paginação
             prevPageBtn.addEventListener('click', () => {
                 if (currentPage > 1) {
@@ -739,7 +744,7 @@
                     renderAppointments();
                 }
             });
-            
+
             nextPageBtn.addEventListener('click', () => {
                 const totalPages = Math.ceil(appointments.length / itemsPerPage);
                 if (currentPage < totalPages) {
@@ -747,48 +752,48 @@
                     renderAppointments();
                 }
             });
-            
+
             // Busca
             document.getElementById('search-btn').addEventListener('click', applyFilters);
             document.getElementById('professional-filter').addEventListener('change', applyFilters);
             document.getElementById('status-filter').addEventListener('change', applyFilters);
             document.getElementById('date-filter').addEventListener('change', applyFilters);
         }
-        
+
         function closeAllModals() {
             appointmentModal.classList.remove('active');
             professionalsModal.classList.remove('active');
             document.body.style.overflow = 'auto';
         }
-        
+
         function updateProfessionalSelects() {
             const professionalSelects = document.querySelectorAll('select[id="professional"], select[id="professional-filter"]');
-            
+
             professionalSelects.forEach(select => {
                 const currentValue = select.value;
                 select.innerHTML = '';
-                
+
                 if (select.id === 'professional-filter') {
                     select.innerHTML = '<option value="">Todos</option>';
                 }
-                
+
                 professionals.forEach(professional => {
                     const option = document.createElement('option');
                     option.value = professional;
                     option.textContent = professional;
                     select.appendChild(option);
                 });
-                
+
                 if (professionals.includes(currentValue)) {
                     select.value = currentValue;
                 }
             });
         }
-        
+
         function loadInitialData() {
             // Aqui você deve implementar a carga de dados inicial
             // Pode ser do localStorage, de uma API, etc.
-            
+
             // Exemplo básico (substitua por sua implementação real):
             /*
             const savedAppointments = localStorage.getItem('appointments');
@@ -804,14 +809,14 @@
                 professionals = ["Dra. Lorany Siqueira", "Dra. Tatiana Celuta", "Dr. Ricardo Maia"];
             }
             */
-            
+
             updateProfessionalSelects();
             renderAppointments();
         }
-        
+
         function renderAppointments() {
             appointmentsBody.innerHTML = '';
-            
+
             if (appointments.length === 0) {
                 appointmentsBody.innerHTML = `
                     <tr>
@@ -823,21 +828,21 @@
                 paginationControls.style.display = 'none';
                 return;
             }
-            
+
             // Calcular índices para paginação
             const startIndex = (currentPage - 1) * itemsPerPage;
             const endIndex = startIndex + itemsPerPage;
             const paginatedAppointments = appointments.slice(startIndex, endIndex);
-            
+
             // Usar DocumentFragment para melhor performance
             const fragment = document.createDocumentFragment();
-            
+
             paginatedAppointments.forEach(appointment => {
                 const dateObj = new Date(appointment.date);
                 const days = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
                 const dayOfWeek = days[dateObj.getDay()];
                 const formattedDate = `${appointment.date.split('-').reverse().join('/')} (${dayOfWeek})`;
-                
+
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td>${appointment.patient}</td>
@@ -852,12 +857,12 @@
                         <button class="action-btn delete" data-id="${appointment.id}">Remover</button>
                     </td>
                 `;
-                
+
                 fragment.appendChild(tr);
             });
-            
+
             appointmentsBody.appendChild(fragment);
-            
+
             // Adicionar eventos usando delegação para melhor performance
             appointmentsBody.addEventListener('click', (e) => {
                 if (e.target.classList.contains('edit')) {
@@ -866,25 +871,25 @@
                     deleteAppointment(e.target.dataset.id);
                 }
             });
-            
+
             // Atualizar controles de paginação
             updatePaginationControls();
         }
-        
+
         function updatePaginationControls() {
             const totalPages = Math.ceil(appointments.length / itemsPerPage);
-            
+
             if (totalPages <= 1) {
                 paginationControls.style.display = 'none';
                 return;
             }
-            
+
             paginationControls.style.display = 'flex';
             prevPageBtn.disabled = currentPage === 1;
             nextPageBtn.disabled = currentPage === totalPages;
             pageInfo.textContent = `Página ${currentPage} de ${totalPages}`;
         }
-        
+
         function getStatusText(status) {
             const statusMap = {
                 'confirmed': 'Confirmado',
@@ -893,7 +898,7 @@
             };
             return statusMap[status] || status;
         }
-        
+
         function resetAppointmentForm() {
             document.getElementById('patient-name').value = '';
             document.getElementById('responsible').value = '';
@@ -904,14 +909,14 @@
             document.getElementById('status').value = 'confirmed';
             document.getElementById('notes').value = '';
         }
-        
+
         function editAppointment(id) {
             const appointment = appointments.find(a => a.id == id);
             if (!appointment) return;
-            
+
             editingId = id;
             document.querySelector('#appointment-modal .modal-title').textContent = 'Editar Agendamento';
-            
+
             // Preencher formulário com os dados do agendamento
             document.getElementById('patient-name').value = appointment.patient;
             document.getElementById('responsible').value = appointment.responsible;
@@ -921,11 +926,11 @@
             document.getElementById('specialty').value = appointment.specialty;
             document.getElementById('status').value = appointment.status;
             document.getElementById('notes').value = appointment.notes;
-            
+
             appointmentModal.classList.add('active');
             document.body.style.overflow = 'hidden';
         }
-        
+
         function saveAppointment() {
             const patientName = document.getElementById('patient-name').value.trim();
             const responsible = document.getElementById('responsible').value.trim();
@@ -935,12 +940,12 @@
             const specialty = document.getElementById('specialty').value;
             const status = document.getElementById('status').value;
             const notes = document.getElementById('notes').value.trim();
-            
+
             if (!patientName || !date || !time || !professional) {
                 alert('Por favor, preencha todos os campos obrigatórios!');
                 return;
             }
-            
+
             const appointmentData = {
                 patient: patientName,
                 responsible,
@@ -951,7 +956,7 @@
                 status,
                 notes
             };
-            
+
             if (editingId) {
                 // Editar agendamento existente
                 const index = appointments.findIndex(a => a.id == editingId);
@@ -966,31 +971,31 @@
                     ...appointmentData
                 });
             }
-            
+
             // Aqui você deve salvar os dados (localStorage, API, etc.)
             // Exemplo:
             // localStorage.setItem('appointments', JSON.stringify(appointments));
-            
+
             renderAppointments();
             closeAllModals();
         }
-        
+
         function deleteAppointment(id) {
             if (confirm('Tem certeza que deseja remover este agendamento?')) {
                 appointments = appointments.filter(a => a.id != id);
-                
+
                 // Aqui você deve salvar os dados (localStorage, API, etc.)
                 // Exemplo:
                 // localStorage.setItem('appointments', JSON.stringify(appointments));
-                
+
                 renderAppointments();
             }
         }
-        
+
         function renderProfessionalsList() {
             const list = document.getElementById('professionals-list');
             list.innerHTML = '';
-            
+
             professionals.forEach((professional, index) => {
                 const li = document.createElement('li');
                 li.innerHTML = `
@@ -999,7 +1004,7 @@
                 `;
                 list.appendChild(li);
             });
-            
+
             // Adicionar evento de remoção
             list.addEventListener('click', (e) => {
                 if (e.target.classList.contains('delete')) {
@@ -1008,86 +1013,87 @@
                 }
             });
         }
-        
+
         function addProfessional() {
             const input = document.getElementById('new-professional');
             const name = input.value.trim();
-            
+
             if (!name) {
                 alert('Por favor, insira um nome válido!');
                 return;
             }
-            
+
             if (professionals.includes(name)) {
                 alert('Este profissional já está cadastrado!');
                 return;
             }
-            
+
             professionals.push(name);
             updateProfessionalSelects();
             renderProfessionalsList();
             input.value = '';
-            
+
             // Aqui você deve salvar os profissionais (localStorage, API, etc.)
             // Exemplo:
             // localStorage.setItem('professionals', JSON.stringify(professionals));
         }
-        
+
         function removeProfessional(index) {
             professionals.splice(index, 1);
             updateProfessionalSelects();
             renderProfessionalsList();
-            
+
             // Atualizar agendamentos que usavam esse profissional
             appointments.forEach(app => {
                 if (!professionals.includes(app.professional)) {
                     app.professional = professionals[0] || '';
                 }
             });
-            
+
             // Aqui você deve salvar os dados (localStorage, API, etc.)
             // Exemplo:
             // localStorage.setItem('professionals', JSON.stringify(professionals));
             // localStorage.setItem('appointments', JSON.stringify(appointments));
-            
+
             renderAppointments();
         }
-        
+
         function filterByDay(dayOfWeek) {
             const filteredAppointments = appointments.filter(appointment => {
                 const dateObj = new Date(appointment.date);
                 return dateObj.getDay() === dayOfWeek;
             });
-            
+
             // Atualizar a exibição com os agendamentos filtrados
             appointments = filteredAppointments;
             currentPage = 1;
             renderAppointments();
         }
-        
+
         function applyFilters() {
             const dateFilter = document.getElementById('date-filter').value;
             const professionalFilter = document.getElementById('professional-filter').value;
             const statusFilter = document.getElementById('status-filter').value;
-            
+
             let filteredAppointments = [...appointments];
-            
+
             if (dateFilter) {
                 filteredAppointments = filteredAppointments.filter(app => app.date === dateFilter);
             }
-            
+
             if (professionalFilter) {
                 filteredAppointments = filteredAppointments.filter(app => app.professional === professionalFilter);
             }
-            
+
             if (statusFilter) {
                 filteredAppointments = filteredAppointments.filter(app => app.status === statusFilter);
             }
-            
+
             appointments = filteredAppointments;
             currentPage = 1;
             renderAppointments();
         }
     </script>
 </body>
+
 </html>
