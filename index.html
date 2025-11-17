@@ -471,29 +471,53 @@
         </header>
 
         <div class="toolbar">
-            <div class="filters">
-                <div class="filter-group">
-                    <label for="date-filter">Data</label>
-                    <input type="date" id="date-filter">
-                </div>
+          <div class="filters">
+    <!-- Navegação de Semana (NOVO) -->
+    <div class="filter-group">
+        <label>Semana</label>
+        <div style="display: flex; gap: 8px; align-items: center;">
+            <button class="btn-outline" onclick="navegarSemana(-1)" style="padding: 8px;">◀</button>
+            <input type="week" id="week-filter" style="min-width: 160px;">
+            <button class="btn-outline" onclick="navegarSemana(1)" style="padding: 8px;">▶</button>
+            <button class="btn-outline" onclick="irParaHoje()" title="Hoje" style="padding: 8px;">📅</button>
+        </div>
+    </div>
 
-                <div class="filter-group">
-                    <label for="professional-filter">Profissional</label>
-                    <select id="professional-filter">
-                        <option value="">Todos</option>
-                    </select>
-                </div>
+    <div class="filter-group">
+        <label for="professional-filter">Profissional</label>
+        <select id="professional-filter">
+            <option value="">Todos</option>
+        </select>
+    </div>
 
-                <div class="filter-group">
-                    <label for="status-filter">Status</label>
-                    <select id="status-filter">
-                        <option value="">Todos</option>
-                        <option value="confirmed">Confirmado</option>
-                        <option value="pending">Pendente</option>
-                        <option value="canceled">Cancelado</option>
-                    </select>
-                </div>
-            </div>
+    <!-- Filtro de Especialidade (NOVO) -->
+    <div class="filter-group">
+        <label for="specialty-filter">Especialidade</label>
+        <select id="specialty-filter">
+            <option value="">Todas</option>
+            <option value="Fonoaudiologia">Fonoaudiologia</option>
+            <option value="Psicologia">Psicologia</option>
+            <option value="Terapia Ocupacional">Terapia Ocupacional</option>
+            <option value="Fisioterapia">Fisioterapia</option>
+        </select>
+    </div>
+
+    <div class="filter-group">
+        <label for="status-filter">Status</label>
+        <select id="status-filter">
+            <option value="">Todos</option>
+            <option value="confirmed">Confirmado</option>
+            <option value="pending">Pendente</option>
+            <option value="canceled">Cancelado</option>
+        </select>
+    </div>
+    
+    <!-- Badge de Resumo (NOVO) -->
+    <div style="display: flex; align-items: center; gap: 8px; margin-left: auto;">
+        <span class="badge" id="total-appointments" style="background: var(--primary);">0 agendamentos</span>
+        <span class="badge" id="total-livres" style="background: var(--accent);">0 vagas</span>
+    </div>
+</div>
 
             <div class="actions">
                 <button class="btn-outline" id="search-btn">
@@ -656,446 +680,482 @@
         </div>
     </div>
 
-    <script>
-        // Variáveis globais
-        let appointments = [];
-        let professionals = []; // Inicialmente vazio - será preenchido conforme necessidade
-        let specialties = ["Fonoaudiologia", "Psicologia", "Terapia Ocupacional"];
-        let statuses = ["confirmed", "pending", "canceled"];
-        let editingId = null;
-        let currentPage = 1;
-        const itemsPerPage = 20;
+   <script>
+    // ========== CONFIGURAÇÃO GLOBAL ==========
+    let allAppointments = []; // Array original completo (nunca altera)
+    let filteredAppointments = []; // Array filtrado (usado para renderizar)
+    let professionals = ["Dra. Lorany Siqueira", "Dra. Tatiana Celuta", "Dr. Ricardo Maia"];
+    let specialties = ["Fonoaudiologia", "Psicologia", "Terapia Ocupacional", "Fisioterapia"];
+    let editingId = null;
+    let currentPage = 1;
+    const itemsPerPage = 50;
 
-        // Elementos DOM
-        const appointmentModal = document.getElementById('appointment-modal');
-        const professionalsModal = document.getElementById('professionals-modal');
-        const openModalBtn = document.getElementById('add-appointment');
-        const manageProfessionalsBtn = document.getElementById('manage-professionals-btn');
-        const closeModalBtns = document.querySelectorAll('.close-btn');
-        const appointmentsBody = document.getElementById('appointments-body');
-        const saveAppointmentBtn = document.getElementById('save-appointment');
-        const addProfessionalBtn = document.getElementById('add-professional-btn');
-        const prevPageBtn = document.getElementById('prev-page-btn');
-        const nextPageBtn = document.getElementById('next-page-btn');
-        const pageInfo = document.getElementById('page-info');
-        const paginationControls = document.querySelector('.pagination-controls');
+    // ========== ELEMENTOS DOM ==========
+    const appointmentModal = document.getElementById('appointment-modal');
+    const professionalsModal = document.getElementById('professionals-modal');
+    const appointmentsBody = document.getElementById('appointments-body');
+    const paginationControls = document.querySelector('.pagination-controls');
 
-        // Inicialização
-        document.addEventListener('DOMContentLoaded', () => {
-            // Configurar data atual como padrão no filtro
-            const today = new Date().toISOString().split('T')[0];
-            document.getElementById('date-filter').value = today;
+    // ========== INICIALIZAÇÃO ==========
+    document.addEventListener('DOMContentLoaded', () => {
+        setCurrentWeek();
+        loadInitialData();
+        setupEventListeners();
+        applyFilters(); // Carrega dados filtrados inicialmente
+    });
 
-            // Carregar dados iniciais
-            loadInitialData();
+    // ========== NAVEGAÇÃO DE SEMANA ==========
+    function setCurrentWeek() {
+        const today = new Date();
+        const year = today.getFullYear();
+        const week = getISOWeek(today);
+        document.getElementById('week-filter').value = `${year}-W${week.toString().padStart(2, '0')}`;
+    }
 
-            // Configurar eventos
-            setupEventListeners();
+    function getISOWeek(date) {
+        const target = new Date(date.valueOf());
+        const dayNr = (date.getDay() + 6) % 7;
+        target.setDate(target.getDate() - dayNr + 3);
+        const jan4 = new Date(target.getFullYear(), 0, 4);
+        const dayDiff = (target - jan4) / 86400000;
+        return 1 + Math.ceil(dayDiff / 7);
+    }
+
+    function navegarSemana(direcao) {
+        const input = document.getElementById('week-filter');
+        const [ano, semana] = input.value.split('-W');
+        let novaSemana = parseInt(semana) + direcao;
+        let novoAno = parseInt(ano);
+
+        if (novaSemana > 52) {
+            novaSemana = 1;
+            novoAno++;
+        } else if (novaSemana < 1) {
+            novaSemana = 52;
+            novoAno--;
+        }
+
+        input.value = `${novoAno}-W${novaSemana.toString().padStart(2, '0')}`;
+        applyFilters();
+    }
+
+    function irParaHoje() {
+        setCurrentWeek();
+        applyFilters();
+    }
+
+    // Retorna array com todas as datas da semana selecionada
+    function getWeekDates(weekString) {
+        const [year, week] = weekString.split('-W');
+        const firstDayOfYear = new Date(year, 0, 1);
+        const daysOffset = (parseInt(week) - 1) * 7;
+        const firstDayOfWeek = new Date(firstDayOfYear);
+        firstDayOfWeek.setDate(firstDayOfYear.getDate() + daysOffset - firstDayOfYear.getDay() + 1);
+
+        const dates = [];
+        for (let i = 0; i < 7; i++) {
+            const date = new Date(firstDayOfWeek);
+            date.setDate(firstDayOfWeek.getDate() + i);
+            dates.push(date.toISOString().split('T')[0]);
+        }
+        return dates;
+    }
+
+    // ========== SISTEMA DE FILTROS ==========
+    function applyFilters() {
+        const weekFilter = document.getElementById('week-filter').value;
+        const professionalFilter = document.getElementById('professional-filter').value;
+        const specialtyFilter = document.getElementById('specialty-filter').value;
+        const statusFilter = document.getElementById('status-filter').value;
+
+        // Começa com todos os agendamentos
+        let filtered = [...allAppointments];
+
+        // Filtro por semana
+        if (weekFilter) {
+            const weekDates = getWeekDates(weekFilter);
+            filtered = filtered.filter(app => weekDates.includes(app.date));
+        }
+
+        // Filtro por profissional
+        if (professionalFilter) {
+            filtered = filtered.filter(app => app.professional === professionalFilter);
+        }
+
+        // Filtro por especialidade
+        if (specialtyFilter) {
+            filtered = filtered.filter(app => app.specialty === specialtyFilter);
+        }
+
+        // Filtro por status
+        if (statusFilter) {
+            filtered = filtered.filter(app => app.status === statusFilter);
+        }
+
+        filteredAppointments = filtered;
+        currentPage = 1;
+        renderAppointments();
+        updateStats();
+    }
+
+    function updateStats() {
+        const totalAppointments = filteredAppointments.length;
+        const totalLivres = calculateAvailableSlots();
+        
+        document.getElementById('total-appointments').textContent = `${totalAppointments} agendamentos`;
+        document.getElementById('total-livres').textContent = `${totalLivres} vagas livres`;
+    }
+
+    function calculateAvailableSlots() {
+        // Assumindo 10 slots por dia por profissional
+        const weekFilter = document.getElementById('week-filter').value;
+        const weekDates = getWeekDates(weekFilter);
+        const totalSlots = weekDates.length * professionals.length * 10;
+        return totalSlots - filteredAppointments.filter(a => a.status !== 'canceled').length;
+    }
+
+    // ========== RENDERIZAÇÃO ==========
+    function renderAppointments() {
+        appointmentsBody.innerHTML = '';
+
+        if (filteredAppointments.length === 0) {
+            appointmentsBody.innerHTML = `
+                <tr>
+                    <td colspan="8" class="empty-state">
+                        <div style="padding: 40px;">
+                            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom: 16px; opacity: 0.3;">
+                                <path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                            </svg>
+                            <p style="font-size: 1.1rem; color: var(--text-light);">Nenhum agendamento encontrado nesta semana</p>
+                            <p style="font-size: 0.9rem; color: var(--text-light); margin-top: 8px;">Tente ajustar os filtros ou navegue para outra semana</p>
+                        </div>
+                    </td>
+                </tr>
+            `;
+            paginationControls.style.display = 'none';
+            return;
+        }
+
+        // Ordenar por data e hora
+        const sorted = [...filteredAppointments].sort((a, b) => {
+            if (a.date !== b.date) return a.date.localeCompare(b.date);
+            return a.time.localeCompare(b.time);
         });
 
-        function setupEventListeners() {
-            // Modal de agendamentos
-            openModalBtn.addEventListener('click', () => {
-                editingId = null;
-                document.querySelector('#appointment-modal .modal-title').textContent = 'Novo Agendamento';
-                resetAppointmentForm();
-                appointmentModal.classList.add('active');
-                document.body.style.overflow = 'hidden';
-            });
+        // Paginação
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        const endIndex = startIndex + itemsPerPage;
+        const paginated = sorted.slice(startIndex, endIndex);
 
-            // Modal de profissionais
-            manageProfessionalsBtn.addEventListener('click', () => {
-                renderProfessionalsList();
-                professionalsModal.classList.add('active');
-                document.body.style.overflow = 'hidden';
-            });
+        const fragment = document.createDocumentFragment();
 
-            // Fechar modais
-            closeModalBtns.forEach(btn => {
-                btn.addEventListener('click', closeAllModals);
-            });
+        paginated.forEach(appointment => {
+            const tr = document.createElement('tr');
+            const dateObj = new Date(appointment.date + 'T00:00:00');
+            const days = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+            const dayOfWeek = days[dateObj.getDay()];
+            const formattedDate = `${appointment.date.split('-').reverse().join('/')} (${dayOfWeek})`;
 
-            // Fechar ao clicar fora do modal
-            appointmentModal.addEventListener('click', (e) => {
-                if (e.target === appointmentModal) closeAllModals();
-            });
+            tr.innerHTML = `
+                <td><strong>${appointment.patient}</strong></td>
+                <td>${appointment.responsible || '-'}</td>
+                <td>${formattedDate}</td>
+                <td><strong>${appointment.time}</strong></td>
+                <td>${appointment.professional}</td>
+                <td><span style="font-size: 0.85rem; color: var(--text-light);">${appointment.specialty}</span></td>
+                <td><span class="status ${appointment.status}">${getStatusText(appointment.status)}</span></td>
+                <td>
+                    <button class="action-btn edit" onclick="editAppointment(${appointment.id})">✏️ Editar</button>
+                    <button class="action-btn delete" onclick="deleteAppointment(${appointment.id})">🗑️ Remover</button>
+                </td>
+            `;
+            fragment.appendChild(tr);
+        });
 
-            professionalsModal.addEventListener('click', (e) => {
-                if (e.target === professionalsModal) closeAllModals();
-            });
+        appointmentsBody.appendChild(fragment);
+        updatePaginationControls();
+    }
 
-            // Salvar agendamento
-            saveAppointmentBtn.addEventListener('click', saveAppointment);
+    function updatePaginationControls() {
+        const totalPages = Math.ceil(filteredAppointments.length / itemsPerPage);
 
-            // Adicionar profissional
-            addProfessionalBtn.addEventListener('click', addProfessional);
-
-            // Filtros por dia da semana
-            document.querySelectorAll('.day-btn').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    document.querySelectorAll('.day-btn').forEach(b => b.classList.remove('active'));
-                    btn.classList.add('active');
-                    filterByDay(parseInt(btn.dataset.day));
-                });
-            });
-
-            // Paginação
-            prevPageBtn.addEventListener('click', () => {
-                if (currentPage > 1) {
-                    currentPage--;
-                    renderAppointments();
-                }
-            });
-
-            nextPageBtn.addEventListener('click', () => {
-                const totalPages = Math.ceil(appointments.length / itemsPerPage);
-                if (currentPage < totalPages) {
-                    currentPage++;
-                    renderAppointments();
-                }
-            });
-
-            // Busca
-            document.getElementById('search-btn').addEventListener('click', applyFilters);
-            document.getElementById('professional-filter').addEventListener('change', applyFilters);
-            document.getElementById('status-filter').addEventListener('change', applyFilters);
-            document.getElementById('date-filter').addEventListener('change', applyFilters);
+        if (totalPages <= 1) {
+            paginationControls.style.display = 'none';
+            return;
         }
 
-        function closeAllModals() {
-            appointmentModal.classList.remove('active');
-            professionalsModal.classList.remove('active');
-            document.body.style.overflow = 'auto';
+        paginationControls.style.display = 'flex';
+        document.getElementById('prev-page-btn').disabled = currentPage === 1;
+        document.getElementById('next-page-btn').disabled = currentPage === totalPages;
+        document.getElementById('page-info').textContent = `Página ${currentPage} de ${totalPages}`;
+    }
+
+    function getStatusText(status) {
+        const map = {
+            'confirmed': 'Confirmado',
+            'pending': 'Pendente',
+            'canceled': 'Cancelado'
+        };
+        return map[status] || status;
+    }
+
+    // ========== CRUD AGENDAMENTOS ==========
+    function editAppointment(id) {
+        const appointment = allAppointments.find(a => a.id == id);
+        if (!appointment) return;
+
+        editingId = id;
+        document.querySelector('#appointment-modal .modal-title').textContent = 'Editar Agendamento';
+
+        document.getElementById('patient-name').value = appointment.patient;
+        document.getElementById('responsible').value = appointment.responsible || '';
+        document.getElementById('appointment-date').value = appointment.date;
+        document.getElementById('appointment-time').value = appointment.time;
+        document.getElementById('professional').value = appointment.professional;
+        document.getElementById('specialty').value = appointment.specialty;
+        document.getElementById('status').value = appointment.status;
+        document.getElementById('notes').value = appointment.notes || '';
+
+        appointmentModal.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function saveAppointment() {
+        const data = {
+            patient: document.getElementById('patient-name').value.trim(),
+            responsible: document.getElementById('responsible').value.trim(),
+            date: document.getElementById('appointment-date').value,
+            time: document.getElementById('appointment-time').value,
+            professional: document.getElementById('professional').value,
+            specialty: document.getElementById('specialty').value,
+            status: document.getElementById('status').value,
+            notes: document.getElementById('notes').value.trim()
+        };
+
+        if (!data.patient || !data.date || !data.time || !data.professional) {
+            alert('Preencha os campos obrigatórios: Paciente, Data, Horário e Profissional');
+            return;
         }
 
-        function updateProfessionalSelects() {
-            const professionalSelects = document.querySelectorAll('select[id="professional"], select[id="professional-filter"]');
-
-            professionalSelects.forEach(select => {
-                const currentValue = select.value;
-                select.innerHTML = '';
-
-                if (select.id === 'professional-filter') {
-                    select.innerHTML = '<option value="">Todos</option>';
-                }
-
-                professionals.forEach(professional => {
-                    const option = document.createElement('option');
-                    option.value = professional;
-                    option.textContent = professional;
-                    select.appendChild(option);
-                });
-
-                if (professionals.includes(currentValue)) {
-                    select.value = currentValue;
-                }
-            });
-        }
-
-        function loadInitialData() {
-            // Aqui você deve implementar a carga de dados inicial
-            // Pode ser do localStorage, de uma API, etc.
-
-            // Exemplo básico (substitua por sua implementação real):
-            /*
-            const savedAppointments = localStorage.getItem('appointments');
-            if (savedAppointments) {
-                appointments = JSON.parse(savedAppointments);
+        if (editingId) {
+            const index = allAppointments.findIndex(a => a.id == editingId);
+            if (index !== -1) {
+                allAppointments[index] = { ...allAppointments[index], ...data };
             }
-            
-            const savedProfessionals = localStorage.getItem('professionals');
-            if (savedProfessionals) {
-                professionals = JSON.parse(savedProfessionals);
-            } else {
-                // Valores padrão se não houver profissionais salvos
-                professionals = ["Dra. Lorany Siqueira", "Dra. Tatiana Celuta", "Dr. Ricardo Maia"];
-            }
-            */
-
-            updateProfessionalSelects();
-            renderAppointments();
+        } else {
+            const newId = allAppointments.length > 0 ? Math.max(...allAppointments.map(a => a.id)) + 1 : 1;
+            allAppointments.unshift({ id: newId, ...data });
         }
 
-        function renderAppointments() {
-            appointmentsBody.innerHTML = '';
+        saveToStorage();
+        applyFilters();
+        closeAllModals();
+    }
 
-            if (appointments.length === 0) {
-                appointmentsBody.innerHTML = `
-                    <tr>
-                        <td colspan="8" style="text-align: center; padding: 30px; color: var(--text-light);">
-                            Nenhum agendamento encontrado.
-                        </td>
-                    </tr>
-                `;
-                paginationControls.style.display = 'none';
-                return;
-            }
+    function deleteAppointment(id) {
+        if (confirm('Confirma a remoção deste agendamento?')) {
+            allAppointments = allAppointments.filter(a => a.id != id);
+            saveToStorage();
+            applyFilters();
+        }
+    }
 
-            // Calcular índices para paginação
-            const startIndex = (currentPage - 1) * itemsPerPage;
-            const endIndex = startIndex + itemsPerPage;
-            const paginatedAppointments = appointments.slice(startIndex, endIndex);
-
-            // Usar DocumentFragment para melhor performance
-            const fragment = document.createDocumentFragment();
-
-            paginatedAppointments.forEach(appointment => {
-                const dateObj = new Date(appointment.date);
-                const days = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
-                const dayOfWeek = days[dateObj.getDay()];
-                const formattedDate = `${appointment.date.split('-').reverse().join('/')} (${dayOfWeek})`;
-
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>${appointment.patient}</td>
-                    <td>${appointment.responsible}</td>
-                    <td>${formattedDate}</td>
-                    <td>${appointment.time}</td>
-                    <td>${appointment.professional}</td>
-                    <td>${appointment.specialty}</td>
-                    <td><span class="status ${appointment.status}">${getStatusText(appointment.status)}</span></td>
-                    <td>
-                        <button class="action-btn edit" data-id="${appointment.id}">Editar</button>
-                        <button class="action-btn delete" data-id="${appointment.id}">Remover</button>
-                    </td>
-                `;
-
-                fragment.appendChild(tr);
-            });
-
-            appointmentsBody.appendChild(fragment);
-
-            // Adicionar eventos usando delegação para melhor performance
-            appointmentsBody.addEventListener('click', (e) => {
-                if (e.target.classList.contains('edit')) {
-                    editAppointment(e.target.dataset.id);
-                } else if (e.target.classList.contains('delete')) {
-                    deleteAppointment(e.target.dataset.id);
-                }
-            });
-
-            // Atualizar controles de paginação
-            updatePaginationControls();
+    // ========== GERENCIAR PROFISSIONAIS ==========
+    function addProfessional() {
+        const name = document.getElementById('new-professional').value.trim();
+        if (!name) {
+            alert('Digite um nome válido');
+            return;
+        }
+        if (professionals.includes(name)) {
+            alert('Profissional já cadastrado');
+            return;
         }
 
-        function updatePaginationControls() {
-            const totalPages = Math.ceil(appointments.length / itemsPerPage);
+        professionals.push(name);
+        updateProfessionalSelects();
+        renderProfessionalsList();
+        document.getElementById('new-professional').value = '';
+        saveToStorage();
+    }
 
-            if (totalPages <= 1) {
-                paginationControls.style.display = 'none';
-                return;
-            }
-
-            paginationControls.style.display = 'flex';
-            prevPageBtn.disabled = currentPage === 1;
-            nextPageBtn.disabled = currentPage === totalPages;
-            pageInfo.textContent = `Página ${currentPage} de ${totalPages}`;
-        }
-
-        function getStatusText(status) {
-            const statusMap = {
-                'confirmed': 'Confirmado',
-                'pending': 'Pendente',
-                'canceled': 'Cancelado'
-            };
-            return statusMap[status] || status;
-        }
-
-        function resetAppointmentForm() {
-            document.getElementById('patient-name').value = '';
-            document.getElementById('responsible').value = '';
-            document.getElementById('appointment-date').value = new Date().toISOString().split('T')[0];
-            document.getElementById('appointment-time').value = '08:00';
-            document.getElementById('professional').value = professionals[0] || '';
-            document.getElementById('specialty').value = specialties[0] || '';
-            document.getElementById('status').value = 'confirmed';
-            document.getElementById('notes').value = '';
-        }
-
-        function editAppointment(id) {
-            const appointment = appointments.find(a => a.id == id);
-            if (!appointment) return;
-
-            editingId = id;
-            document.querySelector('#appointment-modal .modal-title').textContent = 'Editar Agendamento';
-
-            // Preencher formulário com os dados do agendamento
-            document.getElementById('patient-name').value = appointment.patient;
-            document.getElementById('responsible').value = appointment.responsible;
-            document.getElementById('appointment-date').value = appointment.date;
-            document.getElementById('appointment-time').value = appointment.time;
-            document.getElementById('professional').value = appointment.professional;
-            document.getElementById('specialty').value = appointment.specialty;
-            document.getElementById('status').value = appointment.status;
-            document.getElementById('notes').value = appointment.notes;
-
-            appointmentModal.classList.add('active');
-            document.body.style.overflow = 'hidden';
-        }
-
-        function saveAppointment() {
-            const patientName = document.getElementById('patient-name').value.trim();
-            const responsible = document.getElementById('responsible').value.trim();
-            const date = document.getElementById('appointment-date').value;
-            const time = document.getElementById('appointment-time').value;
-            const professional = document.getElementById('professional').value;
-            const specialty = document.getElementById('specialty').value;
-            const status = document.getElementById('status').value;
-            const notes = document.getElementById('notes').value.trim();
-
-            if (!patientName || !date || !time || !professional) {
-                alert('Por favor, preencha todos os campos obrigatórios!');
-                return;
-            }
-
-            const appointmentData = {
-                patient: patientName,
-                responsible,
-                date,
-                time,
-                professional,
-                specialty,
-                status,
-                notes
-            };
-
-            if (editingId) {
-                // Editar agendamento existente
-                const index = appointments.findIndex(a => a.id == editingId);
-                if (index !== -1) {
-                    appointments[index] = { ...appointments[index], ...appointmentData };
-                }
-            } else {
-                // Criar novo agendamento
-                const newId = appointments.length > 0 ? Math.max(...appointments.map(a => a.id)) + 1 : 1;
-                appointments.unshift({
-                    id: newId,
-                    ...appointmentData
-                });
-            }
-
-            // Aqui você deve salvar os dados (localStorage, API, etc.)
-            // Exemplo:
-            // localStorage.setItem('appointments', JSON.stringify(appointments));
-
-            renderAppointments();
-            closeAllModals();
-        }
-
-        function deleteAppointment(id) {
-            if (confirm('Tem certeza que deseja remover este agendamento?')) {
-                appointments = appointments.filter(a => a.id != id);
-
-                // Aqui você deve salvar os dados (localStorage, API, etc.)
-                // Exemplo:
-                // localStorage.setItem('appointments', JSON.stringify(appointments));
-
-                renderAppointments();
-            }
-        }
-
-        function renderProfessionalsList() {
-            const list = document.getElementById('professionals-list');
-            list.innerHTML = '';
-
-            professionals.forEach((professional, index) => {
-                const li = document.createElement('li');
-                li.innerHTML = `
-                    <span>${professional}</span>
-                    <button class="action-btn delete" data-index="${index}">Remover</button>
-                `;
-                list.appendChild(li);
-            });
-
-            // Adicionar evento de remoção
-            list.addEventListener('click', (e) => {
-                if (e.target.classList.contains('delete')) {
-                    const index = e.target.dataset.index;
-                    removeProfessional(index);
-                }
-            });
-        }
-
-        function addProfessional() {
-            const input = document.getElementById('new-professional');
-            const name = input.value.trim();
-
-            if (!name) {
-                alert('Por favor, insira um nome válido!');
-                return;
-            }
-
-            if (professionals.includes(name)) {
-                alert('Este profissional já está cadastrado!');
-                return;
-            }
-
-            professionals.push(name);
-            updateProfessionalSelects();
-            renderProfessionalsList();
-            input.value = '';
-
-            // Aqui você deve salvar os profissionais (localStorage, API, etc.)
-            // Exemplo:
-            // localStorage.setItem('professionals', JSON.stringify(professionals));
-        }
-
-        function removeProfessional(index) {
+    function removeProfessional(index) {
+        if (confirm('Remover este profissional? Agendamentos vinculados não serão afetados.')) {
             professionals.splice(index, 1);
             updateProfessionalSelects();
             renderProfessionalsList();
+            saveToStorage();
+        }
+    }
 
-            // Atualizar agendamentos que usavam esse profissional
-            appointments.forEach(app => {
-                if (!professionals.includes(app.professional)) {
-                    app.professional = professionals[0] || '';
+    function renderProfessionalsList() {
+        const list = document.getElementById('professionals-list');
+        list.innerHTML = '';
+
+        professionals.forEach((prof, index) => {
+            const li = document.createElement('li');
+            li.innerHTML = `
+                <span><strong>${prof}</strong></span>
+                <button class="action-btn delete" onclick="removeProfessional(${index})">🗑️ Remover</button>
+            `;
+            list.appendChild(li);
+        });
+    }
+
+    function updateProfessionalSelects() {
+        ['professional', 'professional-filter'].forEach(id => {
+            const select = document.getElementById(id);
+            const current = select.value;
+            select.innerHTML = id === 'professional-filter' ? '<option value="">Todos</option>' : '';
+
+            professionals.forEach(prof => {
+                const option = document.createElement('option');
+                option.value = prof;
+                option.textContent = prof;
+                select.appendChild(option);
+            });
+
+            if (professionals.includes(current)) select.value = current;
+        });
+    }
+
+    // ========== MODALS ==========
+    function closeAllModals() {
+        appointmentModal.classList.remove('active');
+        professionalsModal.classList.remove('active');
+        document.body.style.overflow = 'auto';
+    }
+
+    function resetAppointmentForm() {
+        document.getElementById('patient-name').value = '';
+        document.getElementById('responsible').value = '';
+        document.getElementById('appointment-date').value = new Date().toISOString().split('T')[0];
+        document.getElementById('appointment-time').value = '08:00';
+        document.getElementById('professional').value = professionals[0] || '';
+        document.getElementById('specialty').value = specialties[0] || '';
+        document.getElementById('status').value = 'confirmed';
+        document.getElementById('notes').value = '';
+    }
+
+    // ========== STORAGE ==========
+    function saveToStorage() {
+        localStorage.setItem('fonoinova_appointments', JSON.stringify(allAppointments));
+        localStorage.setItem('fonoinova_professionals', JSON.stringify(professionals));
+    }
+
+    function loadInitialData() {
+        const saved = localStorage.getItem('fonoinova_appointments');
+        if (saved) {
+            allAppointments = JSON.parse(saved);
+        } else {
+            // Mock data inicial
+            allAppointments = generateMockData();
+            saveToStorage();
+        }
+
+        const savedProfs = localStorage.getItem('fonoinova_professionals');
+        if (savedProfs) {
+            professionals = JSON.parse(savedProfs);
+        }
+
+        updateProfessionalSelects();
+    }
+
+    function generateMockData() {
+        const today = new Date();
+        const mock = [];
+        
+        for (let i = 0; i < 7; i++) {
+            const date = new Date(today);
+            date.setDate(today.getDate() + i - 1);
+            const dateStr = date.toISOString().split('T')[0];
+            
+            professionals.forEach((prof, pIndex) => {
+                const numAppointments = Math.floor(Math.random() * 4) + 2;
+                for (let j = 0; j < numAppointments; j++) {
+                    const hour = 8 + j;
+                    mock.push({
+                        id: mock.length + 1,
+                        patient: `Paciente ${mock.length + 1}`,
+                        responsible: `Responsável ${mock.length + 1}`,
+                        date: dateStr,
+                        time: `${hour.toString().padStart(2, '0')}:00`,
+                        professional: prof,
+                        specialty: specialties[pIndex % specialties.length],
+                        status: ['confirmed', 'pending', 'confirmed', 'confirmed'][j % 4],
+                        notes: ''
+                    });
                 }
             });
-
-            // Aqui você deve salvar os dados (localStorage, API, etc.)
-            // Exemplo:
-            // localStorage.setItem('professionals', JSON.stringify(professionals));
-            // localStorage.setItem('appointments', JSON.stringify(appointments));
-
-            renderAppointments();
         }
+        
+        return mock;
+    }
 
-        function filterByDay(dayOfWeek) {
-            const filteredAppointments = appointments.filter(appointment => {
-                const dateObj = new Date(appointment.date);
-                return dateObj.getDay() === dayOfWeek;
-            });
+    // ========== EVENT LISTENERS ==========
+    function setupEventListeners() {
+        // Modals
+        document.getElementById('add-appointment').addEventListener('click', () => {
+            editingId = null;
+            document.querySelector('#appointment-modal .modal-title').textContent = 'Novo Agendamento';
+            resetAppointmentForm();
+            appointmentModal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        });
 
-            // Atualizar a exibição com os agendamentos filtrados
-            appointments = filteredAppointments;
-            currentPage = 1;
-            renderAppointments();
-        }
+        document.getElementById('manage-professionals-btn').addEventListener('click', () => {
+            renderProfessionalsList();
+            professionalsModal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        });
 
-        function applyFilters() {
-            const dateFilter = document.getElementById('date-filter').value;
-            const professionalFilter = document.getElementById('professional-filter').value;
-            const statusFilter = document.getElementById('status-filter').value;
+        document.querySelectorAll('.close-btn').forEach(btn => {
+            btn.addEventListener('click', closeAllModals);
+        });
 
-            let filteredAppointments = [...appointments];
+        appointmentModal.addEventListener('click', (e) => {
+            if (e.target === appointmentModal) closeAllModals();
+        });
 
-            if (dateFilter) {
-                filteredAppointments = filteredAppointments.filter(app => app.date === dateFilter);
+        professionalsModal.addEventListener('click', (e) => {
+            if (e.target === professionalsModal) closeAllModals();
+        });
+
+        // Salvar agendamento
+        document.getElementById('save-appointment').addEventListener('click', saveAppointment);
+
+        // Adicionar profissional
+        document.getElementById('add-professional-btn').addEventListener('click', addProfessional);
+
+        // Filtros
+        document.getElementById('week-filter').addEventListener('change', applyFilters);
+        document.getElementById('professional-filter').addEventListener('change', applyFilters);
+        document.getElementById('specialty-filter').addEventListener('change', applyFilters);
+        document.getElementById('status-filter').addEventListener('change', applyFilters);
+        document.getElementById('search-btn').addEventListener('click', applyFilters);
+
+        // Paginação
+        document.getElementById('prev-page-btn').addEventListener('click', () => {
+            if (currentPage > 1) {
+                currentPage--;
+                renderAppointments();
             }
+        });
 
-            if (professionalFilter) {
-                filteredAppointments = filteredAppointments.filter(app => app.professional === professionalFilter);
+        document.getElementById('next-page-btn').addEventListener('click', () => {
+            const totalPages = Math.ceil(filteredAppointments.length / itemsPerPage);
+            if (currentPage < totalPages) {
+                currentPage++;
+                renderAppointments();
             }
+        });
 
-            if (statusFilter) {
-                filteredAppointments = filteredAppointments.filter(app => app.status === statusFilter);
-            }
-
-            appointments = filteredAppointments;
-            currentPage = 1;
-            renderAppointments();
-        }
-    </script>
+        // REMOVER filtros por dia da semana (bugados)
+        document.querySelectorAll('.day-btn').forEach(btn => {
+            btn.remove(); // Remove completamente os botões de dia
+        });
+    }
+</script>
 </body>
 
 </html>
