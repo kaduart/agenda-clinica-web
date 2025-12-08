@@ -5,1096 +5,1435 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Agenda Clínica Fonoinova</title>
-    <link
-        href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600&family=Playfair+Display:wght@500&display=swap"
-        rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-database-compat.js"></script>
     <style>
         :root {
             --primary: #26977b;
             --primary-light: #e8f0fe;
             --secondary: #329189;
             --accent: #1c8565;
-            --accent-light: #e8f9f3;
-            --danger: #e74c3c;
-            --danger-light: #fdedec;
-            --warning: #f39c12;
-            --warning-light: #fef5e9;
-            --text: #2c3e50;
-            --text-light: #7f8c8d;
-            --border: #e0e6ed;
-            --bg: #f8fafc;
-            --card-bg: #ffffff;
+            --accent-light: #c9ebf5;
         }
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-
-        body {
-            font-family: 'Montserrat', sans-serif;
-            background-color: var(--bg);
-            color: var(--text);
-            line-height: 1.6;
-            padding: 20px;
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            background-color: var(--card-bg);
-            border-radius: 12px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
-            overflow: hidden;
-        }
-
-        header {
-            background: linear-gradient(135deg, var(--primary), var(--secondary));
-            color: white;
-            padding: 25px 30px;
-            border-radius: 12px 12px 0 0;
-        }
-
-        h1 {
-            font-family: 'Playfair Display', serif;
-            font-size: 2rem;
-            font-weight: 500;
-            margin-bottom: 5px;
-        }
-
-        .subtitle {
-            font-size: 0.9rem;
-            opacity: 0.9;
-        }
-
-        .toolbar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 15px;
-            padding: 20px;
-            border-bottom: 1px solid var(--border);
-            background-color: var(--card-bg);
-        }
-
-        .filters {
-            display: flex;
-            gap: 15px;
-            flex-wrap: wrap;
-        }
-
-        .filter-group {
+        .specialty-tab {
+            transition: all 0.3s ease;
             position: relative;
         }
 
-        .filter-group label {
+        .specialty-tab.active::after {
+            content: '';
             position: absolute;
-            top: -10px;
-            left: 12px;
-            background-color: var(--card-bg);
-            padding: 0 5px;
-            font-size: 0.75rem;
-            color: var(--text-light);
-        }
-
-        .filter-group input,
-        .filter-group select {
-            padding: 10px 15px;
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            font-family: inherit;
-            min-width: 180px;
-            background-color: var(--card-bg);
-            transition: all 0.3s ease;
-        }
-
-        .filter-group input:focus,
-        .filter-group select:focus {
-            outline: none;
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px var(--primary-light);
-        }
-
-        .actions {
-            display: flex;
-            gap: 10px;
-        }
-
-        button {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 8px;
-            font-family: inherit;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .btn-primary {
-            background-color: var(--primary);
-            color: white;
-        }
-
-        .btn-primary:hover {
-            background-color: var(--secondary);
-            transform: translateY(-2px);
-        }
-
-        .btn-outline {
-            background-color: transparent;
-            border: 1px solid var(--primary);
-            color: var(--primary);
-        }
-
-        .btn-outline:hover {
-            background-color: var(--primary-light);
-        }
-
-        .days-filter {
-            display: flex;
-            gap: 8px;
-            padding: 0 20px 15px;
-            overflow-x: auto;
-            margin-top: 1rem;
-        }
-
-        .day-btn {
-            flex: 0 0 auto;
-            padding: 8px 15px;
-            border-radius: 20px;
-            background-color: var(--primary-light);
-            color: var(--primary);
-            font-size: 0.85rem;
-            border: none;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .day-btn.active {
-            background-color: var(--primary);
-            color: white;
-        }
-
-        .day-btn:hover:not(.active) {
-            background-color: #d6e3ff;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        thead th {
-            background-color: var(--primary-light);
-            color: var(--primary);
-            padding: 15px;
-            text-align: left;
-            font-weight: 600;
-            position: sticky;
-            top: 0;
-        }
-
-        tbody tr {
-            border-bottom: 1px solid var(--border);
-            transition: background-color 0.2s ease;
-        }
-
-        tbody tr:hover {
-            background-color: var(--primary-light);
-        }
-
-        td {
-            padding: 15px;
-            vertical-align: middle;
-        }
-
-        .status {
-            display: inline-block;
-            padding: 5px 12px;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            font-weight: 500;
-        }
-
-        .status.confirmed {
-            background-color: var(--accent-light);
-            color: var(--accent);
-        }
-
-        .status.pending {
-            background-color: var(--warning-light);
-            color: var(--warning);
-        }
-
-        .status.canceled {
-            background-color: var(--danger-light);
-            color: var(--danger);
-        }
-
-        .action-btn {
-            padding: 6px 12px;
-            font-size: 0.85rem;
-            border-radius: 6px;
-        }
-
-        .action-btn.edit {
-            background-color: var(--warning-light);
-            color: var(--warning);
-        }
-
-        .action-btn.delete {
-            background-color: var(--danger-light);
-            color: var(--danger);
-        }
-
-        .action-btn:hover {
-            opacity: 0.8;
-            transform: translateY(-1px);
-        }
-
-        .empty-state {
-            padding: 50px 20px;
-            text-align: center;
-            color: var(--text-light);
-        }
-
-        /* Modal */
-        .modal {
-            position: fixed;
-            top: 0;
+            bottom: 0;
             left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-            opacity: 0;
-            visibility: hidden;
-            transition: all 0.3s ease;
+            right: 0;
+            height: 3px;
+            background: currentColor;
         }
 
-        .modal.active {
-            opacity: 1;
-            visibility: visible;
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 1px;
+            background-color: #e0e6ed;
+            border: 1px solid #e0e6ed;
         }
 
-        .modal-content {
-            background-color: var(--card-bg);
-            border-radius: 12px;
-            width: 90%;
-            max-width: 500px;
-            max-height: 90vh;
-            overflow-y: auto;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-            transform: translateY(20px);
-            transition: transform 0.3s ease;
+        .calendar-day {
+            min-height: 120px;
+            background-color: white;
+            padding: 8px;
+            position: relative;
         }
 
-        .modal.active .modal-content {
-            transform: translateY(0);
+        .calendar-day.other-month {
+            background-color: #f9fafb;
+            color: #9ca3af;
         }
 
-        .modal-header {
-            padding: 20px;
-            border-bottom: 1px solid var(--border);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .modal-title {
-            font-size: 1.3rem;
+        .calendar-day-header {
             font-weight: 600;
-            color: var(--primary);
-        }
-
-        .close-btn {
-            background: none;
-            border: none;
-            font-size: 1.5rem;
-            cursor: pointer;
-            color: var(--text-light);
-        }
-
-        .modal-body {
-            padding: 20px;
-        }
-
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        .form-group label {
-            display: block;
             margin-bottom: 8px;
-            font-weight: 500;
-            color: var(--text);
-        }
-
-        .form-group input,
-        .form-group select,
-        .form-group textarea {
-            width: 100%;
-            padding: 12px 15px;
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            font-family: inherit;
-            transition: all 0.3s ease;
-        }
-
-        .form-group input:focus,
-        .form-group select:focus,
-        .form-group textarea:focus {
-            outline: none;
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px var(--primary-light);
-        }
-
-        .form-group textarea {
-            min-height: 80px;
-            resize: vertical;
-        }
-
-        .modal-footer {
-            padding: 20px;
-            border-top: 1px solid var(--border);
-            display: flex;
-            justify-content: flex-end;
-            gap: 10px;
-        }
-
-        /* Estilos para a paginação */
-        .pagination-controls {
-            display: flex;
-            justify-content: center;
-            padding: 20px;
-            gap: 10px;
-            background-color: var(--card-bg);
-            border-top: 1px solid var(--border);
-        }
-
-        .pagination-controls button {
-            padding: 8px 16px;
-            border: 1px solid var(--border);
-            background-color: var(--card-bg);
-            color: var(--text);
-            border-radius: 6px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .pagination-controls button:hover:not(:disabled) {
-            background-color: var(--primary-light);
-            border-color: var(--primary);
-        }
-
-        .pagination-controls button:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        /* Estilos para a lista de profissionais */
-        #professionals-list {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            max-height: 200px;
-            overflow-y: auto;
-        }
-
-        #professionals-list li {
-            padding: 10px 15px;
-            border-bottom: 1px solid var(--border);
             display: flex;
             justify-content: space-between;
+        }
+
+        .day-number {
+            width: 28px;
+            height: 28px;
+            display: flex;
             align-items: center;
+            justify-content: center;
+            border-radius: 50%;
         }
 
-        #professionals-list li:last-child {
-            border-bottom: none;
+        .day-number.today {
+            background-color: var(--primary);
+            color: white;
         }
 
-        #professionals-list li:hover {
-            background-color: var(--primary-light);
+        .time-slot {
+            padding: 2px 4px;
+            margin-bottom: 2px;
+            font-size: 0.75rem;
+            border-radius: 2px;
+            cursor: pointer;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
-        /* Responsividade */
-        @media (max-width: 768px) {
-            .toolbar {
-                margin-bottom: 1rem;
-                flex-direction: column;
-                align-items: flex-start;
+        .time-slot.vago {
+            background-color: #e8f6ef;
+            color: #27ae60;
+        }
+
+        .time-slot.ocupado {
+            background-color: #c9ebf5;
+            color: #1c8565;
+        }
+
+        .time-slot:hover {
+            opacity: 0.8;
+        }
+
+        .professional-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 4px;
+        }
+
+        .metric-card {
+            transition: transform 0.2s ease;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-4px);
+        }
+
+        .status-badge {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
             }
 
-            .filters {
-                width: 100%;
-                flex-direction: column;
-            }
-
-            .filter-group {
-                width: 100%;
-            }
-
-            .filter-group input,
-            .filter-group select {
-                width: 100%;
-            }
-
-            .actions {
-                width: 100%;
-                justify-content: flex-end;
-            }
-
-            table {
-                display: block;
-                overflow-x: auto;
+            50% {
+                opacity: 0.7;
             }
         }
     </style>
 </head>
 
-<body>
-    <div class="container">
-        <header>
-            <h1>Agenda Clínica Fono Inova</h1>
-            <p class="subtitle">Controle completo de agendamentos • Clínica Fonoinova</p>
-        </header>
+<body class="bg-gray-50">
+    <div id="root"></div>
 
-        <div class="toolbar">
-            <div class="filters">
-                <div class="filter-group">
-                    <label for="date-filter">Data</label>
-                    <input type="date" id="date-filter">
-                </div>
+    <script type="text/babel">
+        const firebaseConfig = {
+            apiKey: "AIzaSyBcAvxbMqJiSVkJjejadxZfRv6jI0myNbk",
+            authDomain: "agenda-clinica-fono-inova.firebaseapp.com",
+            databaseURL: "https://agenda-clinica-fono-inova-default-rtdb.firebaseio.com",
+            projectId: "agenda-clinica-fono-inova",
+            storageBucket: "agenda-clinica-fono-inova.firebasestorage.app",
+            messagingSenderId: "16411552752",
+            appId: "1:16411552752:web:f338a5ea8c0c3577d44b35"
+        };
 
-                <div class="filter-group">
-                    <label for="professional-filter">Profissional</label>
-                    <select id="professional-filter">
-                        <option value="">Todos</option>
-                    </select>
-                </div>
+        const app = firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
 
-                <div class="filter-group">
-                    <label for="status-filter">Status</label>
-                    <select id="status-filter">
-                        <option value="">Todos</option>
-                        <option value="confirmed">Confirmado</option>
-                        <option value="pending">Pendente</option>
-                        <option value="canceled">Cancelado</option>
-                    </select>
-                </div>
-            </div>
+        // Configuração das especialidades
+        const SPECIALTIES = {
+            fonoaudiologia: {
+                name: 'Fonoaudiologia',
+                icon: 'fa-comment-medical',
+                color: 'blue',
+                bgColor: 'bg-blue-500',
+                lightBg: 'bg-blue-50',
+                rowBg: 'bg-blue-200',
+                textColor: 'text-blue-600',
+                borderColor: 'border-blue-500'
+            },
+            psicologia: {
+                name: 'Psicologia',
+                icon: 'fa-brain',
+                color: 'pink',
+                bgColor: 'bg-pink-500',
+                lightBg: 'bg-pink-50',
+                rowBg: 'bg-pink-200',
+                textColor: 'text-pink-600',
+                borderColor: 'border-pink-500'
+            },
+            terapia_ocupacional: {
+                name: 'Terapia Ocupacional',
+                icon: 'fa-hands-helping',
+                color: 'purple',
+                bgColor: 'bg-purple-500',
+                lightBg: 'bg-purple-50',
+                rowBg: 'bg-purple-200',
+                textColor: 'text-purple-600',
+                borderColor: 'border-purple-500'
+            },
+            fisioterapia: {
+                name: 'Fisioterapia',
+                icon: 'fa-walking',
+                color: 'amber',
+                bgColor: 'bg-amber-500',
+                lightBg: 'bg-amber-50',
+                rowBg: 'bg-yellow-200',
+                textColor: 'text-amber-600',
+                borderColor: 'border-amber-500'
+            },
+            todas: {
+                name: 'Todas',
+                icon: 'fa-th-large',
+                color: 'teal',
+                bgColor: 'bg-teal-500',
+                lightBg: 'bg-teal-50',
+                textColor: 'text-teal-600',
+                borderColor: 'border-teal-500'
+            }
+        };
 
-            <div class="actions">
-                <button class="btn-outline" id="search-btn">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                    </svg>
-                    Buscar
-                </button>
-                <button class="btn-outline" id="manage-professionals-btn">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                        <circle cx="9" cy="7" r="4"></circle>
-                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                    </svg>
-                    Profissionais
-                </button>
-                <button class="btn-primary" id="add-appointment">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M12 5v14m-7-7h14"></path>
-                    </svg>
-                    Novo Agendamento
-                </button>
-            </div>
-        </div>
+        // Utility functions
+        const generateTimeSlots = () => {
+            const slots = [];
+            const startHour = 8;
+            const endHour = 18;
+            const interval = 40;
 
-        <div class="days-filter">
-            <button class="day-btn" data-day="0">Dom</button>
-            <button class="day-btn" data-day="1">Seg</button>
-            <button class="day-btn active" data-day="2">Ter</button>
-            <button class="day-btn" data-day="3">Qua</button>
-            <button class="day-btn" data-day="4">Qui</button>
-            <button class="day-btn" data-day="5">Sex</button>
-            <button class="day-btn" data-day="6">Sáb</button>
-        </div>
+            let currentMinutes = startHour * 60;
+            const endMinutes = endHour * 60;
 
-        <table>
-            <thead>
-                <tr>
-                    <th>Paciente</th>
-                    <th>Responsável</th>
-                    <th>Data</th>
-                    <th>Horário</th>
-                    <th>Profissional</th>
-                    <th>Especialidade</th>
-                    <th>Status</th>
-                    <th>Ações</th>
-                </tr>
-            </thead>
-            <tbody id="appointments-body">
-                <!-- Os agendamentos serão carregados dinamicamente aqui -->
-            </tbody>
-        </table>
+            while (currentMinutes < endMinutes) {
+                const hour = Math.floor(currentMinutes / 60);
+                const minute = currentMinutes % 60;
+                const time = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+                slots.push(time);
+                currentMinutes += interval;
+            }
 
-        <div class="pagination-controls" style="display: none;">
-            <button id="prev-page-btn" disabled>Anterior</button>
-            <span id="page-info">Página 1 de 1</span>
-            <button id="next-page-btn" disabled>Próximo</button>
-        </div>
-    </div>
+            if (slots[slots.length - 1] !== `${endHour.toString().padStart(2, '0')}:00`) {
+                slots.push(`${endHour.toString().padStart(2, '0')}:00`);
+            }
 
-    <!-- Modal para adicionar/editar agendamentos -->
-    <div class="modal" id="appointment-modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3 class="modal-title">Novo Agendamento</h3>
-                <button class="close-btn">&times;</button>
-            </div>
+            return slots;
+        };
 
-            <div class="modal-body">
-                <div class="form-group">
-                    <label for="patient-name">Paciente</label>
-                    <input type="text" id="patient-name" placeholder="Nome completo do paciente">
-                </div>
+        const getDaysInMonth = (year, month) => {
+            return new Date(year, month + 1, 0).getDate();
+        };
 
-                <div class="form-group">
-                    <label for="responsible">Responsável</label>
-                    <input type="text" id="responsible" placeholder="Nome do responsável">
-                </div>
+        const getFirstDayOfMonth = (year, month) => {
+            return new Date(year, month, 1).getDay();
+        };
 
-                <div class="form-row" style="display: flex; gap: 15px;">
-                    <div class="form-group" style="flex: 1;">
-                        <label for="appointment-date">Data</label>
-                        <input type="date" id="appointment-date">
-                    </div>
+        const formatDate = (date) => {
+            return date.toISOString().split('T')[0];
+        };
 
-                    <div class="form-group" style="flex: 1;">
-                        <label for="appointment-time">Horário</label>
-                        <input type="time" id="appointment-time">
-                    </div>
-                </div>
+        const formatDateDisplay = (dateString) => {
+            const [year, month, day] = dateString.split("-");
+            const date = new Date(Number(year), Number(month) - 1, Number(day));
+            const options = { weekday: "short", day: "2-digit", month: "2-digit", year: "numeric" };
+            return date.toLocaleDateString("pt-BR", options);
+        };
 
-                <div class="form-row" style="display: flex; gap: 15px;">
-                    <div class="form-group" style="flex: 1;">
-                        <label for="professional">Profissional</label>
-                        <select id="professional">
-                            <!-- Preenchido dinamicamente -->
-                        </select>
-                    </div>
+        const getProfessionalColor = (professional) => {
+            let hash = 0;
+            for (let i = 0; i < professional.length; i++) {
+                hash = professional.charCodeAt(i) + ((hash << 5) - hash);
+            }
+            const colors = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#6366f1', '#8b5cf6', '#ec4899'];
+            return colors[Math.abs(hash) % colors.length];
+        };
 
-                    <div class="form-group" style="flex: 1;">
-                        <label for="specialty">Especialidade</label>
-                        <select id="specialty">
-                            <option>Fonoaudiologia</option>
-                            <option>Psicologia</option>
-                            <option>Terapia Ocupacional</option>
-                            <option>Fisioterapia</option>
-                        </select>
-                    </div>
-                </div>
+        const getWeekOfMonth = (date) => {
+            const firstDayOfMonth = new Date(date.getFullYear(), date.getMonth(), 1);
+            const firstDayOfWeek = firstDayOfMonth.getDay() || 7;
+            const dayOfMonth = date.getDate();
+            return Math.ceil((dayOfMonth + firstDayOfWeek - 1) / 7);
+        };
 
-                <div class="form-group">
-                    <label for="status">Status</label>
-                    <select id="status">
-                        <option value="confirmed">Confirmado</option>
-                        <option value="pending">Pendente</option>
-                        <option value="canceled">Cancelado</option>
-                    </select>
-                </div>
+        const getWeeksInMonth = (year, month) => {
+            const weeks = [];
+            const firstDay = new Date(year, month, 1);
+            const lastDay = new Date(year, month + 1, 0);
+            let currentDate = new Date(firstDay);
 
-                <div class="form-group">
-                    <label for="notes">Observações</label>
-                    <textarea id="notes" placeholder="Anotações importantes sobre o atendimento"></textarea>
-                </div>
-            </div>
+            while (currentDate.getDay() !== 1 && currentDate <= lastDay) {
+                currentDate.setDate(currentDate.getDate() + 1);
+            }
 
-            <div class="modal-footer">
-                <button class="btn-outline close-btn">Cancelar</button>
-                <button class="btn-primary" id="save-appointment">Salvar Agendamento</button>
-            </div>
-        </div>
-    </div>
+            if (currentDate > lastDay) {
+                currentDate = new Date(firstDay);
+            }
 
-    <!-- Modal para gerenciar profissionais -->
-    <div class="modal" id="professionals-modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3 class="modal-title">Gerenciar Profissionais</h3>
-                <button class="close-btn">&times;</button>
-            </div>
+            let weekNumber = 1;
 
-            <div class="modal-body">
-                <div class="form-group">
-                    <label for="new-professional">Adicionar Profissional</label>
-                    <div style="display: flex; gap: 10px;">
-                        <input type="text" id="new-professional" placeholder="Nome do profissional" style="flex: 1;">
-                        <button class="btn-primary" id="add-professional-btn">Adicionar</button>
-                    </div>
-                </div>
+            while (currentDate <= lastDay) {
+                const weekStart = new Date(currentDate);
+                const weekEnd = new Date(currentDate);
+                weekEnd.setDate(weekEnd.getDate() + 4);
 
-                <div class="form-group">
-                    <label>Profissionais Cadastrados</label>
-                    <ul id="professionals-list"></ul>
-                </div>
-            </div>
+                if (weekEnd > lastDay) {
+                    weekEnd.setTime(lastDay.getTime());
+                }
 
-            <div class="modal-footer">
-                <button class="btn-outline close-btn">Fechar</button>
-            </div>
-        </div>
-    </div>
+                weeks.push({
+                    number: weekNumber,
+                    start: new Date(weekStart),
+                    end: new Date(weekEnd)
+                });
 
-    <script>
-        // Variáveis globais
-        let appointments = [];
-        let professionals = []; // Inicialmente vazio - será preenchido conforme necessidade
-        let specialties = ["Fonoaudiologia", "Psicologia", "Terapia Ocupacional"];
-        let statuses = ["confirmed", "pending", "canceled"];
-        let editingId = null;
-        let currentPage = 1;
-        const itemsPerPage = 20;
+                weekNumber++;
+                currentDate.setDate(weekEnd.getDate() + 3);
+            }
 
-        // Elementos DOM
-        const appointmentModal = document.getElementById('appointment-modal');
-        const professionalsModal = document.getElementById('professionals-modal');
-        const openModalBtn = document.getElementById('add-appointment');
-        const manageProfessionalsBtn = document.getElementById('manage-professionals-btn');
-        const closeModalBtns = document.querySelectorAll('.close-btn');
-        const appointmentsBody = document.getElementById('appointments-body');
-        const saveAppointmentBtn = document.getElementById('save-appointment');
-        const addProfessionalBtn = document.getElementById('add-professional-btn');
-        const prevPageBtn = document.getElementById('prev-page-btn');
-        const nextPageBtn = document.getElementById('next-page-btn');
-        const pageInfo = document.getElementById('page-info');
-        const paginationControls = document.querySelector('.pagination-controls');
+            return weeks;
+        };
 
-        // Inicialização
-        document.addEventListener('DOMContentLoaded', () => {
-            // Configurar data atual como padrão no filtro
+        // Dashboard de Métricas
+        const SpecialtyDashboard = ({ appointments, activeSpecialty }) => {
+            const filteredAppointments = activeSpecialty === 'todas'
+                ? appointments
+                : appointments.filter(apt => {
+                    const specialtyKey = apt.specialty?.toLowerCase().replace(/\s+/g, '_');
+                    return specialtyKey === activeSpecialty;
+                });
+
+            // Calcular agendamentos criados hoje
             const today = new Date().toISOString().split('T')[0];
-            document.getElementById('date-filter').value = today;
+            const createdToday = filteredAppointments.filter(a => {
+                if (!a.createdAt) return false;
+                const createdDate = typeof a.createdAt === 'string' ? a.createdAt.split('T')[0] : null;
+                return createdDate === today;
+            }).length;
 
-            // Carregar dados iniciais
-            loadInitialData();
+            const metrics = {
+                total: filteredAppointments.length,
+                confirmados: filteredAppointments.filter(a => a.status === 'Confirmado').length,
+                pendentes: filteredAppointments.filter(a => a.status === 'Pendente').length,
+                vagas: filteredAppointments.filter(a => a.status === 'Vaga').length,
+                prontosCRM: filteredAppointments.filter(a => a.status === 'Confirmado').length,
+                criadosHoje: createdToday
+            };
 
-            // Configurar eventos
-            setupEventListeners();
-        });
+            const specialty = SPECIALTIES[activeSpecialty];
 
-        function setupEventListeners() {
-            // Modal de agendamentos
-            openModalBtn.addEventListener('click', () => {
-                editingId = null;
-                document.querySelector('#appointment-modal .modal-title').textContent = 'Novo Agendamento';
-                resetAppointmentForm();
-                appointmentModal.classList.add('active');
-                document.body.style.overflow = 'hidden';
-            });
+            return (
+                <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-6">
+                    <div className={`metric-card ${specialty.lightBg} rounded-xl p-4 border-l-4 ${specialty.borderColor} shadow-md`}>
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm text-gray-600">Total</p>
+                                <p className={`text-2xl font-bold ${specialty.textColor}`}>{metrics.total}</p>
+                            </div>
+                            <i className={`fas fa-calendar-check text-2xl ${specialty.textColor}`}></i>
+                        </div>
+                    </div>
 
-            // Modal de profissionais
-            manageProfessionalsBtn.addEventListener('click', () => {
-                renderProfessionalsList();
-                professionalsModal.classList.add('active');
-                document.body.style.overflow = 'hidden';
-            });
+                    <div className="metric-card bg-green-50 rounded-xl p-4 border-l-4 border-green-500 shadow-md">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm text-gray-600">Confirmados</p>
+                                <p className="text-2xl font-bold text-green-600">{metrics.confirmados}</p>
+                            </div>
+                            <i className="fas fa-check-circle text-2xl text-green-600"></i>
+                        </div>
+                    </div>
 
-            // Fechar modais
-            closeModalBtns.forEach(btn => {
-                btn.addEventListener('click', closeAllModals);
-            });
+                    <div className="metric-card bg-yellow-50 rounded-xl p-4 border-l-4 border-yellow-500 shadow-md">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm text-gray-600">Pendentes</p>
+                                <p className="text-2xl font-bold text-yellow-600">{metrics.pendentes}</p>
+                            </div>
+                            <i className="fas fa-clock text-2xl text-yellow-600"></i>
+                        </div>
+                    </div>
 
-            // Fechar ao clicar fora do modal
-            appointmentModal.addEventListener('click', (e) => {
-                if (e.target === appointmentModal) closeAllModals();
-            });
+                    <div className="metric-card bg-blue-50 rounded-xl p-4 border-l-4 border-blue-500 shadow-md">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm text-gray-600">Vagas</p>
+                                <p className="text-2xl font-bold text-blue-600">{metrics.vagas}</p>
+                            </div>
+                            <i className="fas fa-calendar-plus text-2xl text-blue-600"></i>
+                        </div>
+                    </div>
 
-            professionalsModal.addEventListener('click', (e) => {
-                if (e.target === professionalsModal) closeAllModals();
-            });
+                    <div className="metric-card bg-orange-50 rounded-xl p-4 border-l-4 border-orange-500 shadow-md">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm text-gray-600">Agendados Hoje</p>
+                                <p className="text-2xl font-bold text-orange-600">{metrics.criadosHoje}</p>
+                            </div>
+                            <i className="fas fa-calendar-day text-2xl text-orange-600"></i>
+                        </div>
+                    </div>
 
-            // Salvar agendamento
-            saveAppointmentBtn.addEventListener('click', saveAppointment);
+                    <div className="metric-card bg-teal-50 rounded-xl p-4 border-l-4 border-teal-500 shadow-md">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm text-gray-600">→ CRM</p>
+                                <p className="text-2xl font-bold text-teal-600">{metrics.prontosCRM}</p>
+                            </div>
+                            <i className="fas fa-upload text-2xl text-teal-600"></i>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
 
-            // Adicionar profissional
-            addProfessionalBtn.addEventListener('click', addProfessional);
+        // Tabs de Especialidades
+        const SpecialtyTabs = ({ activeTab, onTabChange }) => {
+            return (
+                <div className="bg-white rounded-xl shadow-md p-2 mb-6">
+                    <div className="flex flex-wrap gap-2">
+                        {Object.entries(SPECIALTIES).map(([key, specialty]) => (
+                            <button
+                                key={key}
+                                onClick={() => onTabChange(key)}
+                                className={`specialty-tab flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-all ${activeTab === key
+                                    ? `${specialty.bgColor} text-white shadow-lg active`
+                                    : `${specialty.lightBg} ${specialty.textColor} hover:shadow-md`
+                                    }`}
+                            >
+                                <i className={`fas ${specialty.icon}`}></i>
+                                <span>{specialty.name}</span>
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            );
+        };
 
-            // Filtros por dia da semana
-            document.querySelectorAll('.day-btn').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    document.querySelectorAll('.day-btn').forEach(b => b.classList.remove('active'));
-                    btn.classList.add('active');
-                    filterByDay(parseInt(btn.dataset.day));
+        // Calendar View Component
+        const CalendarView = ({ appointments, professionals, onSlotClick, filterWeek, currentMonth, currentYear, setCurrentMonth, setCurrentYear, setFilterWeek }) => {
+            const timeSlots = generateTimeSlots();
+            const daysInMonth = getDaysInMonth(currentYear, currentMonth);
+            const today = new Date();
+            const todayFormatted = formatDate(today);
+
+            const navigateMonth = (direction) => {
+                if (direction === 'prev') {
+                    if (currentMonth === 0) {
+                        setCurrentMonth(11);
+                        setCurrentYear(currentYear - 1);
+                    } else {
+                        setCurrentMonth(currentMonth - 1);
+                    }
+                } else {
+                    if (currentMonth === 11) {
+                        setCurrentMonth(0);
+                        setCurrentYear(currentYear + 1);
+                    } else {
+                        setCurrentMonth(currentMonth + 1);
+                    }
+                }
+                setFilterWeek(null);
+            };
+
+            const getAppointmentsForDate = (date) => {
+                return appointments.filter(app => app.date === date);
+            };
+
+            const getAppointmentForSlot = (date, time) => {
+                return appointments.find(app => app.date === date && app.time === time);
+            };
+
+            const renderCalendarDays = () => {
+                const days = [];
+                const dayNames = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex'];
+
+                for (let i = 0; i < 5; i++) {
+                    days.push(
+                        <div key={`header-${i}`} className="p-2 text-center font-semibold bg-teal-100 text-teal-800">
+                            {dayNames[i]}
+                        </div>
+                    );
+                }
+
+                if (filterWeek !== null) {
+                    const weeks = getWeeksInMonth(currentYear, currentMonth);
+                    if (weeks[filterWeek]) {
+                        const week = weeks[filterWeek];
+                        let currentDate = new Date(week.start);
+
+                        while (currentDate <= week.end) {
+                            const dateFormatted = formatDate(currentDate);
+                            const isToday = dateFormatted === todayFormatted;
+                            const dayOfMonth = currentDate.getDate();
+
+                            days.push(
+                                <div key={`day-${dateFormatted}`} className="calendar-day">
+                                    <div className="calendar-day-header">
+                                        <span className={`day-number ${isToday ? 'today' : ''}`}>{dayOfMonth}</span>
+                                        <span className="text-xs text-gray-500">{dateFormatted}</span>
+                                    </div>
+                                    {renderDayAppointments(dateFormatted)}
+                                </div>
+                            );
+
+                            currentDate.setDate(currentDate.getDate() + 1);
+                        }
+                    }
+                    return days;
+                }
+
+                for (let day = 1; day <= daysInMonth; day++) {
+                    const date = new Date(currentYear, currentMonth, day);
+                    const dayOfWeek = date.getDay();
+
+                    if (dayOfWeek === 0 || dayOfWeek === 6) continue;
+
+                    const dateFormatted = formatDate(date);
+                    const isToday = dateFormatted === todayFormatted;
+
+                    days.push(
+                        <div key={`day-${day}`} className="calendar-day">
+                            <div className="calendar-day-header">
+                                <span className={`day-number ${isToday ? 'today' : ''}`}>{day}</span>
+                                <span className="text-xs text-gray-500">{dateFormatted}</span>
+                            </div>
+                            {renderDayAppointments(dateFormatted)}
+                        </div>
+                    );
+                }
+
+                return days;
+            };
+
+            const renderDayAppointments = (date) => {
+                const elements = [];
+
+                timeSlots.forEach(time => {
+                    const appointment = getAppointmentForSlot(date, time);
+
+                    if (appointment) {
+                        const bgColor = getProfessionalColor(appointment.professional);
+                        elements.push(
+                            <div
+                                key={`${date}-${time}`}
+                                className="time-slot ocupado"
+                                style={{ borderLeft: `3px solid ${bgColor}` }}
+                                onClick={() => onSlotClick(appointment)}
+                                title={`${appointment.patient} - ${appointment.professional} - ${appointment.specialty}`}
+                            >
+                                <span className="professional-color" style={{ backgroundColor: bgColor }}></span>
+                                {time} - {appointment.patient}
+                            </div>
+                        );
+                    } else {
+                        elements.push(
+                            <div
+                                key={`${date}-${time}`}
+                                className="time-slot vago"
+                                onClick={() => onSlotClick({ date, time, status: 'Vaga' })}
+                                title="Slot disponível para agendamento"
+                            >
+                                {time} - Vago
+                            </div>
+                        );
+                    }
                 });
-            });
 
-            // Paginação
-            prevPageBtn.addEventListener('click', () => {
-                if (currentPage > 1) {
-                    currentPage--;
-                    renderAppointments();
+                return elements;
+            };
+
+            const monthNames = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+                'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+
+            return (
+                <div className="bg-white rounded-xl shadow-md p-6">
+                    <div className="flex justify-between items-center mb-6">
+                        <h2 className="text-2xl font-bold text-gray-800">
+                            {monthNames[currentMonth]} {currentYear}
+                        </h2>
+                        <div className="flex space-x-2">
+                            <button
+                                className="px-3 py-1 bg-teal-600 text-white rounded-lg hover:bg-teal-700"
+                                onClick={() => navigateMonth('prev')}
+                            >
+                                <i className="fas fa-chevron-left"></i>
+                            </button>
+                            <button
+                                className="px-3 py-1 bg-teal-600 text-white rounded-lg hover:bg-teal-700"
+                                onClick={() => {
+                                    setCurrentMonth(today.getMonth());
+                                    setCurrentYear(today.getFullYear());
+                                }}
+                            >
+                                Hoje
+                            </button>
+                            <button
+                                className="px-3 py-1 bg-teal-600 text-white rounded-lg hover:bg-teal-700"
+                                onClick={() => navigateMonth('next')}
+                            >
+                                <i className="fas fa-chevron-right"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="calendar-grid" style={{ gridTemplateColumns: 'repeat(5, 1fr)' }}>
+                        {renderCalendarDays()}
+                    </div>
+
+                    <div className="mt-6 flex flex-wrap items-center gap-3">
+                        <span className="font-semibold">Legenda:</span>
+                        <div className="flex items-center">
+                            <div className="w-4 h-4 bg-green-200 mr-2 rounded"></div>
+                            <span className="text-sm">Vago</span>
+                        </div>
+                        <div className="flex items-center">
+                            <div className="w-4 h-4 bg-blue-200 mr-2 rounded"></div>
+                            <span className="text-sm">Ocupado</span>
+                        </div>
+                        {professionals.map((professional, index) => (
+                            <div key={index} className="flex items-center">
+                                <div
+                                    className="w-4 h-4 rounded-full mr-2"
+                                    style={{ backgroundColor: getProfessionalColor(professional) }}
+                                ></div>
+                                <span className="text-sm">{professional}</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+        };
+
+        // Appointment Row Component
+        const AppointmentRow = ({ appointment, onEdit, onDelete, onExportCRM }) => {
+            const getStatusColor = (status) => {
+                switch (status) {
+                    case 'Confirmado': return 'bg-green-100 text-green-800 border-green-200';
+                    case 'Pendente': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+                    case 'Cancelado': return 'bg-red-100 text-red-800 border-red-200';
+                    case 'Vaga': return 'bg-blue-100 text-blue-800 border-blue-200';
+                    default: return 'bg-gray-100 text-gray-800';
                 }
-            });
+            };
 
-            nextPageBtn.addEventListener('click', () => {
-                const totalPages = Math.ceil(appointments.length / itemsPerPage);
-                if (currentPage < totalPages) {
-                    currentPage++;
-                    renderAppointments();
-                }
-            });
+            const getSpecialtyColor = (specialty) => {
+                const specialtyKey = (specialty || '').toLowerCase().replace(/\s+/g, '_');
+                const specialtyConfig = SPECIALTIES[specialtyKey];
+                return specialtyConfig ? specialtyConfig.rowBg : '';
+            };
 
-            // Busca
-            document.getElementById('search-btn').addEventListener('click', applyFilters);
-            document.getElementById('professional-filter').addEventListener('change', applyFilters);
-            document.getElementById('status-filter').addEventListener('change', applyFilters);
-            document.getElementById('date-filter').addEventListener('change', applyFilters);
-        }
+            const isLivre = (appointment.professional && appointment.professional.toLowerCase().includes("livre")) ||
+                (appointment.patient && appointment.patient.toLowerCase().includes("livre")) ||
+                (appointment.observations && appointment.observations.toLowerCase().includes("livre"));
 
-        function closeAllModals() {
-            appointmentModal.classList.remove('active');
-            professionalsModal.classList.remove('active');
-            document.body.style.overflow = 'auto';
-        }
+            const canExportToCRM = appointment.status === 'Confirmado';
 
-        function updateProfessionalSelects() {
-            const professionalSelects = document.querySelectorAll('select[id="professional"], select[id="professional-filter"]');
-
-            professionalSelects.forEach(select => {
-                const currentValue = select.value;
-                select.innerHTML = '';
-
-                if (select.id === 'professional-filter') {
-                    select.innerHTML = '<option value="">Todos</option>';
-                }
-
-                professionals.forEach(professional => {
-                    const option = document.createElement('option');
-                    option.value = professional;
-                    option.textContent = professional;
-                    select.appendChild(option);
-                });
-
-                if (professionals.includes(currentValue)) {
-                    select.value = currentValue;
-                }
-            });
-        }
-
-        function loadInitialData() {
-            // Aqui você deve implementar a carga de dados inicial
-            // Pode ser do localStorage, de uma API, etc.
-
-            // Exemplo básico (substitua por sua implementação real):
-            /*
-            const savedAppointments = localStorage.getItem('appointments');
-            if (savedAppointments) {
-                appointments = JSON.parse(savedAppointments);
-            }
-            
-            const savedProfessionals = localStorage.getItem('professionals');
-            if (savedProfessionals) {
-                professionals = JSON.parse(savedProfessionals);
-            } else {
-                // Valores padrão se não houver profissionais salvos
-                professionals = ["Dra. Lorany Siqueira", "Dra. Tatiana Celuta", "Dr. Ricardo Maia"];
-            }
-            */
-
-            updateProfessionalSelects();
-            renderAppointments();
-        }
-
-        function renderAppointments() {
-            appointmentsBody.innerHTML = '';
-
-            if (appointments.length === 0) {
-                appointmentsBody.innerHTML = `
-                    <tr>
-                        <td colspan="8" style="text-align: center; padding: 30px; color: var(--text-light);">
-                            Nenhum agendamento encontrado.
-                        </td>
-                    </tr>
-                `;
-                paginationControls.style.display = 'none';
-                return;
-            }
-
-            // Calcular índices para paginação
-            const startIndex = (currentPage - 1) * itemsPerPage;
-            const endIndex = startIndex + itemsPerPage;
-            const paginatedAppointments = appointments.slice(startIndex, endIndex);
-
-            // Usar DocumentFragment para melhor performance
-            const fragment = document.createDocumentFragment();
-
-            paginatedAppointments.forEach(appointment => {
-                const dateObj = new Date(appointment.date);
-                const days = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
-                const dayOfWeek = days[dateObj.getDay()];
-                const formattedDate = `${appointment.date.split('-').reverse().join('/')} (${dayOfWeek})`;
-
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>${appointment.patient}</td>
-                    <td>${appointment.responsible}</td>
-                    <td>${formattedDate}</td>
-                    <td>${appointment.time}</td>
-                    <td>${appointment.professional}</td>
-                    <td>${appointment.specialty}</td>
-                    <td><span class="status ${appointment.status}">${getStatusText(appointment.status)}</span></td>
-                    <td>
-                        <button class="action-btn edit" data-id="${appointment.id}">Editar</button>
-                        <button class="action-btn delete" data-id="${appointment.id}">Remover</button>
+            return (
+                <tr className={`hover:bg-opacity-80 transition-colors ${isLivre ? "bg-green-100" : getSpecialtyColor(appointment.specialty)}`}>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900">{appointment.patient}</div>
                     </td>
-                `;
+                    <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-500">{appointment.responsible || '-'}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-500">{formatDateDisplay(appointment.date)}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-500">{appointment.time}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-500">{appointment.professional}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-500">{appointment.specialty || '-'}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full border ${getStatusColor(appointment.status)}`}>
+                            {appointment.status}
+                        </span>
+                    </td>
+                    <td className="px-6 py-4">
+                        <div className="text-sm text-gray-500 max-w-xs truncate" title={appointment.observations}>
+                            {appointment.observations || '-'}
+                        </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <div className="flex gap-2">
+                            <button
+                                className="text-indigo-600 hover:text-indigo-900"
+                                onClick={() => onEdit(appointment)}
+                                title="Editar"
+                            >
+                                <i className="fas fa-edit"></i>
+                            </button>
+                            <button
+                                className="text-red-600 hover:text-red-900"
+                                onClick={() => onDelete(appointment.id)}
+                                title="Excluir"
+                            >
+                                <i className="fas fa-trash"></i>
+                            </button>
+                            {canExportToCRM && (
+                                <button
+                                    className="text-teal-600 hover:text-teal-900 status-badge"
+                                    onClick={() => onExportCRM(appointment)}
+                                    title="Exportar para CRM"
+                                >
+                                    <i className="fas fa-upload"></i>
+                                </button>
+                            )}
+                        </div>
+                    </td>
+                </tr>
+            );
+        };
 
-                fragment.appendChild(tr);
-            });
+        // Main App Component
+        const App = () => {
+            const [view, setView] = React.useState('list');
+            const [appointments, setAppointments] = React.useState([]);
+            const [professionals, setProfessionals] = React.useState([]);
+            const [activeSpecialty, setActiveSpecialty] = React.useState('todas');
+            const [filterDate, setFilterDate] = React.useState('');
+            const [filterProfessional, setFilterProfessional] = React.useState('');
+            const [filterStatus, setFilterStatus] = React.useState('');
+            const [filterDay, setFilterDay] = React.useState('');
+            const [filterWeek, setFilterWeek] = React.useState(null);
+            const [currentMonth, setCurrentMonth] = React.useState(new Date().getMonth());
+            const [currentYear, setCurrentYear] = React.useState(new Date().getFullYear());
+            const [isModalOpen, setIsModalOpen] = React.useState(false);
+            const [editingAppointment, setEditingAppointment] = React.useState(null);
+            const [isProfessionalsModalOpen, setIsProfessionalsModalOpen] = React.useState(false);
+            const [newProfessional, setNewProfessional] = React.useState('');
 
-            appointmentsBody.appendChild(fragment);
+            React.useEffect(() => {
+                loadProfessionals();
+                loadAppointments();
+            }, []);
 
-            // Adicionar eventos usando delegação para melhor performance
-            appointmentsBody.addEventListener('click', (e) => {
-                if (e.target.classList.contains('edit')) {
-                    editAppointment(e.target.dataset.id);
-                } else if (e.target.classList.contains('delete')) {
-                    deleteAppointment(e.target.dataset.id);
-                }
-            });
-
-            // Atualizar controles de paginação
-            updatePaginationControls();
-        }
-
-        function updatePaginationControls() {
-            const totalPages = Math.ceil(appointments.length / itemsPerPage);
-
-            if (totalPages <= 1) {
-                paginationControls.style.display = 'none';
-                return;
-            }
-
-            paginationControls.style.display = 'flex';
-            prevPageBtn.disabled = currentPage === 1;
-            nextPageBtn.disabled = currentPage === totalPages;
-            pageInfo.textContent = `Página ${currentPage} de ${totalPages}`;
-        }
-
-        function getStatusText(status) {
-            const statusMap = {
-                'confirmed': 'Confirmado',
-                'pending': 'Pendente',
-                'canceled': 'Cancelado'
-            };
-            return statusMap[status] || status;
-        }
-
-        function resetAppointmentForm() {
-            document.getElementById('patient-name').value = '';
-            document.getElementById('responsible').value = '';
-            document.getElementById('appointment-date').value = new Date().toISOString().split('T')[0];
-            document.getElementById('appointment-time').value = '08:00';
-            document.getElementById('professional').value = professionals[0] || '';
-            document.getElementById('specialty').value = specialties[0] || '';
-            document.getElementById('status').value = 'confirmed';
-            document.getElementById('notes').value = '';
-        }
-
-        function editAppointment(id) {
-            const appointment = appointments.find(a => a.id == id);
-            if (!appointment) return;
-
-            editingId = id;
-            document.querySelector('#appointment-modal .modal-title').textContent = 'Editar Agendamento';
-
-            // Preencher formulário com os dados do agendamento
-            document.getElementById('patient-name').value = appointment.patient;
-            document.getElementById('responsible').value = appointment.responsible;
-            document.getElementById('appointment-date').value = appointment.date;
-            document.getElementById('appointment-time').value = appointment.time;
-            document.getElementById('professional').value = appointment.professional;
-            document.getElementById('specialty').value = appointment.specialty;
-            document.getElementById('status').value = appointment.status;
-            document.getElementById('notes').value = appointment.notes;
-
-            appointmentModal.classList.add('active');
-            document.body.style.overflow = 'hidden';
-        }
-
-        function saveAppointment() {
-            const patientName = document.getElementById('patient-name').value.trim();
-            const responsible = document.getElementById('responsible').value.trim();
-            const date = document.getElementById('appointment-date').value;
-            const time = document.getElementById('appointment-time').value;
-            const professional = document.getElementById('professional').value;
-            const specialty = document.getElementById('specialty').value;
-            const status = document.getElementById('status').value;
-            const notes = document.getElementById('notes').value.trim();
-
-            if (!patientName || !date || !time || !professional) {
-                alert('Por favor, preencha todos os campos obrigatórios!');
-                return;
-            }
-
-            const appointmentData = {
-                patient: patientName,
-                responsible,
-                date,
-                time,
-                professional,
-                specialty,
-                status,
-                notes
-            };
-
-            if (editingId) {
-                // Editar agendamento existente
-                const index = appointments.findIndex(a => a.id == editingId);
-                if (index !== -1) {
-                    appointments[index] = { ...appointments[index], ...appointmentData };
-                }
-            } else {
-                // Criar novo agendamento
-                const newId = appointments.length > 0 ? Math.max(...appointments.map(a => a.id)) + 1 : 1;
-                appointments.unshift({
-                    id: newId,
-                    ...appointmentData
+            const loadProfessionals = () => {
+                database.ref('professionals').on('value', (snapshot) => {
+                    const data = snapshot.val();
+                    if (data) {
+                        setProfessionals(Object.values(data));
+                    }
                 });
-            }
+            };
 
-            // Aqui você deve salvar os dados (localStorage, API, etc.)
-            // Exemplo:
-            // localStorage.setItem('appointments', JSON.stringify(appointments));
+            const loadAppointments = () => {
+                database.ref('appointments').on('value', (snapshot) => {
+                    const data = snapshot.val();
+                    if (data) {
+                        const appointmentsList = Object.entries(data).map(([id, appointment]) => ({
+                            id,
+                            ...appointment
+                        }));
+                        setAppointments(appointmentsList);
+                    }
+                });
+            };
 
-            renderAppointments();
-            closeAllModals();
-        }
+            const addProfessional = () => {
+                if (newProfessional.trim() === '') return;
+                const professionalRef = database.ref('professionals').push();
+                professionalRef.set(newProfessional.trim())
+                    .then(() => {
+                        setNewProfessional('');
+                        alert('Profissional adicionado com sucesso!');
+                    })
+                    .catch(error => {
+                        console.error('Erro ao adicionar profissional:', error);
+                        alert('Erro ao adicionar profissional. Tente novamente.');
+                    });
+            };
 
-        function deleteAppointment(id) {
-            if (confirm('Tem certeza que deseja remover este agendamento?')) {
-                appointments = appointments.filter(a => a.id != id);
+            const deleteProfessional = (name) => {
+                database.ref('professionals').once('value', snapshot => {
+                    snapshot.forEach(child => {
+                        if (child.val() === name) {
+                            database.ref(`professionals/${child.key}`).remove()
+                                .then(() => alert('Profissional removido!'))
+                                .catch(err => alert('Erro ao remover profissional.'));
+                        }
+                    });
+                });
+            };
 
-                // Aqui você deve salvar os dados (localStorage, API, etc.)
-                // Exemplo:
-                // localStorage.setItem('appointments', JSON.stringify(appointments));
+            const saveAppointment = (appointmentData) => {
+                // Adiciona o timestamp de criação automaticamente
+                const appointmentWithTimestamp = {
+                    ...appointmentData,
+                    createdAt: appointmentData.createdAt || new Date().toISOString()
+                };
 
-                renderAppointments();
-            }
-        }
-
-        function renderProfessionalsList() {
-            const list = document.getElementById('professionals-list');
-            list.innerHTML = '';
-
-            professionals.forEach((professional, index) => {
-                const li = document.createElement('li');
-                li.innerHTML = `
-                    <span>${professional}</span>
-                    <button class="action-btn delete" data-index="${index}">Remover</button>
-                `;
-                list.appendChild(li);
-            });
-
-            // Adicionar evento de remoção
-            list.addEventListener('click', (e) => {
-                if (e.target.classList.contains('delete')) {
-                    const index = e.target.dataset.index;
-                    removeProfessional(index);
+                if (editingAppointment && editingAppointment.id) {
+                    database.ref(`appointments/${editingAppointment.id}`).update(appointmentWithTimestamp)
+                        .then(() => {
+                            setIsModalOpen(false);
+                            setEditingAppointment(null);
+                            alert('Agendamento atualizado com sucesso!');
+                        })
+                        .catch(error => {
+                            console.error('Erro ao atualizar agendamento:', error);
+                            alert('Erro ao atualizar agendamento. Tente novamente.');
+                        });
+                } else {
+                    const appointmentRef = database.ref('appointments').push();
+                    appointmentRef.set(appointmentWithTimestamp)
+                        .then(() => {
+                            setIsModalOpen(false);
+                            alert('Agendamento criado com sucesso!');
+                        })
+                        .catch(error => {
+                            console.error('Erro ao criar agendamento:', error);
+                            alert('Erro ao criar agendamento. Tente novamente.');
+                        });
                 }
-            });
-        }
+            };
 
-        function addProfessional() {
-            const input = document.getElementById('new-professional');
-            const name = input.value.trim();
-
-            if (!name) {
-                alert('Por favor, insira um nome válido!');
-                return;
-            }
-
-            if (professionals.includes(name)) {
-                alert('Este profissional já está cadastrado!');
-                return;
-            }
-
-            professionals.push(name);
-            updateProfessionalSelects();
-            renderProfessionalsList();
-            input.value = '';
-
-            // Aqui você deve salvar os profissionais (localStorage, API, etc.)
-            // Exemplo:
-            // localStorage.setItem('professionals', JSON.stringify(professionals));
-        }
-
-        function removeProfessional(index) {
-            professionals.splice(index, 1);
-            updateProfessionalSelects();
-            renderProfessionalsList();
-
-            // Atualizar agendamentos que usavam esse profissional
-            appointments.forEach(app => {
-                if (!professionals.includes(app.professional)) {
-                    app.professional = professionals[0] || '';
+            const deleteAppointment = (id) => {
+                if (window.confirm('Tem certeza que deseja excluir este agendamento?')) {
+                    database.ref(`appointments/${id}`).remove()
+                        .then(() => {
+                            alert('Agendamento excluído com sucesso!');
+                        })
+                        .catch(error => {
+                            console.error('Erro ao excluir agendamento:', error);
+                            alert('Erro ao excluir agendamento. Tente novamente.');
+                        });
                 }
-            });
+            };
 
-            // Aqui você deve salvar os dados (localStorage, API, etc.)
-            // Exemplo:
-            // localStorage.setItem('professionals', JSON.stringify(professionals));
-            // localStorage.setItem('appointments', JSON.stringify(appointments));
+            const exportToCRM = (appointment) => {
+                alert(`Preparando exportação para CRM:\n\nPaciente: ${appointment.patient}\nData: ${appointment.date}\nHorário: ${appointment.time}\n\n✓ Pronto para enviar ao sistema CRM!`);
+            };
 
-            renderAppointments();
-        }
+            const openEditModal = (appointment) => {
+                setEditingAppointment(appointment);
+                setIsModalOpen(true);
+            };
 
-        function filterByDay(dayOfWeek) {
+            const openCreateModal = () => {
+                const defaultSpecialty = activeSpecialty !== 'todas'
+                    ? SPECIALTIES[activeSpecialty].name
+                    : 'Fonoaudiologia';
+
+                setEditingAppointment({
+                    date: new Date().toISOString().split('T')[0],
+                    time: '08:00',
+                    professional: professionals[0] || '',
+                    specialty: defaultSpecialty,
+                    status: 'Pendente',
+                    patient: '',
+                    responsible: '',
+                    observations: ''
+                });
+                setIsModalOpen(true);
+            };
+
+            const handleSlotClick = (slotData) => {
+                if (slotData.status === 'Vaga') {
+                    const defaultSpecialty = activeSpecialty !== 'todas'
+                        ? SPECIALTIES[activeSpecialty].name
+                        : 'Fonoaudiologia';
+
+                    setEditingAppointment({
+                        date: slotData.date,
+                        time: slotData.time,
+                        status: 'Pendente',
+                        patient: '',
+                        responsible: '',
+                        professional: professionals[0] || '',
+                        specialty: defaultSpecialty,
+                        observations: ''
+                    });
+                    setIsModalOpen(true);
+                } else {
+                    setEditingAppointment(slotData);
+                    setIsModalOpen(true);
+                }
+            };
+
+            const getWeeksForFilter = () => {
+                return getWeeksInMonth(currentYear, currentMonth);
+            };
+
             const filteredAppointments = appointments.filter(appointment => {
-                const dateObj = new Date(appointment.date);
-                return dateObj.getDay() === dayOfWeek;
+                // Filtro de especialidade
+                if (activeSpecialty !== 'todas') {
+                    const specialtyKey = appointment.specialty?.toLowerCase().replace(/\s+/g, '_');
+                    if (specialtyKey !== activeSpecialty) return false;
+                }
+
+                if (filterDate && appointment.date !== filterDate) return false;
+
+                if (filterProfessional) {
+                    if (filterProfessional.toLowerCase() === "livre") {
+                        const isLivre =
+                            (appointment.professional && appointment.professional.toLowerCase().includes("livre")) ||
+                            (appointment.patient && appointment.patient.toLowerCase().includes("livre")) ||
+                            (appointment.observations && appointment.observations.toLowerCase().includes("livre"));
+                        if (!isLivre) return false;
+                    } else if (appointment.professional !== filterProfessional) {
+                        return false;
+                    }
+                }
+
+                if (filterStatus && appointment.status !== filterStatus) return false;
+
+                if (filterDay) {
+                    const [year, month, dayOfMonth] = appointment.date.split('-').map(Number);
+                    const appointmentDate = new Date(year, month - 1, dayOfMonth);
+                    const day = appointmentDate.getDay() === 0 ? 7 : appointmentDate.getDay();
+                    if (Number(day) !== Number(filterDay)) return false;
+                }
+
+                if (filterWeek !== null) {
+                    const appointmentDate = new Date(appointment.date);
+                    const appointmentWeek = getWeekOfMonth(appointmentDate);
+
+                    if (appointmentDate.getMonth() === currentMonth &&
+                        appointmentDate.getFullYear() === currentYear &&
+                        appointmentWeek === filterWeek + 1) {
+                        return true;
+                    }
+                    return false;
+                }
+
+                return true;
             });
 
-            // Atualizar a exibição com os agendamentos filtrados
-            appointments = filteredAppointments;
-            currentPage = 1;
-            renderAppointments();
-        }
+            const weeksInMonth = getWeeksForFilter();
 
-        function applyFilters() {
-            const dateFilter = document.getElementById('date-filter').value;
-            const professionalFilter = document.getElementById('professional-filter').value;
-            const statusFilter = document.getElementById('status-filter').value;
+            return (
+                <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+                    {/* Header */}
+                    <header className="bg-gradient-to-r from-teal-600 to-teal-700 text-white py-6 px-8 shadow-lg">
+                        <div className="container mx-auto flex justify-between items-center">
+                            <div>
+                                <h1 className="text-3xl font-serif font-bold">🏥 Agenda Clínica Fono Inova</h1>
+                                <p className="text-teal-100">Controle completo de agendamentos • Workflow Provisório → CRM</p>
+                            </div>
+                            <div className="flex space-x-3">
+                                <button
+                                    className={`px-4 py-2 rounded-lg font-medium ${view === 'list' ? 'bg-white text-teal-700' : 'bg-teal-800 text-white hover:bg-teal-900'}`}
+                                    onClick={() => setView('list')}
+                                >
+                                    <i className="fas fa-list mr-2"></i> Lista
+                                </button>
+                                <button
+                                    className={`px-4 py-2 rounded-lg font-medium ${view === 'calendar' ? 'bg-white text-teal-700' : 'bg-teal-800 text-white hover:bg-teal-900'}`}
+                                    onClick={() => setView('calendar')}
+                                >
+                                    <i className="far fa-calendar-alt mr-2"></i> Calendário
+                                </button>
+                            </div>
+                        </div>
+                    </header>
 
-            let filteredAppointments = [...appointments];
+                    {/* Main Content */}
+                    <main className="container mx-auto px-4 py-8">
+                        {/* Tabs de Especialidades */}
+                        <SpecialtyTabs
+                            activeTab={activeSpecialty}
+                            onTabChange={setActiveSpecialty}
+                        />
 
-            if (dateFilter) {
-                filteredAppointments = filteredAppointments.filter(app => app.date === dateFilter);
-            }
+                        {/* Dashboard de Métricas */}
+                        <SpecialtyDashboard
+                            appointments={appointments}
+                            activeSpecialty={activeSpecialty}
+                        />
 
-            if (professionalFilter) {
-                filteredAppointments = filteredAppointments.filter(app => app.professional === professionalFilter);
-            }
+                        {/* Filtros */}
+                        <div className="bg-white rounded-xl shadow-md p-6 mb-8">
+                            <div className="flex justify-between items-center mb-6">
+                                <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+                                    <i className="fas fa-filter"></i> Filtros
+                                </h2>
+                                <div className="flex space-x-4">
+                                    <button
+                                        className="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-lg flex items-center shadow-md"
+                                        onClick={openCreateModal}
+                                    >
+                                        <i className="fas fa-plus mr-2"></i> Novo Agendamento
+                                    </button>
+                                    <button
+                                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center shadow-md"
+                                        onClick={() => setIsProfessionalsModalOpen(true)}
+                                    >
+                                        <i className="fas fa-user-md mr-2"></i> Gerenciar Profissionais
+                                    </button>
+                                </div>
+                            </div>
 
-            if (statusFilter) {
-                filteredAppointments = filteredAppointments.filter(app => app.status === statusFilter);
-            }
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Data</label>
+                                    <input
+                                        type="date"
+                                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                        value={filterDate}
+                                        onChange={(e) => {
+                                            const selectedDate = e.target.value;
+                                            setFilterDate(selectedDate);
 
-            appointments = filteredAppointments;
-            currentPage = 1;
-            renderAppointments();
-        }
+                                            if (selectedDate) {
+                                                const [year, month, day] = selectedDate.split('-').map(Number);
+                                                const date = new Date(year, month - 1, day);
+                                                const dayOfWeek = date.getDay() === 0 ? 7 : date.getDay();
+                                                setFilterDay(dayOfWeek.toString());
+                                            }
+                                        }}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Profissional
+                                    </label>
+                                    <select
+                                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                        value={filterProfessional}
+                                        onChange={(e) => setFilterProfessional(e.target.value)}
+                                    >
+                                        <option value="">Todos os profissionais</option>
+                                        <option value="livre">Livre</option>
+                                        {professionals.map((professional, index) => (
+                                            <option key={index} value={professional}>
+                                                {professional}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                                    <select
+                                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                        value={filterStatus}
+                                        onChange={(e) => setFilterStatus(e.target.value)}
+                                    >
+                                        <option value="">Todos os status</option>
+                                        <option value="Confirmado">Confirmado</option>
+                                        <option value="Pendente">Pendente</option>
+                                        <option value="Cancelado">Cancelado</option>
+                                        <option value="Vaga">Vaga Disponível</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Dia da Semana</label>
+                                    <select
+                                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                        value={filterDay}
+                                        onChange={(e) => setFilterDay(e.target.value)}
+                                    >
+                                        <option value="">Todos os dias</option>
+                                        <option value="1">Segunda-feira</option>
+                                        <option value="2">Terça-feira</option>
+                                        <option value="3">Quarta-feira</option>
+                                        <option value="4">Quinta-feira</option>
+                                        <option value="5">Sexta-feira</option>
+                                        <option value="6">Sábado</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            {/* Filtro de Semana */}
+                            <div className="mb-6">
+                                <h3 className="text-lg font-semibold text-gray-700 mb-2">Filtrar por Semana</h3>
+                                <div className="flex flex-wrap gap-2">
+                                    <button
+                                        className={`px-4 py-2 rounded-full font-medium ${filterWeek === null ? 'bg-teal-600 text-white shadow-md' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+                                        onClick={() => setFilterWeek(null)}
+                                    >
+                                        Todo o Mês
+                                    </button>
+                                    {weeksInMonth.map((week, index) => (
+                                        <button
+                                            key={index}
+                                            className={`px-4 py-2 rounded-full font-medium ${filterWeek === index ? 'bg-teal-600 text-white shadow-md' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+                                            onClick={() => setFilterWeek(index)}
+                                            title={`Semana ${index + 1}: ${formatDate(week.start)} a ${formatDate(week.end)}`}
+                                        >
+                                            Semana {index + 1}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Filtro rápido de dias */}
+                            <div className="flex flex-wrap gap-2">
+                                {['1', '2', '3', '4', '5'].map(day => (
+                                    <button
+                                        key={day}
+                                        className={`px-4 py-2 rounded-full font-medium ${filterDay === day ? 'bg-teal-600 text-white shadow-md' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+                                        onClick={() => setFilterDay(filterDay === day ? '' : day)}
+                                    >
+                                        {['Seg', 'Ter', 'Qua', 'Qui', 'Sex'][day - 1]}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Appointments List */}
+                        {view === 'list' && (
+                            <div className="bg-white rounded-xl shadow-md overflow-hidden">
+                                <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b">
+                                    <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                                        <i className={`fas ${SPECIALTIES[activeSpecialty].icon} ${SPECIALTIES[activeSpecialty].textColor}`}></i>
+                                        Agendamentos - {SPECIALTIES[activeSpecialty].name}
+                                        <span className="ml-auto text-sm font-normal text-gray-600">
+                                            {filteredAppointments.length} registro(s)
+                                        </span>
+                                    </h3>
+                                </div>
+                                <div className="overflow-x-auto">
+                                    <table className="min-w-full divide-y divide-gray-200">
+                                        <thead className="bg-teal-50">
+                                            <tr>
+                                                <th className="px-6 py-3 text-left text-xs font-medium text-teal-700 uppercase tracking-wider">Paciente</th>
+                                                <th className="px-6 py-3 text-left text-xs font-medium text-teal-700 uppercase tracking-wider">Responsável</th>
+                                                <th className="px-6 py-3 text-left text-xs font-medium text-teal-700 uppercase tracking-wider">Data</th>
+                                                <th className="px-6 py-3 text-left text-xs font-medium text-teal-700 uppercase tracking-wider">Horário</th>
+                                                <th className="px-6 py-3 text-left text-xs font-medium text-teal-700 uppercase tracking-wider">Profissional</th>
+                                                <th className="px-6 py-3 text-left text-xs font-medium text-teal-700 uppercase tracking-wider">Especialidade</th>
+                                                <th className="px-6 py-3 text-left text-xs font-medium text-teal-700 uppercase tracking-wider">Status</th>
+                                                <th className="px-6 py-3 text-left text-xs font-medium text-teal-700 uppercase tracking-wider">Observações</th>
+                                                <th className="px-6 py-3 text-left text-xs font-medium text-teal-700 uppercase tracking-wider">Ações</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="bg-white divide-y divide-gray-200">
+                                            {filteredAppointments.length === 0 ? (
+                                                <tr>
+                                                    <td colSpan="9" className="px-6 py-12 text-center text-gray-500">
+                                                        <i className="fas fa-inbox text-4xl mb-3 block text-gray-300"></i>
+                                                        Nenhum agendamento encontrado
+                                                    </td>
+                                                </tr>
+                                            ) : (
+                                                filteredAppointments.map(appointment => (
+                                                    <AppointmentRow
+                                                        key={appointment.id}
+                                                        appointment={appointment}
+                                                        onEdit={openEditModal}
+                                                        onDelete={deleteAppointment}
+                                                        onExportCRM={exportToCRM}
+                                                    />
+                                                ))
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Calendar View */}
+                        {view === 'calendar' && (
+                            <CalendarView
+                                appointments={appointments}
+                                professionals={professionals}
+                                onSlotClick={handleSlotClick}
+                                filterWeek={filterWeek}
+                                currentMonth={currentMonth}
+                                currentYear={currentYear}
+                                setCurrentMonth={setCurrentMonth}
+                                setCurrentYear={setCurrentYear}
+                                setFilterWeek={setFilterWeek}
+                            />
+                        )}
+                    </main>
+
+                    {/* Appointment Modal */}
+                    {isModalOpen && (
+                        <AppointmentModal
+                            appointment={editingAppointment}
+                            professionals={professionals}
+                            onSave={saveAppointment}
+                            onClose={() => {
+                                setIsModalOpen(false);
+                                setEditingAppointment(null);
+                            }}
+                        />
+                    )}
+
+                    {/* Professionals Modal */}
+                    {isProfessionalsModalOpen && (
+                        <ProfessionalsModal
+                            professionals={professionals}
+                            newProfessional={newProfessional}
+                            onNewProfessionalChange={setNewProfessional}
+                            onAddProfessional={addProfessional}
+                            onDeleteProfessional={deleteProfessional}
+                            onClose={() => setIsProfessionalsModalOpen(false)}
+                        />
+                    )}
+                </div>
+            );
+        };
+
+        // Appointment Modal Component
+        const AppointmentModal = ({ appointment, professionals, onSave, onClose }) => {
+            const [formData, setFormData] = React.useState({
+                patient: '',
+                responsible: '',
+                date: '',
+                time: '',
+                professional: '',
+                specialty: 'Fonoaudiologia',
+                status: 'Confirmado',
+                observations: ''
+            });
+
+            React.useEffect(() => {
+                if (appointment) {
+                    setFormData({
+                        patient: appointment.patient || '',
+                        responsible: appointment.responsible || '',
+                        date: appointment.date || '',
+                        time: appointment.time || '',
+                        professional: appointment.professional || '',
+                        specialty: appointment.specialty || 'Fonoaudiologia',
+                        status: appointment.status || 'Confirmado',
+                        observations: appointment.observations || ''
+                    });
+                } else {
+                    const today = new Date().toISOString().split('T')[0];
+                    setFormData({
+                        patient: '',
+                        responsible: '',
+                        date: today,
+                        time: '08:00',
+                        professional: professionals[0] || '',
+                        specialty: 'Fonoaudiologia',
+                        status: 'Confirmado',
+                        observations: ''
+                    });
+                }
+            }, [appointment, professionals]);
+
+            const handleChange = (e) => {
+                setFormData({
+                    ...formData,
+                    [e.target.name]: e.target.value
+                });
+            };
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                onSave(formData);
+            };
+
+            return (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                    <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+                        <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-teal-50 to-teal-100 sticky top-0">
+                            <h3 className="text-xl font-semibold text-gray-800">
+                                {appointment && appointment.id ? '✏️ Editar Agendamento' : '➕ Novo Agendamento'}
+                            </h3>
+                        </div>
+                        <form onSubmit={handleSubmit}>
+                            <div className="px-6 py-4 space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Paciente *</label>
+                                    <input
+                                        type="text"
+                                        name="patient"
+                                        value={formData.patient}
+                                        onChange={handleChange}
+                                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Responsável</label>
+                                    <input
+                                        type="text"
+                                        name="responsible"
+                                        value={formData.responsible}
+                                        onChange={handleChange}
+                                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                    />
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Data *</label>
+                                        <input
+                                            type="date"
+                                            name="date"
+                                            value={formData.date}
+                                            onChange={handleChange}
+                                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                            required
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Horário *</label>
+                                        <input
+                                            type="time"
+                                            name="time"
+                                            value={formData.time}
+                                            onChange={handleChange}
+                                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                            required
+                                        />
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Profissional *</label>
+                                        <select
+                                            name="professional"
+                                            value={formData.professional}
+                                            onChange={handleChange}
+                                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                            required
+                                        >
+                                            {professionals.map((professional, index) => (
+                                                <option key={index} value={professional}>{professional}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Especialidade *</label>
+                                        <select
+                                            name="specialty"
+                                            value={formData.specialty}
+                                            onChange={handleChange}
+                                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                        >
+                                            <option value="Fonoaudiologia">Fonoaudiologia</option>
+                                            <option value="Psicologia">Psicologia</option>
+                                            <option value="Terapia Ocupacional">Terapia Ocupacional</option>
+                                            <option value="Fisioterapia">Fisioterapia</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Status *</label>
+                                    <select
+                                        name="status"
+                                        value={formData.status}
+                                        onChange={handleChange}
+                                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                    >
+                                        <option value="Confirmado">Confirmado</option>
+                                        <option value="Pendente">Pendente</option>
+                                        <option value="Cancelado">Cancelado</option>
+                                        <option value="Vaga">Vaga Disponível</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Observações</label>
+                                    <textarea
+                                        name="observations"
+                                        value={formData.observations}
+                                        onChange={handleChange}
+                                        rows="3"
+                                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                    />
+                                </div>
+                            </div>
+                            <div className="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3 bg-gray-50 sticky bottom-0">
+                                <button
+                                    type="button"
+                                    onClick={onClose}
+                                    className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="px-4 py-2 bg-teal-600 text-white rounded-md hover:bg-teal-700"
+                                >
+                                    {appointment && appointment.id ? 'Atualizar' : 'Criar'} Agendamento
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            );
+        };
+
+        // Professionals Modal
+        const ProfessionalsModal = ({ professionals, newProfessional, onNewProfessionalChange, onAddProfessional, onClose, onDeleteProfessional }) => {
+            return (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                    <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
+                        <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-blue-100">
+                            <h3 className="text-xl font-semibold text-gray-800">👨‍⚕️ Gerenciar Profissionais</h3>
+                        </div>
+
+                        <div className="px-6 py-4 space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Adicionar Profissional</label>
+                                <div className="flex space-x-2">
+                                    <input
+                                        type="text"
+                                        value={newProfessional}
+                                        onChange={(e) => onNewProfessionalChange(e.target.value)}
+                                        className="flex-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                        placeholder="Nome do profissional"
+                                    />
+                                    <button
+                                        onClick={onAddProfessional}
+                                        className="px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                                    >
+                                        <i className="fas fa-plus"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div>
+                                <h4 className="text-sm font-medium text-gray-700 mb-2">Profissionais cadastrados ({professionals.length})</h4>
+                                {professionals.length === 0 ? (
+                                    <p className="text-gray-500 text-sm text-center py-4">Nenhum profissional cadastrado ainda.</p>
+                                ) : (
+                                    <ul className="space-y-2 max-h-60 overflow-y-auto">
+                                        {professionals.map((p, i) => (
+                                            <li
+                                                key={i}
+                                                className="flex justify-between items-center bg-gray-50 p-2 rounded hover:bg-gray-100"
+                                            >
+                                                <span>{p}</span>
+                                                <button
+                                                    onClick={() => onDeleteProfessional(p)}
+                                                    className="text-red-600 hover:text-red-800 text-sm"
+                                                    title="Remover profissional"
+                                                >
+                                                    <i className="fas fa-trash"></i>
+                                                </button>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="px-6 py-4 border-t border-gray-200 flex justify-end bg-gray-50">
+                            <button
+                                onClick={onClose}
+                                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                            >
+                                Fechar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        ReactDOM.render(<App />, document.getElementById('root'));
     </script>
 </body>
 

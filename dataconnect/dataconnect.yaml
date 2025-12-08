@@ -1,0 +1,12 @@
+specVersion: "v1"
+serviceId: "agenda-clinica"
+location: "us-central1"
+schema:
+  source: "./schema"
+  datasource:
+    postgresql:
+      database: "fdcdb"
+      cloudSql:
+        instanceId: "agenda-clinica-fdc"
+      # schemaValidation: "COMPATIBLE"
+connectorDirs: ["./connector"]
