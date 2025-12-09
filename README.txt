@@ -57,12 +57,13 @@ firebase use prod
 Deploy direcionado para um projeto específico
 
 ## deploy o front
-firebase deploy --only database --project agenda-clinica-fono-inova
+firebase deploy --only hosting --project agenda-clinica-fono-inova
+
 
 ## deploy o BD
 firebase deploy --only database --project agenda-clinica-fono-inova
 
-
+   │                   npm install -g firebase-tools                   │
 
 
 

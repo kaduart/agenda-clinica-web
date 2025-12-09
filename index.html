@@ -250,6 +250,11 @@
             return date.toLocaleDateString("pt-BR", options);
         };
 
+        const formatDateBR = (dateString) => {
+            const [year, month, day] = dateString.split("-");
+            return `${day}/${month}/${year}`;
+        };
+
         const getProfessionalColor = (professional) => {
             let hash = 0;
             for (let i = 0; i < professional.length; i++) {
@@ -481,7 +486,7 @@
                                 <div key={`day-${dateFormatted}`} className="calendar-day">
                                     <div className="calendar-day-header">
                                         <span className={`day-number ${isToday ? 'today' : ''}`}>{dayOfMonth}</span>
-                                        <span className="text-xs text-gray-500">{dateFormatted}</span>
+                                        <span className="text-xs text-gray-500">{formatDateBR(dateFormatted)}</span>
                                     </div>
                                     {renderDayAppointments(dateFormatted)}
                                 </div>
@@ -506,7 +511,7 @@
                         <div key={`day-${day}`} className="calendar-day">
                             <div className="calendar-day-header">
                                 <span className={`day-number ${isToday ? 'today' : ''}`}>{day}</span>
-                                <span className="text-xs text-gray-500">{dateFormatted}</span>
+                                <span className="text-xs text-gray-500">{formatDateBR(dateFormatted)}</span>
                             </div>
                             {renderDayAppointments(dateFormatted)}
                         </div>
@@ -641,17 +646,15 @@
 
             return (
                 <tr className={`hover:bg-opacity-80 transition-colors ${isLivre ? "bg-green-100" : getSpecialtyColor(appointment.specialty)}`}>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-6 py-4">
                         <div className="text-sm font-medium text-gray-900">{appointment.patient}</div>
+                        {appointment.responsible && (
+                            <div className="text-xs text-gray-500">👤 {appointment.responsible}</div>
+                        )}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-500">{appointment.responsible || '-'}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-500">{formatDateDisplay(appointment.date)}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-500">{appointment.time}</div>
+                    <td className="px-6 py-4">
+                        <div className="text-sm text-gray-900">{formatDateDisplay(appointment.date)}</div>
+                        <div className="text-xs text-gray-500">🕐 {appointment.time}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-500">{appointment.professional}</div>
@@ -707,6 +710,7 @@
             const [professionals, setProfessionals] = React.useState([]);
             const [activeSpecialty, setActiveSpecialty] = React.useState('todas');
             const [filterDate, setFilterDate] = React.useState('');
+            const [filterDateDisplay, setFilterDateDisplay] = React.useState('');
             const [filterProfessional, setFilterProfessional] = React.useState('');
             const [filterStatus, setFilterStatus] = React.useState('');
             const [filterDay, setFilterDay] = React.useState('');
@@ -923,8 +927,23 @@
                     <header className="bg-gradient-to-r from-teal-600 to-teal-700 text-white py-6 px-8 shadow-lg">
                         <div className="container mx-auto flex justify-between items-center">
                             <div>
-                                <h1 className="text-3xl font-serif font-bold">🏥 Agenda Clínica Fono Inova</h1>
-                                <p className="text-teal-100">Controle completo de agendamentos • Workflow Provisório → CRM</p>
+                                <div className="flex items-center gap-3">
+                                    <img
+                                        className="w-14 h-14"
+                                        src="public/images/cabeca-logo-verde-clara.png"
+                                        alt="Logo Clínica Fono Inova"
+                                    />
+
+                                    <div>
+                                        <h1 className="text-3xl font-serif font-bold leading-tight">
+                                            Agenda Clínica Fono Inova
+                                        </h1>
+
+                                        <p className="text-sm text-teal-100">
+                                            Controle de agendamentos
+                                        </p>
+                                    </div>
+                                </div>
                             </div>
                             <div className="flex space-x-3">
                                 <button
@@ -1049,26 +1068,54 @@
                                 </div>
                             </div>
 
-                            {/* Filtro de Semana */}
+                            {/* Filtro de Semana - SIMPLIFICADO */}
                             <div className="mb-6">
-                                <h3 className="text-lg font-semibold text-gray-700 mb-2">Filtrar por Semana</h3>
-                                <div className="flex flex-wrap gap-2">
+                                <h3 className="text-lg font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                                    <i className="fas fa-calendar-week text-teal-600"></i>
+                                    Semanas do Mês
+                                </h3>
+                                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                                     <button
-                                        className={`px-4 py-2 rounded-full font-medium ${filterWeek === null ? 'bg-teal-600 text-white shadow-md' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+                                        className={`px-4 py-3 rounded-lg font-medium transition-all ${filterWeek === null ? 'bg-teal-600 text-white shadow-lg scale-105' : 'bg-white border-2 border-gray-200 text-gray-700 hover:border-teal-400 hover:shadow-md'}`}
                                         onClick={() => setFilterWeek(null)}
                                     >
-                                        Todo o Mês
+                                        <div className="text-xs uppercase tracking-wide mb-1">Todo</div>
+                                        <div className="font-bold">Mês Inteiro</div>
                                     </button>
-                                    {weeksInMonth.map((week, index) => (
-                                        <button
-                                            key={index}
-                                            className={`px-4 py-2 rounded-full font-medium ${filterWeek === index ? 'bg-teal-600 text-white shadow-md' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
-                                            onClick={() => setFilterWeek(index)}
-                                            title={`Semana ${index + 1}: ${formatDate(week.start)} a ${formatDate(week.end)}`}
-                                        >
-                                            Semana {index + 1}
-                                        </button>
-                                    ))}
+                                    {weeksInMonth.map((week, index) => {
+                                        const isCurrentWeek = (() => {
+                                            const today = new Date();
+                                            return today >= week.start && today <= week.end;
+                                        })();
+
+                                        const startDay = week.start.getDate();
+                                        const endDay = week.end.getDate();
+
+                                        return (
+                                            <button
+                                                key={index}
+                                                className={`px-4 py-3 rounded-lg font-medium transition-all relative ${filterWeek === index
+                                                    ? 'bg-teal-600 text-white shadow-lg scale-105'
+                                                    : isCurrentWeek
+                                                        ? 'bg-orange-50 border-2 border-orange-400 text-orange-700 hover:shadow-md'
+                                                        : 'bg-white border-2 border-gray-200 text-gray-700 hover:border-teal-400 hover:shadow-md'
+                                                    }`}
+                                                onClick={() => setFilterWeek(index)}
+                                            >
+                                                {isCurrentWeek && filterWeek !== index && (
+                                                    <span className="absolute -top-2 -right-2 bg-orange-500 text-white text-xs px-2 py-0.5 rounded-full font-bold">
+                                                        ATUAL
+                                                    </span>
+                                                )}
+                                                <div className="text-xs uppercase tracking-wide mb-1">
+                                                    {isCurrentWeek ? 'Esta Semana' : `Semana ${index + 1}`}
+                                                </div>
+                                                <div className="font-bold">
+                                                    {startDay}/{week.start.getMonth() + 1} a {endDay}/{week.end.getMonth() + 1}
+                                                </div>
+                                            </button>
+                                        );
+                                    })}
                                 </div>
                             </div>
 
@@ -1102,10 +1149,8 @@
                                     <table className="min-w-full divide-y divide-gray-200">
                                         <thead className="bg-teal-50">
                                             <tr>
-                                                <th className="px-6 py-3 text-left text-xs font-medium text-teal-700 uppercase tracking-wider">Paciente</th>
-                                                <th className="px-6 py-3 text-left text-xs font-medium text-teal-700 uppercase tracking-wider">Responsável</th>
-                                                <th className="px-6 py-3 text-left text-xs font-medium text-teal-700 uppercase tracking-wider">Data</th>
-                                                <th className="px-6 py-3 text-left text-xs font-medium text-teal-700 uppercase tracking-wider">Horário</th>
+                                                <th className="px-6 py-3 text-left text-xs font-medium text-teal-700 uppercase tracking-wider">Paciente / Responsável</th>
+                                                <th className="px-6 py-3 text-left text-xs font-medium text-teal-700 uppercase tracking-wider">Data / Horário</th>
                                                 <th className="px-6 py-3 text-left text-xs font-medium text-teal-700 uppercase tracking-wider">Profissional</th>
                                                 <th className="px-6 py-3 text-left text-xs font-medium text-teal-700 uppercase tracking-wider">Especialidade</th>
                                                 <th className="px-6 py-3 text-left text-xs font-medium text-teal-700 uppercase tracking-wider">Status</th>
@@ -1116,7 +1161,7 @@
                                         <tbody className="bg-white divide-y divide-gray-200">
                                             {filteredAppointments.length === 0 ? (
                                                 <tr>
-                                                    <td colSpan="9" className="px-6 py-12 text-center text-gray-500">
+                                                    <td colSpan="7" className="px-6 py-12 text-center text-gray-500">
                                                         <i className="fas fa-inbox text-4xl mb-3 block text-gray-300"></i>
                                                         Nenhum agendamento encontrado
                                                     </td>
