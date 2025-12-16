@@ -1,6 +1,6 @@
 export default function Header({ view, setView }) {
     return (
-        <header className="bg-teal-500 border-b border-gray-200 py-4 px-6">
+        <header className="bg-teal-700 border-b border-gray-200 py-4 px-6">
             <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div className="flex items-center gap-3">
                     <img
@@ -24,8 +24,8 @@ export default function Header({ view, setView }) {
                     <button
                         type="button"
                         className={`px-4 py-2 rounded-lg font-medium transition-all ${view === "list"
-                                ? "bg-teal-600 text-white shadow"
-                                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                            ? "bg-teal-600 text-white shadow"
+                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                             }`}
                         onClick={() => setView("list")}
                     >
@@ -35,8 +35,8 @@ export default function Header({ view, setView }) {
                     <button
                         type="button"
                         className={`px-4 py-2 rounded-lg font-medium transition-all ${view === "calendar"
-                                ? "bg-teal-600 text-white shadow"
-                                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                            ? "bg-teal-600 text-white shadow"
+                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                             }`}
                         onClick={() => setView("calendar")}
                     >
@@ -46,8 +46,8 @@ export default function Header({ view, setView }) {
                     <button
                         type="button"
                         className={`px-4 py-2 rounded-lg font-medium transition-all ${view === "weekly"
-                                ? "bg-teal-600 text-white shadow"
-                                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                            ? "bg-teal-600 text-white shadow"
+                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                             }`}
                         onClick={() => setView("weekly")}
                     >

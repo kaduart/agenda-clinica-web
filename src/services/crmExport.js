@@ -12,12 +12,12 @@ export const exportToCRM = async (appointment) => {
 
     // 1) validações
     if (appointment.status !== "Confirmado") {
-        alert("⚠️ Apenas agendamentos confirmados podem ser exportados.");
+        toast.warning("⚠️ Apenas agendamentos confirmados podem ser exportados.");
         return;
     }
 
     if (appointment.export?.status === "success") {
-        const ok = window.confirm(
+        const ok = toast.warning(
             "⚠️ Este agendamento já foi exportado.\n\n" +
             `ID no CRM: ${appointment.export.crmAppointmentId}\n\n` +
             "Deseja exportar novamente? (pode criar duplicata)"
@@ -32,7 +32,7 @@ export const exportToCRM = async (appointment) => {
     if (!appointment.professional) missing.push("Profissional");
 
     if (missing.length) {
-        alert("❌ Campos obrigatórios faltando:\n\n" + missing.join("\n") + "\n\nPreencha antes de exportar.");
+        toast.warning("❌ Campos obrigatórios faltando:\n\n" + missing.join("\n") + "\n\nPreencha antes de exportar.");
         return;
     }
 
@@ -50,7 +50,7 @@ export const exportToCRM = async (appointment) => {
         updated = { id: appointment.id, ...snap.val() };
     } catch (err) {
         console.error("❌ [EXPORT] Erro ao atualizar Firebase:", err);
-        alert("Erro ao preparar exportação. Tente novamente.");
+        toast.error("Erro ao preparar exportação. Tente novamente.");
         return;
     }
 
@@ -104,7 +104,7 @@ export const exportToCRM = async (appointment) => {
                 lastErrorMessage: null,
             });
 
-            alert(
+            toast.success(
                 "✅ Agendamento exportado com sucesso!\n\n" +
                 `Paciente ID: ${data.patientId}\n` +
                 `Agendamento ID: ${data.appointmentId}\n\n` +
@@ -128,11 +128,11 @@ export const exportToCRM = async (appointment) => {
                 if (!Number.isNaN(idx) && idx >= 0 && idx < alternatives.length) {
                     const newTime = alternatives[idx];
                     await database.ref(`appointments/${appointment.id}`).update({ time: newTime });
-                    alert(`Horário atualizado para ${newTime}. Exportando novamente...`);
+                    toast.success(`Horário atualizado para ${newTime}. Exportando novamente...`);
                     setTimeout(() => exportToCRM({ ...appointment, time: newTime }), 400);
                 }
             } else {
-                alert("❌ Horário não disponível e não há alternativas.\n\nEscolha outro horário manualmente.");
+                toast.error("❌ Horário não disponível e não há alternativas.\n\nEscolha outro horário manualmente.");
             }
             return;
         }
@@ -144,7 +144,7 @@ export const exportToCRM = async (appointment) => {
                 lastErrorMessage: data.error,
             });
 
-            alert(
+            toast.error(
                 "❌ Profissional não encontrado no CRM:\n\n" +
                 `"${appointment.professional}"\n\n` +
                 "Verifique se o nome está cadastrado corretamente."
@@ -158,7 +158,7 @@ export const exportToCRM = async (appointment) => {
             lastErrorMessage: data.error || "Erro desconhecido",
         });
 
-        alert("❌ Erro ao exportar:\n\n" + (data.error || "Erro desconhecido"));
+        toast.error("❌ Erro ao exportar:\n\n" + (data.error || "Erro desconhecido"));
 
     } catch (err) {
         await database.ref(`appointments/${appointment.id}/export`).update({
@@ -167,6 +167,6 @@ export const exportToCRM = async (appointment) => {
             lastErrorMessage: err.message,
         });
 
-        alert("❌ Erro de conexão com o servidor.\n\nVerifique sua internet e tente novamente.");
+        toast.error("❌ Erro de conexão com o servidor.\n\nVerifique sua internet e tente novamente.");
     }
 };

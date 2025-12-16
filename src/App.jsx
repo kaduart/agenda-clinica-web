@@ -1,5 +1,7 @@
 // src/App.jsx
 import React from "react";
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 import AppointmentTable from "./components/AppointmentTable";
 import FiltersPanel from "./components/FiltersPanel";
@@ -26,7 +28,8 @@ import {
   listenProfessionals,
 } from "./services/professionalsRepo";
 
-import { formatDateLocal, getWeeksInMonth, parseYMDLocal } from "./utils/date";
+import { confirmToast } from "./utils/confirmToast";
+import { formatDateLocal, getWeeksInMonth } from "./utils/date";
 import { sortAppointmentsByDateTimeAsc } from "./utils/sort";
 import { resolveSpecialtyKey } from "./utils/specialty";
 
@@ -34,6 +37,8 @@ import ReminderModal from "./components/ReminderModal";
 import "./styles/app.css";
 
 export default function App() {
+  console.log("📱 [App.jsx] Componente App montando...");
+
   const [view, setView] = React.useState("list");
 
   const [appointments, setAppointments] = React.useState([]);
@@ -60,10 +65,10 @@ export default function App() {
   const [editingAppointment, setEditingAppointment] = React.useState(null);
 
   const [isProfessionalsModalOpen, setIsProfessionalsModalOpen] = React.useState(false);
-  const [newProfessional, setNewProfessional] = React.useState("");
   const [isReminderOpen, setIsReminderOpen] = React.useState(false);
   const [reminderAppointment, setReminderAppointment] = React.useState(null);
 
+  // ========== REMINDER ==========
   const openReminder = (appointment) => {
     setReminderAppointment(appointment);
     setIsReminderOpen(true);
@@ -76,25 +81,50 @@ export default function App() {
 
       setIsReminderOpen(false);
       setReminderAppointment(null);
-      alert("Lembrete salvo!");
+      toast.success("Lembrete salvo!");
     } catch (e) {
-      console.error(e);
-      alert("Erro ao salvar lembrete.");
+      console.error("[saveReminder]", e);
+      toast.error("Erro ao salvar lembrete.");
     }
   };
 
-  // listeners
+  // ========== LISTENERS ==========
   React.useEffect(() => {
-    const unsub = listenProfessionals(setProfessionals);
-    return () => unsub();
+    console.log("👂 [App.jsx] Listener de profissionais iniciado");
+    const unsub = listenProfessionals((data) => {
+      console.log("👂 [App.jsx] Profissionais recebidos:", data.length);
+      setProfessionals(data);
+    });
+    return () => {
+      console.log("👂 [App.jsx] Listener de profissionais desmontado");
+      unsub();
+    };
   }, []);
 
   React.useEffect(() => {
-    const unsub = listenAppointmentsForMonth(currentYear, currentMonth, setAppointments);
-    return () => unsub();
-  }, [currentYear, currentMonth]);
+    // ✅ SE filterDate ESTÁ ATIVO, busca o mês DELE
+    let targetYear = currentYear;
+    let targetMonth = currentMonth;
 
-  // label da especialidade atual (pra WeeklyView)
+    if (filters.filterDate) {
+      const [y, m] = filters.filterDate.split("-").map(Number);
+      targetYear = y;
+      targetMonth = m - 1; // JS usa 0-11
+      console.log(`👂 [App.jsx] Ajustando listener para mês do filterDate: ${targetYear}/${targetMonth + 1}`);
+    }
+
+    console.log(`👂 [App.jsx] Listener de appointments: ${targetYear}/${targetMonth + 1}`);
+    const unsub = listenAppointmentsForMonth(targetYear, targetMonth, (data) => {
+      console.log("👂 [App.jsx] Appointments recebidos:", data.length);
+      setAppointments(data);
+    });
+    return () => {
+      console.log("👂 [App.jsx] Listener de appointments desmontado");
+      unsub();
+    };
+  }, [currentYear, currentMonth, filters.filterDate]);
+
+  // ========== LABEL DA ESPECIALIDADE ATUAL ==========
   const activeSpecialtyLabel = React.useMemo(() => {
     if (activeSpecialty === "fonoaudiologia") return "Fonoaudiologia";
     if (activeSpecialty === "psicologia") return "Psicologia";
@@ -104,58 +134,147 @@ export default function App() {
     return "";
   }, [activeSpecialty]);
 
-  // filtros + sort cronológico
+  // ========== FILTROS + SORT ==========
   const filteredAppointments = React.useMemo(() => {
+    console.log("[filteredAppointments] Iniciando filtros...");
+    console.log("[filteredAppointments] Total de appointments:", appointments.length);
+    console.log("[filteredAppointments] Filtros ativos:", JSON.stringify(filters));
+
     const weeks = getWeeksInMonth(currentYear, currentMonth);
 
-    const base = (appointments || []).filter((appointment) => {
+    let base = (appointments || []).filter((appointment) => {
+      // ✅ Filtro de especialidade
       if (activeSpecialty !== "todas") {
-        if (resolveSpecialtyKey(appointment) !== activeSpecialty) return false;
+        if (resolveSpecialtyKey(appointment) !== activeSpecialty) {
+          console.log(`[FILTRO] Rejeitado por especialidade: ${appointment.patient}`);
+          return false;
+        }
       }
 
-      if (filters.filterDate && appointment.date !== filters.filterDate) return false;
+      // ✅ Filtro de data específica (PRIORIDADE MÁXIMA)
+      if (filters.filterDate) {
+        if (appointment.date !== filters.filterDate) {
+          console.log(`[FILTRO] Rejeitado por filterDate: ${appointment.patient} (${appointment.date} !== ${filters.filterDate})`);
+          return false;
+        }
+        // Se filterDate está ativo, IGNORA filterDay e filterWeek
+        console.log(`[FILTRO] ✅ Passou por filterDate: ${appointment.patient}`);
+      } else {
+        // ✅ Filtro de dia da semana (APENAS se filterDate NÃO estiver ativo)
+        if (filters.filterDay) {
+          if (!appointment.date) {
+            console.log(`[FILTRO] Rejeitado por filterDay (sem data): ${appointment.patient}`);
+            return false;
+          }
 
+          const [y, m, d] = appointment.date.split("-").map(Number);
+          const dateObj = new Date(y, m - 1, d);
+          const jsDay = dateObj.getDay(); // 0=Dom, 1=Seg, ..., 6=Sáb
+          const targetDay = Number(filters.filterDay);
+
+          if (jsDay !== targetDay) {
+            console.log(`[FILTRO] Rejeitado por filterDay: ${appointment.patient} (jsDay=${jsDay}, target=${targetDay})`);
+            return false;
+          }
+        }
+
+        // ✅ Filtro de semana (APENAS se filterDate NÃO estiver ativo)
+        if (filters.filterWeek !== null && filters.filterWeek !== undefined) {
+          const w = weeks[filters.filterWeek];
+          if (!w) {
+            console.log(`[FILTRO] Semana ${filters.filterWeek} inválida`);
+            return false;
+          }
+
+          const toKey = (v) => {
+            if (typeof v === "string") return v.replaceAll("-", "");
+            return formatDateLocal(v).replaceAll("-", "");
+          };
+
+          const dKey = toKey(appointment.date);
+          const startKey = toKey(w.start);
+          const endKey = toKey(w.end);
+
+          if (!(dKey >= startKey && dKey <= endKey)) {
+            console.log(`[FILTRO] Rejeitado por filterWeek: ${appointment.patient}`);
+            return false;
+          }
+        }
+      }
+
+      // ✅ Filtro de profissional
       if (filters.filterProfessional) {
         if (filters.filterProfessional.toLowerCase() === "livre") {
           const isLivre =
             (appointment.professional && appointment.professional.toLowerCase().includes("livre")) ||
             (appointment.patient && appointment.patient.toLowerCase().includes("livre")) ||
             (appointment.observations && appointment.observations.toLowerCase().includes("livre"));
-          if (!isLivre) return false;
+          if (!isLivre) {
+            console.log(`[FILTRO] Rejeitado por "livre": ${appointment.patient}`);
+            return false;
+          }
         } else if (appointment.professional !== filters.filterProfessional) {
+          console.log(`[FILTRO] Rejeitado por profissional: ${appointment.patient}`);
           return false;
         }
       }
 
-      if (filters.filterStatus && appointment.status !== filters.filterStatus) return false;
-
-      if (filters.filterDay) {
-        const d = parseYMDLocal(appointment.date);
-        const day = d.getDay() === 0 ? 7 : d.getDay();
-        if (Number(day) !== Number(filters.filterDay)) return false;
+      // ✅ Filtro de status
+      if (filters.filterStatus && appointment.status !== filters.filterStatus) {
+        console.log(`[FILTRO] Rejeitado por status: ${appointment.patient}`);
+        return false;
       }
 
-      if (filters.filterWeek !== null) {
+      // ✅ Filtro de semana
+      if (filters.filterWeek !== null && filters.filterWeek !== undefined) {
         const w = weeks[filters.filterWeek];
-        if (!w) return false;
-        const d = parseYMDLocal(appointment.date);
-        if (!(d >= w.start && d <= w.end)) return false;
+        if (!w) {
+          console.log(`[FILTRO] Semana ${filters.filterWeek} inválida`);
+          return false;
+        }
+
+        const toKey = (v) => {
+          if (typeof v === "string") return v.replaceAll("-", "");
+          return formatDateLocal(v).replaceAll("-", "");
+        };
+
+        const dKey = toKey(appointment.date);
+        const startKey = toKey(w.start);
+        const endKey = toKey(w.end);
+
+        if (!(dKey >= startKey && dKey <= endKey)) {
+          console.log(`[FILTRO] Rejeitado por filterWeek: ${appointment.patient}`);
+          return false;
+        }
       }
 
       return true;
     });
 
-    return sortAppointmentsByDateTimeAsc(base);
+    console.log("[filteredAppointments] Após filtros:", base.length);
+
+    // ✅ Ordenar cronologicamente
+    base = sortAppointmentsByDateTimeAsc(base);
+
+    console.log("[filteredAppointments] Final (após sort):", base.length);
+    return base;
   }, [appointments, activeSpecialty, filters, currentYear, currentMonth]);
 
+  // ========== CRUD APPOINTMENTS ==========
   const onDelete = async (id) => {
-    const ok = window.confirm("Tem certeza que deseja excluir este agendamento?");
+    const ok = await confirmToast("Tem certeza que deseja excluir este agendamento?");
     if (!ok) return;
-    await deleteAppointment(id);
-    alert("Agendamento excluído com sucesso!");
+    try {
+      await deleteAppointment(id);
+      toast.success("Agendamento excluído com sucesso!");
+    } catch (e) {
+      console.error("[onDelete]", e);
+      toast.error("Erro ao excluir agendamento.");
+    }
   };
 
   const openEditModal = (appointment) => {
+    console.log("[openEditModal]", appointment);
     setEditingAppointment(appointment);
     setIsModalOpen(true);
   };
@@ -183,9 +302,9 @@ export default function App() {
     setIsModalOpen(true);
   };
 
-  // ✅ usado no Calendar/Weekly: clique num slot vago ou num ocupado
   const handleSlotClick = (payload) => {
-    // caso venha slot vazio
+    console.log("[handleSlotClick]", payload);
+
     if (payload?.__isEmptySlot) {
       const specialtyLabel = (() => {
         if (activeSpecialty === "fonoaudiologia") return "Fonoaudiologia";
@@ -210,19 +329,22 @@ export default function App() {
       return;
     }
 
-    // caso venha appointment real (ocupado)
     openEditModal(payload);
   };
 
   const saveAppointment = async (appointmentData) => {
+    console.log("[saveAppointment] appointmentData recebido:", appointmentData);
+
     const candidate = {
       ...editingAppointment,
       ...appointmentData,
       status: appointmentData.status === "Vaga" ? "Pendente" : appointmentData.status,
     };
 
+    console.log("[saveAppointment] candidate final:", candidate);
+
     if (hasConflict(appointments, candidate, editingAppointment?.id)) {
-      alert("⚠️ Já existe um agendamento nesse horário para esse profissional.");
+      toast.error("⚠️ Já existe um agendamento nesse horário para esse profissional.");
       return;
     }
 
@@ -230,46 +352,57 @@ export default function App() {
       await upsertAppointment({ editingAppointment, appointmentData: candidate });
       setIsModalOpen(false);
       setEditingAppointment(null);
-      alert(editingAppointment?.id ? "Agendamento atualizado com sucesso!" : "Agendamento criado com sucesso!");
+      toast.success(editingAppointment?.id ? "Agendamento atualizado!" : "Agendamento criado!");
     } catch (err) {
-      console.error("Erro ao salvar agendamento:", err);
-      alert("Erro ao salvar agendamento. Tente novamente.");
+      console.error("[saveAppointment] Erro:", err);
+      toast.error("Erro ao salvar agendamento. Tente novamente.");
     }
   };
 
-  // Professionals modal
+  // ========== PROFESSIONALS MODAL ==========
   const onOpenProfessionals = () => setIsProfessionalsModalOpen(true);
 
-  const handleAddProfessional = async () => {
+  const handleAddProfessional = async (name) => {
     try {
-      await addProfessional(newProfessional);
-      setNewProfessional("");
+      await addProfessional(name);
+      toast.success(`Profissional "${name}" adicionado!`);
     } catch (e) {
-      console.error(e);
-      alert("Erro ao adicionar profissional.");
+      console.error("[handleAddProfessional]", e);
+      toast.error("Erro ao adicionar profissional.");
     }
   };
 
   const handleDeleteProfessional = async (name) => {
-    const ok = window.confirm(`Remover o profissional "${name}"?`);
+    const ok = await confirmToast(`Remover o profissional "${name}"?`);
     if (!ok) return;
     try {
       await deleteProfessionalByName(name);
+      toast.success(`Profissional "${name}" removido!`);
     } catch (e) {
-      console.error(e);
-      alert("Erro ao remover profissional.");
+      console.error("[handleDeleteProfessional]", e);
+      toast.error("Erro ao remover profissional.");
     }
   };
 
+  // ========== RENDER ==========
   return (
+
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-gray-100 to-blue-50">
       <Header view={view} setView={setView} />
+      <ToastContainer
+        position="top-center"
+        newestOnTop
+        closeOnClick={false}
+        draggable={false}
+      />
 
       <main className="max-w-screen-2xl mx-auto px-2 sm:px-4 lg:px-6 py-6 space-y-6">
+        {/* Dashboard de métricas */}
         <div className="bg-gradient-to-r from-white to-gray-50 rounded-2xl shadow-xl border border-gray-200 p-4 sm:p-6">
           <SpecialtyDashboard appointments={appointments} activeSpecialty={activeSpecialty} />
         </div>
 
+        {/* Painel de filtros */}
         <div className="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden">
           <FiltersPanel
             professionals={professionals}
@@ -282,6 +415,7 @@ export default function App() {
           />
         </div>
 
+        {/* VIEW: LISTA */}
         {view === "list" && (
           <div className="space-y-4 animate-fadeIn">
             <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-2">
@@ -297,6 +431,7 @@ export default function App() {
           </div>
         )}
 
+        {/* VIEW: CALENDÁRIO */}
         {view === "calendar" && (
           <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-4 sm:p-6 animate-fadeIn">
             <CalendarView
@@ -313,6 +448,7 @@ export default function App() {
           </div>
         )}
 
+        {/* VIEW: SEMANAL */}
         {view === "weekly" && (
           <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-4 sm:p-6 animate-fadeIn">
             <WeeklyView
@@ -328,6 +464,7 @@ export default function App() {
         )}
       </main>
 
+      {/* MODAL: AGENDAMENTO */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn">
           <AppointmentModal
@@ -342,19 +479,19 @@ export default function App() {
         </div>
       )}
 
+      {/* MODAL: PROFISSIONAIS */}
       {isProfessionalsModalOpen && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn">
           <ProfessionalsModal
             professionals={professionals}
-            newProfessional={newProfessional}
-            onNewProfessionalChange={setNewProfessional}
-            onAddProfessional={handleAddProfessional}
-            onDeleteProfessional={handleDeleteProfessional}
+            onAdd={handleAddProfessional}
+            onDelete={handleDeleteProfessional}
             onClose={() => setIsProfessionalsModalOpen(false)}
           />
         </div>
       )}
 
+      {/* MODAL: LEMBRETE */}
       {isReminderOpen && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn">
           <ReminderModal
@@ -368,9 +505,9 @@ export default function App() {
         </div>
       )}
 
-      {/* Toast Notifications */}
-      <div className="fixed bottom-4 right-4 z-40 space-y-2">
-        {appointments.length > 0 && (
+      {/* TOAST: Sistema carregado */}
+      {appointments.length > 0 && (
+        <div className="fixed bottom-4 right-4 z-40">
           <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-4 py-3 rounded-xl shadow-lg flex items-center gap-3 animate-slideInUp">
             <i className="fas fa-check-circle text-xl"></i>
             <div>
@@ -378,8 +515,8 @@ export default function App() {
               <p className="text-sm opacity-90">{appointments.length} agendamentos sincronizados</p>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

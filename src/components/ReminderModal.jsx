@@ -27,17 +27,17 @@ export default function ReminderModal({ appointment, onSave, onClose }) {
         setForm((prev) => ({ ...prev, [name]: type === "checkbox" ? checked : value }));
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
 
-        const trimmed = (form.reminderText || "").trim();
+        const trimmed = async(form.reminderText || "").trim();
         if (!trimmed) {
-            alert("Digite o lembrete.");
+            await confirmToast("Digite o lembrete.");
             return;
         }
 
         if (!form.reminderDate) {
-            alert("Escolha a data do lembrete.");
+            await confirmToast("Escolha a data do lembrete.");
             return;
         }
 

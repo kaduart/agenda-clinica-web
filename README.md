@@ -1,16 +1,68 @@
-# React + Vite
+# 🚀 Meu Projeto no Firebase Hosting
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Este projeto está configurado para ser hospedado no **Firebase Hosting**.
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## 📋 Pré-requisitos
 
-## React Compiler
+- [Node.js](https://nodejs.org/) instalado (versão LTS recomendada)
+- [Firebase CLI](https://firebase.google.com/docs/cli) instalada globalmente
+  ```bash
+  npm install -g firebase-tools
+ 
+ ⚙️ Configuração inicial
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+    Login no Firebase
 
-## Expanding the ESLint configuration
+    firebase login
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+
+Inicializar o projeto (se ainda não estiver configurado)
+
+firebase init
+
+
+⚙️ Configuração inicial
+
+Login no Firebase
+
+firebase login
+
+
+Inicializar o projeto (se ainda não estiver configurado)
+
+firebase init
+
+🔀 Multiambiente (dev / staging / prod)
+
+Se você precisar trabalhar com mais de um ambiente no Firebase:
+
+Adicionar ambientes ao CLI
+
+firebase use --add
+
+
+## rodar local: ## 
+firebase serve --only hosting
+
+Crie aliases, por exemplo: dev, staging, prod.
+
+Trocar entre ambientes
+
+firebase use dev
+firebase use prod
+
+
+Deploy direcionado para um projeto específico
+
+## deploy o front
+firebase deploy --only hosting --project agenda-clinica-fono-inova
+
+
+## deploy o BD
+firebase deploy --only database --project agenda-clinica-fono-inova
+
+npm install -g firebase-tools             
+
+
