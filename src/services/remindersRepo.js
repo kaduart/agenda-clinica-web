@@ -1,35 +1,31 @@
-// src/services/remindersRepo.js
 import { database } from "../config/firebase";
 
 const remindersRef = () => database.ref("reminders");
 
 export const listenReminders = (onData) => {
-    const ref = remindersRef();
-    const handler = (snapshot) => {
-        const data = snapshot.val();
-        const list = data
-            ? Object.entries(data).map(([id, v]) => ({ id, ...v }))
-            : [];
+  const ref = database.ref("reminders");
 
-        // ordena por dueDate + dueTime
-        list.sort((a, b) => {
-            const adt = `${a.dueDate || ""} ${a.dueTime || "00:00"}`;
-            const bdt = `${b.dueDate || ""} ${b.dueTime || "00:00"}`;
-            return String(adt).localeCompare(String(bdt), "pt-BR");
-        });
+  const handleSnapshot = (snap) => {
+    const data = snap.val() || {};
+    console.log("🔥 [listenReminders] Snapshot recebido:", data);
 
-        onData(list);
-    };
+    const parsed = Object.entries(data).map(([id, value]) => ({
+      id,
+      ...value,
+    }));
 
-    ref.on("value", handler);
-    return () => ref.off("value", handler);
+    onData(parsed);
+  };
+
+  ref.on("value", handleSnapshot);
+  return () => ref.off("value", handleSnapshot); // ✅ IMPORTANTE
 };
+
 
 export const addReminder = async (payload) => {
     const text = String(payload?.text || "").trim();
     const dueDate = String(payload?.dueDate || "").trim();
-
-    if (!text || !dueDate) return;
+    if (!text || !dueDate) return null;
 
     const ref = remindersRef().push();
     await ref.set({
@@ -42,6 +38,13 @@ export const addReminder = async (payload) => {
         status: "pending",
         createdAt: Date.now(),
     });
+
+    return ref.key; // ✅
+};
+
+export const updateReminder = async (id, patch) => {
+    if (!id) return;
+    await remindersRef().child(id).update(patch || {});
 };
 
 export const markReminderDone = async (id) => {

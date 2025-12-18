@@ -1,6 +1,6 @@
 export default function Header({ view, setView }) {
     return (
-        <header className="bg-teal-700 border-b border-gray-200 py-4 px-6">
+        <header className="bg-teal-600 border-b border-gray-200 py-4 px-6">
             <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div className="flex items-center gap-3">
                     <img

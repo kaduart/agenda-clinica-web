@@ -1,5 +1,7 @@
 import React from "react";
 import { formatDateLocal } from "../utils/date";
+import { addReminder } from "../services/remindersRepo";
+import { toast } from "react-toastify";
 
 export default function ReminderModal({ appointment, onSave, onClose }) {
     const today = formatDateLocal(new Date());
@@ -30,23 +32,32 @@ export default function ReminderModal({ appointment, onSave, onClose }) {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        const trimmed = async(form.reminderText || "").trim();
+        const trimmed = (form.reminderText || "").trim();
         if (!trimmed) {
-            await confirmToast("Digite o lembrete.");
+            toast.warn("Digite o lembrete.");
             return;
         }
-
         if (!form.reminderDate) {
-            await confirmToast("Escolha a data do lembrete.");
+            toast.warn("Escolha a data do lembrete.");
             return;
         }
 
-        onSave({
-            reminderText: trimmed,
-            reminderDate: form.reminderDate,
-            reminderTime: form.reminderTime || "",
-            reminderDone: !!form.reminderDone,
-        });
+        try {
+            await addReminder({
+                text: trimmed,
+                dueDate: form.reminderDate,
+                dueTime: form.reminderTime || "",
+                appointmentId: appointment?.id || null,
+                patient: appointment?.patient || "",
+                professional: appointment?.professional || "",
+            });
+
+            toast.success("Lembrete criado com sucesso!");
+            onClose();
+        } catch (err) {
+            console.error("[ReminderModal] Erro ao salvar lembrete:", err);
+            toast.error("Erro ao criar lembrete.");
+        }
     };
 
     if (!appointment) return null;

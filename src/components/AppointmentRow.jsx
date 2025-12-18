@@ -3,7 +3,7 @@ import { formatDateDisplay } from "../utils/date";
 import { resolveSpecialtyKey } from "../utils/specialty";
 import ExportButton from "./ExportButton";
 
-export default function AppointmentRow({ appointment, onEdit, onDelete, onReminder }) {
+export default function AppointmentRow({ appointment, onEdit, onDelete, onReminder, onGenerateCycle }) {
   const getStatusColor = (status) => {
     switch (status) {
       case "Confirmado":
@@ -117,11 +117,10 @@ export default function AppointmentRow({ appointment, onEdit, onDelete, onRemind
           {/* ✅ Sininho (abre modal de lembrete no App) */}
           <button
             type="button"
-            className={`p-2 rounded-lg ${
-              hasReminder
-                ? "bg-yellow-300 text-yellow-900 hover:bg-yellow-400"
-                : "text-gray-700 hover:text-gray-900 hover:bg-white/60"
-            }`}
+            className={`p-2 rounded-lg ${hasReminder
+              ? "bg-yellow-300 text-yellow-900 hover:bg-yellow-400"
+              : "text-gray-700 hover:text-gray-900 hover:bg-white/60"
+              }`}
             onClick={() => onReminder?.(appointment)}
             title={hasReminder ? "Editar lembrete" : "Adicionar lembrete"}
           >
@@ -129,6 +128,17 @@ export default function AppointmentRow({ appointment, onEdit, onDelete, onRemind
           </button>
 
           <ExportButton appointment={appointment} />
+
+          {!isLivre && appointment.status !== "Cancelado" && (
+            <button
+              type="button"
+              className="p-2 text-gray-700 hover:text-indigo-900 hover:bg-indigo-200/60 rounded-lg"
+              onClick={() => onGenerateCycle?.(appointment)}
+              title="Gerar sessões do ciclo"
+            >
+              <i className="fas fa-repeat"></i>
+            </button>
+          )}
         </div>
       </td>
     </tr>
