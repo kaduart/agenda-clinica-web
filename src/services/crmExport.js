@@ -10,6 +10,10 @@ export const exportToCRM = async (appointment) => {
     const EXPORT_TOKEN = import.meta.env.VITE_AGENDA_EXPORT_TOKEN;
     EXPORT_TOKEN
 
+    if (appointment.preAgendamento?.crmPreAgendamentoId) {
+        return confirmarEImportarToCRM(appointment, {});
+    }
+
     // 1) validações
     if (appointment.status !== "Confirmado") {
         toast.warning("⚠️ Apenas agendamentos confirmados podem ser exportados.");
@@ -168,5 +172,124 @@ export const exportToCRM = async (appointment) => {
         });
 
         toast.error("❌ Erro de conexão com o servidor.\n\nVerifique sua internet e tente novamente.");
+    }
+};
+
+export const autoSendPreAgendamento = async (appointment) => {
+    const EXPORT_TOKEN = import.meta.env.VITE_AGENDA_EXPORT_TOKEN;
+
+    try {
+        const payload = {
+            firebaseAppointmentId: appointment.id,
+            professionalName: appointment.professional,
+            date: appointment.date,
+            time: appointment.time,
+            specialty: appointment.specialty || "Fonoaudiologia",
+            patientInfo: {
+                fullName: appointment.patient,
+                phone: (appointment.phone || "").replace(/\D/g, ""),
+                birthDate: appointment.birthDate,
+                email: appointment.email,
+            },
+            responsible: appointment.responsible,
+            observations: appointment.observations,
+            crm: {
+                serviceType: appointment.crm?.serviceType || "individual_session",
+                sessionType: appointment.crm?.sessionType || "evaluation",
+                paymentMethod: appointment.crm?.paymentMethod || "pix",
+                paymentAmount: Number(appointment.crm?.paymentAmount || 0),
+            },
+            source: 'agenda_externa'
+        };
+
+        const res = await fetch(`${BACKEND_URL}/api/pre-agendamento/webhook`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${EXPORT_TOKEN}`,
+            },
+            body: JSON.stringify(payload),
+        });
+
+        const data = await res.json();
+
+        if (data.success) {
+            await database.ref(`appointments/${appointment.id}/preAgendamento`).set({
+                status: "enviado",
+                crmPreAgendamentoId: data.id,
+                sentAt: new Date().toISOString(),
+            });
+            return { success: true };
+        }
+
+        throw new Error(data.error);
+
+    } catch (err) {
+        console.error("Erro:", err);
+        await database.ref(`appointments/${appointment.id}/preAgendamento`).set({
+            status: "error",
+            error: err.message,
+        });
+        return { success: false, error: err.message };
+    }
+};
+
+export const confirmarAgendamento = async (appointment, dadosConfirmacao) => {
+    const EXPORT_TOKEN = import.meta.env.VITE_AGENDA_EXPORT_TOKEN;
+
+    // Usa o próprio ID do Firebase (appointment.id) como externalId
+    const externalId = appointment.id;
+
+    if (!externalId) {
+        alert("Erro: ID do agendamento não encontrado");
+        return { success: false };
+    }
+
+    try {
+        // NOVO ENDPOINT: usa externalId no body ao invés de URL
+        const res = await fetch(
+            `${BACKEND_URL}/api/import-from-agenda/confirmar-por-external-id`,
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${EXPORT_TOKEN}`,
+                },
+                body: JSON.stringify({
+                    externalId: externalId,  // ID do Firebase (-OkjTXe5...)
+                    doctorId: dadosConfirmacao.doctorId,
+                    date: dadosConfirmacao.date || appointment.date,
+                    time: dadosConfirmacao.time || appointment.time,
+                    sessionValue: dadosConfirmacao.sessionValue || appointment.crm?.paymentAmount || 200,
+                    serviceType: appointment.crm?.serviceType || "evaluation",
+                    paymentMethod: appointment.crm?.paymentMethod || "pix",
+                    notes: "Confirmado pela secretária",
+                }),
+            }
+        );
+
+        const data = await res.json();
+
+        if (data.success) {
+            await database.ref(`appointments/${appointment.id}`).update({
+                status: "Confirmado",
+                export: {
+                    status: "success",
+                    crmAppointmentId: data.appointmentId,
+                    exportedAt: new Date().toISOString(),
+                },
+                preAgendamento: {
+                    status: "importado",
+                    crmPreAgendamentoId: data.preAgendamentoId, // agora guardamos
+                }
+            });
+            return { success: true, appointmentId: data.appointmentId };
+        }
+
+        throw new Error(data.error);
+
+    } catch (err) {
+        alert("Erro ao confirmar: " + err.message);
+        return { success: false, error: err.message };
     }
 };

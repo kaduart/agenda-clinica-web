@@ -36,6 +36,7 @@ import { resolveSpecialtyKey } from "./utils/specialty";
 
 import ReminderModal from "./components/ReminderModal";
 import RemindersListModal from "./components/RemindersListModal";
+import { autoSendPreAgendamento, confirmarAgendamento } from "./services/crmExport";
 import { cancelReminder, listenReminders, markReminderDone, snoozeReminderDays } from "./services/remindersRepo";
 import "./styles/app.css";
 
@@ -327,7 +328,7 @@ export default function App() {
   };
 
   const saveAppointment = async (appointmentData) => {
-    console.log("[saveAppointment] appointmentData recebido:", appointmentData);
+    console.log("[saveAppointment] appointmentData:", appointmentData);
 
     const candidate = {
       ...editingAppointment,
@@ -335,23 +336,72 @@ export default function App() {
       status: appointmentData.status === "Vaga" ? "Pendente" : appointmentData.status,
     };
 
-    console.log("[saveAppointment] candidate final:", candidate);
-
     if (hasConflict(appointments, candidate, editingAppointment?.id)) {
-      toast.error("⚠️ Já existe um agendamento nesse horário para esse profissional.");
+      toast.error("⚠️ Conflito de horário!");
       return;
     }
 
     try {
+      // 1. Salva no Firebase primeiro
       await upsertAppointment({ editingAppointment, appointmentData: candidate });
+
+      const isNew = !editingAppointment?.id;
+      const appointmentId = editingAppointment?.id || candidate.id;
+      const appointmentWithId = { id: appointmentId, ...candidate };
+
+      // ========== STATUS: PENDENTE ==========
+      if (candidate.status === "Pendente") {
+        await autoSendPreAgendamento(appointmentWithId);
+        toast.success("Enviado! Aparece no painel de Pré-Agendamentos.");
+      }
+
+      // ========== STATUS: CONFIRMADO ==========
+      else if (candidate.status === "Confirmado") {
+        // Verifica se já tem pré-agendamento enviado
+        const jaEnviado = editingAppointment?.preAgendamento?.crmPreAgendamentoId;
+
+        if (jaEnviado) {
+          // Já tem pré-agendamento → só confirma
+          console.log("[saveAppointment] Confirmando pré-agendamento existente...");
+          await confirmarAgendamento(editingAppointment, {
+            date: candidate.date,
+            time: candidate.time,
+            sessionValue: candidate.crm?.paymentAmount || 200
+          });
+          toast.success("Confirmado no CRM!");
+        } else {
+          // Não tem → cria pré-agendamento E confirma na sequência
+          console.log("[saveAppointment] Criando pré-agendamento e confirmando...");
+
+          const result = await autoSendPreAgendamento(appointmentWithId);
+
+          if (result.success) {
+            // Espera um pouco para garantir que salvou no MongoDB
+            await new Promise(r => setTimeout(r, 500));
+
+            // Agora confirma usando o externalId (appointment.id)
+            await confirmarAgendamento(appointmentWithId, {
+              date: candidate.date,
+              time: candidate.time,
+              sessionValue: candidate.crm?.paymentAmount || 200
+            });
+
+            toast.success("Criado e confirmado no CRM!");
+          } else {
+            toast.error("Erro ao enviar: " + result.error);
+          }
+        }
+      }
+
       setIsModalOpen(false);
       setEditingAppointment(null);
-      toast.success(editingAppointment?.id ? "Agendamento atualizado!" : "Agendamento criado!");
+
     } catch (err) {
       console.error("[saveAppointment] Erro:", err);
-      toast.error("Erro ao salvar agendamento. Tente novamente.");
+      toast.error("Erro ao salvar. Tente novamente.");
     }
   };
+
 
 
   // ========== PROFESSIONALS MODAL ==========
