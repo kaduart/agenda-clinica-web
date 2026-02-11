@@ -293,3 +293,225 @@ export const confirmarAgendamento = async (appointment, dadosConfirmacao) => {
         return { success: false, error: err.message };
     }
 };
+
+// Adicione estas funções no seu crmExport.js (mesmo arquivo)
+
+/**
+ * Sincroniza CANCELAMENTO com o CRM
+ * Usado quando cancela um agendamento na agenda externa
+ */
+export const syncCancelToCRM = async (appointment, reason = "Cancelado via agenda externa") => {
+    const EXPORT_TOKEN = import.meta.env.VITE_AGENDA_EXPORT_TOKEN;
+
+    // Só sincroniza se tiver sido exportado ou tiver pré-agendamento
+    const hasPreAgendamento = appointment.preAgendamento?.crmPreAgendamentoId;
+    const hasExport = appointment.export?.crmAppointmentId;
+
+    if (!hasPreAgendamento && !hasExport) {
+        console.log("[syncCancelToCRM] Agendamento nunca foi exportado, ignorando sync");
+        return { success: true, skipped: true };
+    }
+
+    try {
+        // Marca como sincronizando
+        await database.ref(`appointments/${appointment.id}/syncCancel`).update({
+            status: "syncing",
+            lastError: null,
+            lastAttemptAt: new Date().toISOString(),
+        });
+
+        const payload = {
+            externalId: appointment.id, // firebaseAppointmentId
+            reason: reason,
+            confirmedAbsence: appointment.confirmedAbsence || false
+        };
+
+        const res = await fetch(`${BACKEND_URL}/api/import-from-agenda/sync-cancel`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${EXPORT_TOKEN}`,
+            },
+            body: JSON.stringify(payload),
+        });
+
+        const data = await res.json();
+
+        if (data.success) {
+            await database.ref(`appointments/${appointment.id}/syncCancel`).update({
+                status: "success",
+                crmPreAgendamentoId: data.preAgendamentoId,
+                crmAppointmentId: data.appointmentId,
+                syncedAt: new Date().toISOString(),
+                lastError: null,
+            });
+
+            // Atualiza também o export para refletir cancelamento
+            if (appointment.export) {
+                await database.ref(`appointments/${appointment.id}/export`).update({
+                    status: "canceled",
+                    canceledAt: new Date().toISOString(),
+                });
+            }
+
+            console.log("[syncCancelToCRM] ✅ Sucesso:", data);
+            return { success: true, data };
+        }
+
+        throw new Error(data.error || "Erro desconhecido");
+
+    } catch (err) {
+        console.error("[syncCancelToCRM] ❌ Erro:", err);
+        await database.ref(`appointments/${appointment.id}/syncCancel`).update({
+            status: "error",
+            lastError: err.message,
+            lastAttemptAt: new Date().toISOString(),
+        });
+        return { success: false, error: err.message };
+    }
+};
+
+/**
+ * Sincroniza EDIÇÃO/ATUALIZAÇÃO com o CRM
+ * Usado quando edita data, hora, profissional ou status na agenda externa
+ */
+export const syncUpdateToCRM = async (appointment, updates) => {
+    const EXPORT_TOKEN = import.meta.env.VITE_AGENDA_EXPORT_TOKEN;
+
+    // Só sincroniza se tiver sido exportado ou tiver pré-agendamento
+    const hasPreAgendamento = appointment.preAgendamento?.crmPreAgendamentoId;
+    const hasExport = appointment.export?.crmAppointmentId;
+
+    if (!hasPreAgendamento && !hasExport) {
+        console.log("[syncUpdateToCRM] Agendamento nunca foi exportado, ignorando sync");
+        return { success: true, skipped: true };
+    }
+
+    try {
+        // Marca como sincronizando
+        await database.ref(`appointments/${appointment.id}/syncUpdate`).update({
+            status: "syncing",
+            lastError: null,
+            lastAttemptAt: new Date().toISOString(),
+        });
+
+        const payload = {
+            externalId: appointment.id,
+            date: updates.date || appointment.date,
+            time: updates.time || appointment.time,
+            professionalName: updates.professional || appointment.professional,
+            specialty: updates.specialty || appointment.specialty,
+            observations: updates.observations || appointment.observations,
+            patientInfo: updates.patientInfo || {
+                fullName: appointment.patient,
+                phone: (appointment.phone || "").replace(/\D/g, ""),
+                birthDate: appointment.birthDate,
+                email: appointment.email,
+            },
+            status: updates.status || appointment.status // Pendente, Confirmado, Cancelado
+        };
+
+        // Remove campos undefined
+        Object.keys(payload).forEach(key => {
+            if (payload[key] === undefined) delete payload[key];
+        });
+
+        const res = await fetch(`${BACKEND_URL}/api/import-from-agenda/sync-update`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${EXPORT_TOKEN}`,
+            },
+            body: JSON.stringify(payload),
+        });
+
+        const data = await res.json();
+
+        if (data.success) {
+            await database.ref(`appointments/${appointment.id}/syncUpdate`).update({
+                status: "success",
+                crmPreAgendamentoId: data.preAgendamentoId,
+                crmAppointmentId: data.appointmentId,
+                syncedAt: new Date().toISOString(),
+                updatedFields: data.updatedFields || Object.keys(updates),
+                lastError: null,
+            });
+
+            console.log("[syncUpdateToCRM] ✅ Sucesso:", data);
+            return { success: true, data };
+        }
+
+        throw new Error(data.error || "Erro desconhecido");
+
+    } catch (err) {
+        console.error("[syncUpdateToCRM] ❌ Erro:", err);
+        await database.ref(`appointments/${appointment.id}/syncUpdate`).update({
+            status: "error",
+            lastError: err.message,
+            lastAttemptAt: new Date().toISOString(),
+        });
+        return { success: false, error: err.message };
+    }
+};
+
+/**
+ * Sincroniza EXCLUSÃO com o CRM
+ * Usado quando deleta permanentemente um agendamento na agenda externa
+ */
+export const syncDeleteToCRM = async (appointmentId, reason = "Excluído via agenda externa") => {
+    const EXPORT_TOKEN = import.meta.env.VITE_AGENDA_EXPORT_TOKEN;
+
+    console.log("🚀 [syncDeleteToCRM] INICIANDO...");
+    console.log("🚀 URL:", `${BACKEND_URL}/api/import-from-agenda/sync-delete`);
+    console.log("🚀 Token existe?", !!EXPORT_TOKEN);
+
+    try {
+        const res = await fetch(`${BACKEND_URL}/api/import-from-agenda/sync-delete`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${EXPORT_TOKEN}`,
+            },
+            body: JSON.stringify({ externalId: appointmentId, reason }),
+        });
+
+        console.log("🚀 Resposta HTTP:", res.status); // <-- Qual número aparece aqui?
+
+        const data = await res.json();
+        console.log("🚀 Dados:", data);
+        return data;
+    } catch (err) {
+        console.error("❌ ERRO NO FETCH:", err); // <-- O erro aparece aqui?
+        throw err;
+    }
+};
+
+/**
+ * Wrapper inteligente que detecta mudanças e sincroniza automaticamente
+ * Use isso no onUpdate/onEdit do App.jsx
+ */
+export const syncIfNeeded = async (oldAppointment, newAppointment) => {
+    const changes = {};
+
+    // Detecta mudanças
+    if (oldAppointment.date !== newAppointment.date) changes.date = newAppointment.date;
+    if (oldAppointment.time !== newAppointment.time) changes.time = newAppointment.time;
+    if (oldAppointment.professional !== newAppointment.professional) changes.professional = newAppointment.professional;
+    if (oldAppointment.specialty !== newAppointment.specialty) changes.specialty = newAppointment.specialty;
+    if (oldAppointment.observations !== newAppointment.observations) changes.observations = newAppointment.observations;
+    if (oldAppointment.status !== newAppointment.status) changes.status = newAppointment.status;
+    if (oldAppointment.patient !== newAppointment.patient) {
+        changes.patientInfo = {
+            fullName: newAppointment.patient,
+            phone: (newAppointment.phone || "").replace(/\D/g, ""),
+            birthDate: newAppointment.birthDate,
+            email: newAppointment.email,
+        };
+    }
+
+    if (Object.keys(changes).length === 0) {
+        return { success: true, skipped: true, reason: "no_changes" };
+    }
+
+    return syncUpdateToCRM(oldAppointment, changes);
+};

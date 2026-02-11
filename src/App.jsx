@@ -3,6 +3,9 @@ import React, { useEffect, useMemo } from "react";
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
+// Firebase database precisa ser importado pro onDelete funcionar
+import { database } from "./config/firebase";
+
 import AppointmentTable from "./components/AppointmentTable";
 import FiltersPanel from "./components/FiltersPanel";
 import Header from "./components/Header";
@@ -36,7 +39,13 @@ import { resolveSpecialtyKey } from "./utils/specialty";
 
 import ReminderModal from "./components/ReminderModal";
 import RemindersListModal from "./components/RemindersListModal";
-import { autoSendPreAgendamento, confirmarAgendamento } from "./services/crmExport";
+import {
+  autoSendPreAgendamento,
+  confirmarAgendamento,
+  syncCancelToCRM,
+  syncDeleteToCRM,
+  syncIfNeeded
+} from "./services/crmExport";
 import { cancelReminder, listenReminders, markReminderDone, snoozeReminderDays } from "./services/remindersRepo";
 import "./styles/app.css";
 
@@ -44,7 +53,6 @@ export default function App() {
   console.log("📱 [App.jsx] Componente App montando...");
 
   const [view, setView] = React.useState("list");
-
   const [appointments, setAppointments] = React.useState([]);
   const [professionals, setProfessionals] = React.useState([]);
 
@@ -53,7 +61,6 @@ export default function App() {
   const todayDayOfWeek = (today.getDay() === 0 ? 7 : today.getDay()).toString();
 
   const [activeSpecialty, setActiveSpecialty] = React.useState("todas");
-
   const [currentMonth, setCurrentMonth] = React.useState(new Date().getMonth());
   const [currentYear, setCurrentYear] = React.useState(new Date().getFullYear());
 
@@ -67,11 +74,9 @@ export default function App() {
 
   const [isModalOpen, setIsModalOpen] = React.useState(false);
   const [editingAppointment, setEditingAppointment] = React.useState(null);
-
   const [isProfessionalsModalOpen, setIsProfessionalsModalOpen] = React.useState(false);
   const [isReminderOpen, setIsReminderOpen] = React.useState(false);
   const [reminderAppointment, setReminderAppointment] = React.useState(null);
-
   const [reminders, setReminders] = React.useState([]);
   const [isRemindersListOpen, setIsRemindersListOpen] = React.useState(false);
 
@@ -85,7 +90,6 @@ export default function App() {
     try {
       const candidate = { ...reminderAppointment, ...payload };
       await upsertAppointment({ editingAppointment: reminderAppointment, appointmentData: candidate });
-
       setIsReminderOpen(false);
       setReminderAppointment(null);
       toast.success("Lembrete salvo!");
@@ -109,15 +113,13 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    // ✅ SE filterDate ESTÁ ATIVO, busca o mês DELE
     let targetYear = currentYear;
     let targetMonth = currentMonth;
 
     if (filters.filterDate) {
       const [y, m] = filters.filterDate.split("-").map(Number);
       targetYear = y;
-      targetMonth = m - 1; // JS usa 0-11
-      console.log(`👂 [App.jsx] Ajustando listener para mês do filterDate: ${targetYear}/${targetMonth + 1}`);
+      targetMonth = m - 1;
     }
 
     console.log(`👂 [App.jsx] Listener de appointments: ${targetYear}/${targetMonth + 1}`);
@@ -142,129 +144,145 @@ export default function App() {
     if (activeSpecialty === "psicologia") return "Psicologia";
     if (activeSpecialty === "terapia_ocupacional") return "Terapia Ocupacional";
     if (activeSpecialty === "fisioterapia") return "Fisioterapia";
-    if (activeSpecialty === "todas") return "";
     return "";
   }, [activeSpecialty]);
 
-  // ========== FILTROS + SORT ==========
-  const filteredAppointments = React.useMemo(() => {
-    const weeks = getWeeksInMonth(currentYear, currentMonth);
+  // ========== FUNÇÕES DE SINCronização ==========
 
-    let base = (appointments || []).filter((appointment) => {
-      // ✅ Filtro de especialidade
-      if (activeSpecialty !== "todas") {
-        if (resolveSpecialtyKey(appointment) !== activeSpecialty) {
-          return false;
-        }
-      }
-
-      // ✅ Filtro de data específica (PRIORIDADE MÁXIMA)
-      if (filters.filterDate) {
-        if (appointment.date !== filters.filterDate) {
-          return false;
-        }
-        // Se filterDate está ativo, IGNORA filterDay e filterWeek
-      } else {
-        // ✅ Filtro de dia da semana (APENAS se filterDate NÃO estiver ativo)
-        if (filters.filterDay) {
-          if (!appointment.date) {
-            return false;
-          }
-
-          const [y, m, d] = appointment.date.split("-").map(Number);
-          const dateObj = new Date(y, m - 1, d);
-          const jsDay = dateObj.getDay(); // 0=Dom, 1=Seg, ..., 6=Sáb
-          const targetDay = Number(filters.filterDay);
-
-          if (jsDay !== targetDay) {
-            return false;
-          }
-        }
-
-        // ✅ Filtro de semana (APENAS se filterDate NÃO estiver ativo)
-        if (filters.filterWeek !== null && filters.filterWeek !== undefined) {
-          const w = weeks[filters.filterWeek];
-          if (!w) {
-            return false;
-          }
-
-          const toKey = (v) => {
-            if (typeof v === "string") return v.replaceAll("-", "");
-            return formatDateLocal(v).replaceAll("-", "");
-          };
-
-          const dKey = toKey(appointment.date);
-          const startKey = toKey(w.start);
-          const endKey = toKey(w.end);
-
-          if (!(dKey >= startKey && dKey <= endKey)) {
-            return false;
-          }
-        }
-      }
-
-      // ✅ Filtro de profissional
-      if (filters.filterProfessional) {
-        if (filters.filterProfessional.toLowerCase() === "livre") {
-          const isLivre =
-            (appointment.professional && appointment.professional.toLowerCase().includes("livre")) ||
-            (appointment.patient && appointment.patient.toLowerCase().includes("livre")) ||
-            (appointment.observations && appointment.observations.toLowerCase().includes("livre"));
-          if (!isLivre) {
-            return false;
-          }
-        } else if (appointment.professional !== filters.filterProfessional) {
-          return false;
-        }
-      }
-
-      // ✅ Filtro de status
-      if (filters.filterStatus && appointment.status !== filters.filterStatus) {
-        return false;
-      }
-
-      // ✅ Filtro de semana
-      if (filters.filterWeek !== null && filters.filterWeek !== undefined) {
-        const w = weeks[filters.filterWeek];
-        if (!w) {
-          return false;
-        }
-
-        const toKey = (v) => {
-          if (typeof v === "string") return v.replaceAll("-", "");
-          return formatDateLocal(v).replaceAll("-", "");
-        };
-
-        const dKey = toKey(appointment.date);
-        const startKey = toKey(w.start);
-        const endKey = toKey(w.end);
-
-        if (!(dKey >= startKey && dKey <= endKey)) {
-          return false;
-        }
-      }
-
-      return true;
-    });
-
-    // ✅ Ordenar cronologicamente
-    base = sortAppointmentsByDateTimeAsc(base);
-
-    return base;
-  }, [appointments, activeSpecialty, filters, currentYear, currentMonth]);
-
-  // ========== CRUD APPOINTMENTS ==========
+  // EXCLUIR com sync pro CRM
   const onDelete = async (id) => {
-    const ok = await confirmToast("Tem certeza que deseja excluir este agendamento?");
+    const ok = await confirmToast("Tem certeza?");
     if (!ok) return;
+
     try {
+      console.log("🚀 EXCLUINDO ID:", id);
+
+      // Pega dados antes de deletar
+      const snap = await database.ref(`appointments/${id}`).get();
+      const appointment = { id, ...snap.val() };
+
+      console.log("Dados:", appointment);
+
+      // VERIFICA SE TEM NO CRM
+      const temNoCRM = appointment.preAgendamento?.crmPreAgendamentoId ||
+        appointment.export?.crmAppointmentId;
+
+      console.log("Tem no CRM?", temNoCRM);
+
+      // Se tem no CRM, avisa pra deletar lá também
+      if (temNoCRM) {
+        console.log("📡 Chamando syncDeleteToCRM...");
+        await syncDeleteToCRM(id);
+        console.log("✅ Deletado no CRM");
+      }
+
+      // Deleta no Firebase
       await deleteAppointment(id);
-      toast.success("Agendamento excluído com sucesso!");
+      toast.success("Excluído!");
+
     } catch (e) {
-      console.error("[onDelete]", e);
-      toast.error("Erro ao excluir agendamento.");
+      console.error("❌ ERRO:", e);
+      toast.error("Erro: " + e.message);
     }
   };
+
+  // CANCELAR específico (pode ser chamado de um botão na tabela)
+  const onCancel = async (appointment) => {
+    const reason = prompt("Motivo do cancelamento:", "Cancelado pelo paciente");
+    if (!reason) return;
+
+    try {
+      // 1. Atualiza status localmente para Cancelado
+      const updatedData = {
+        ...appointment,
+        status: "Cancelado",
+        canceledReason: reason,
+        canceledAt: new Date().toISOString()
+      };
+
+      await upsertAppointment({ editingAppointment: appointment, appointmentData: updatedData });
+
+      // 2. Sincroniza com CRM se já tiver sido exportado
+      if (appointment.export?.status === "success" || appointment.preAgendamento?.crmPreAgendamentoId) {
+        await syncCancelToCRM(appointment, reason);
+      }
+
+      toast.success("Agendamento cancelado e sincronizado!");
+    } catch (e) {
+      console.error("[onCancel]", e);
+      toast.error("Erro ao cancelar: " + e.message);
+    }
+  };
+
+  // SALVAR (criar ou editar)
+  const saveAppointment = async (appointmentData) => {
+    console.log("[saveAppointment] appointmentData:", appointmentData);
+
+    const isEditing = !!editingAppointment?.id;
+    const candidate = {
+      ...editingAppointment,
+      ...appointmentData,
+      status: appointmentData.status === "Vaga" ? "Pendente" : appointmentData.status,
+    };
+
+    if (hasConflict(appointments, candidate, editingAppointment?.id)) {
+      toast.error("⚠️ Conflito de horário!");
+      return;
+    }
+
+    try {
+      // Guarda os dados antigos antes de salvar (pra detectar mudanças)
+      const oldAppointment = isEditing ? { ...editingAppointment } : null;
+
+      // 1. Salva no Firebase
+      await upsertAppointment({ editingAppointment, appointmentData: candidate });
+
+      // 2. Se for EDIÇÃO e já foi exportado pro CRM, sincroniza mudanças
+      if (isEditing && oldAppointment) {
+        const wasExported = oldAppointment.export?.status === "success" ||
+          oldAppointment.preAgendamento?.crmPreAgendamentoId;
+
+        if (wasExported) {
+          const syncResult = await syncIfNeeded(oldAppointment, candidate);
+          if (syncResult.success && !syncResult.skipped) {
+            toast.success("Alterações sincronizadas com o CRM!");
+          }
+        }
+      }
+
+      // 3. Se for NOVO e Pendente → envia pré-agendamento
+      if (!isEditing && candidate.status === "Pendente") {
+        await autoSendPreAgendamento({ id: editingAppointment?.id || candidate.id, ...candidate });
+        toast.success("Enviado! Aparece no painel de Pré-Agendamentos.");
+      }
+
+      // 4. Se for NOVO e Confirmado → cria e confirma
+      else if (!isEditing && candidate.status === "Confirmado") {
+        const result = await autoSendPreAgendamento({ id: editingAppointment?.id || candidate.id, ...candidate });
+
+        if (result.success) {
+          await new Promise(r => setTimeout(r, 500));
+          await confirmarAgendamento({ id: editingAppointment?.id || candidate.id, ...candidate }, {
+            date: candidate.date,
+            time: candidate.time,
+            sessionValue: candidate.crm?.paymentAmount || 200
+          });
+          toast.success("Criado e confirmado no CRM!");
+        } else {
+          toast.error("Erro ao enviar: " + result.error);
+        }
+      }
+
+      setIsModalOpen(false);
+      setEditingAppointment(null);
+
+    } catch (err) {
+      console.error("[saveAppointment] Erro:", err);
+      toast.error("Erro ao salvar. Tente novamente.");
+    }
+  };
+
+  // ========== RESTO DAS FUNÇÕES ==========
 
   const openEditModal = (appointment) => {
     console.log("[openEditModal]", appointment);
@@ -327,89 +345,73 @@ export default function App() {
     openEditModal(payload);
   };
 
-  const saveAppointment = async (appointmentData) => {
-    console.log("[saveAppointment] appointmentData:", appointmentData);
+  // ========== FILTROS + SORT ==========
+  const filteredAppointments = React.useMemo(() => {
+    const weeks = getWeeksInMonth(currentYear, currentMonth);
 
-    const candidate = {
-      ...editingAppointment,
-      ...appointmentData,
-      status: appointmentData.status === "Vaga" ? "Pendente" : appointmentData.status,
-    };
-
-    if (hasConflict(appointments, candidate, editingAppointment?.id)) {
-      toast.error("⚠️ Conflito de horário!");
-      return;
-    }
-
-    try {
-      // 1. Salva no Firebase primeiro
-      await upsertAppointment({ editingAppointment, appointmentData: candidate });
-
-      const isNew = !editingAppointment?.id;
-      const appointmentId = editingAppointment?.id || candidate.id;
-      const appointmentWithId = { id: appointmentId, ...candidate };
-
-      // ========== STATUS: PENDENTE ==========
-      if (candidate.status === "Pendente") {
-        await autoSendPreAgendamento(appointmentWithId);
-        toast.success("Enviado! Aparece no painel de Pré-Agendamentos.");
-      }
-
-      // ========== STATUS: CONFIRMADO ==========
-      else if (candidate.status === "Confirmado") {
-        // Verifica se já tem pré-agendamento enviado
-        const jaEnviado = editingAppointment?.preAgendamento?.crmPreAgendamentoId;
-
-        if (jaEnviado) {
-          // Já tem pré-agendamento → só confirma
-          console.log("[saveAppointment] Confirmando pré-agendamento existente...");
-          await confirmarAgendamento(editingAppointment, {
-            date: candidate.date,
-            time: candidate.time,
-            sessionValue: candidate.crm?.paymentAmount || 200
-          });
-          toast.success("Confirmado no CRM!");
-        } else {
-          // Não tem → cria pré-agendamento E confirma na sequência
-          console.log("[saveAppointment] Criando pré-agendamento e confirmando...");
-
-          const result = await autoSendPreAgendamento(appointmentWithId);
-
-          if (result.success) {
-            // Espera um pouco para garantir que salvou no MongoDB
-            await new Promise(r => setTimeout(r, 500));
-
-            // Agora confirma usando o externalId (appointment.id)
-            await confirmarAgendamento(appointmentWithId, {
-              date: candidate.date,
-              time: candidate.time,
-              sessionValue: candidate.crm?.paymentAmount || 200
-            });
-
-            toast.success("Criado e confirmado no CRM!");
-          } else {
-            toast.error("Erro ao enviar: " + result.error);
-          }
+    let base = (appointments || []).filter((appointment) => {
+      if (activeSpecialty !== "todas") {
+        if (resolveSpecialtyKey(appointment) !== activeSpecialty) {
+          return false;
         }
       }
 
-      setIsModalOpen(false);
-      setEditingAppointment(null);
+      if (filters.filterDate) {
+        if (appointment.date !== filters.filterDate) {
+          return false;
+        }
+      } else {
+        if (filters.filterDay) {
+          if (!appointment.date) return false;
+          const [y, m, d] = appointment.date.split("-").map(Number);
+          const dateObj = new Date(y, m - 1, d);
+          const jsDay = dateObj.getDay();
+          const targetDay = Number(filters.filterDay);
+          if (jsDay !== targetDay) return false;
+        }
 
-    } catch (err) {
-      console.error("[saveAppointment] Erro:", err);
-      toast.error("Erro ao salvar. Tente novamente.");
-    }
-  };
+        if (filters.filterWeek !== null && filters.filterWeek !== undefined) {
+          const w = weeks[filters.filterWeek];
+          if (!w) return false;
+          const toKey = (v) => {
+            if (typeof v === "string") return v.replaceAll("-", "");
+            return formatDateLocal(v).replaceAll("-", "");
+          };
+          const dKey = toKey(appointment.date);
+          const startKey = toKey(w.start);
+          const endKey = toKey(w.end);
+          if (!(dKey >= startKey && dKey <= endKey)) return false;
+        }
+      }
 
+      if (filters.filterProfessional) {
+        if (filters.filterProfessional.toLowerCase() === "livre") {
+          const isLivre =
+            (appointment.professional && appointment.professional.toLowerCase().includes("livre")) ||
+            (appointment.patient && appointment.patient.toLowerCase().includes("livre")) ||
+            (appointment.observations && appointment.observations.toLowerCase().includes("livre"));
+          if (!isLivre) return false;
+        } else if (appointment.professional !== filters.filterProfessional) {
+          return false;
+        }
+      }
 
+      if (filters.filterStatus && appointment.status !== filters.filterStatus) {
+        return false;
+      }
 
-  // ========== PROFESSIONALS MODAL ==========
+      return true;
+    });
+
+    base = sortAppointmentsByDateTimeAsc(base);
+    return base;
+  }, [appointments, activeSpecialty, filters, currentYear, currentMonth]);
+
+  // ========== PROFESSIONALS ==========
   const onOpenProfessionals = () => {
     console.log("👤 [App.jsx] Abrindo modal de profissionais");
     setIsProfessionalsModalOpen(true);
   };
-
 
   const handleAddProfessional = async (name) => {
     try {
@@ -446,25 +448,17 @@ export default function App() {
 
   // ========== RENDER ==========
   return (
-
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-gray-100 to-blue-50">
       <div className="relative z-50 pointer-events-auto">
         <Header view={view} setView={setView} />
       </div>
-      <ToastContainer
-        position="top-center"
-        newestOnTop
-        closeOnClick={false}
-        draggable={false}
-      />
+      <ToastContainer position="top-center" newestOnTop closeOnClick={false} draggable={false} />
 
       <main className="max-w-screen-2xl mx-auto px-2 sm:px-4 lg:px-6 py-6 space-y-6">
-        {/* Dashboard de métricas */}
         <div className="bg-gradient-to-r from-white to-gray-50 rounded-2xl shadow-xl border border-gray-200 p-4 sm:p-6">
           <SpecialtyDashboard appointments={appointments} activeSpecialty={activeSpecialty} />
         </div>
 
-        {/* Painel de filtros */}
         <div className="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden">
           <FiltersPanel
             professionals={professionals}
@@ -472,13 +466,12 @@ export default function App() {
             currentMonth={currentMonth}
             filters={filters}
             setFilters={setFilters}
-            onNewAppointment={openCreateModal} // ✅ Esta função agora existe
-            onOpenProfessionals={onOpenProfessionals} // ✅ Esta função agora existe
-            onResetFilters={handleResetFilters} // ✅ Adicione esta prop
+            onNewAppointment={openCreateModal}
+            onOpenProfessionals={onOpenProfessionals}
+            onResetFilters={handleResetFilters}
           />
         </div>
 
-        {/* VIEW: LISTA */}
         {view === "list" && (
           <div className="space-y-4 animate-fadeIn">
             <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-2">
@@ -495,19 +488,17 @@ export default function App() {
               appointments={filteredAppointments}
               onEdit={openEditModal}
               onDelete={onDelete}
+              onCancel={onCancel}  // <-- Passa a função de cancelar aqui
               onReminder={openReminder}
               onConfirmCycle={async (payload, baseAppointment) => {
                 try {
                   const result = await generateCycleAppointments(baseAppointment, payload, {
-                    statusForGenerated: "Confirmado", // ou "Pendente" se você preferir travar sem “confirmar”
+                    statusForGenerated: "Confirmado",
                     skipConflicts: true,
                   });
-
-                  const msg =
-                    result.skipped?.length
-                      ? `${result.createdCount} criadas, ${result.skipped.length} puladas por conflito.`
-                      : `${result.createdCount} sessões criadas.`;
-
+                  const msg = result.skipped?.length
+                    ? `${result.createdCount} criadas, ${result.skipped.length} puladas por conflito.`
+                    : `${result.createdCount} sessões criadas.`;
                   toast.success(`Ciclo ${result.cycleId} gerado! ${msg}`);
                 } catch (e) {
                   console.error(e);
@@ -518,7 +509,6 @@ export default function App() {
           </div>
         )}
 
-        {/* VIEW: CALENDÁRIO */}
         {view === "calendar" && (
           <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-4 sm:p-6 animate-fadeIn">
             <CalendarView
@@ -535,7 +525,6 @@ export default function App() {
           </div>
         )}
 
-        {/* VIEW: SEMANAL */}
         {view === "weekly" && (
           <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-4 sm:p-6 animate-fadeIn">
             <WeeklyView
@@ -551,7 +540,7 @@ export default function App() {
         )}
       </main>
 
-      {/* MODAL: AGENDAMENTO */}
+      {/* MODALS */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn">
           <AppointmentModal
@@ -566,7 +555,6 @@ export default function App() {
         </div>
       )}
 
-      {/* MODAL: PROFISSIONAIS */}
       {isProfessionalsModalOpen && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn">
           <ProfessionalsModal
@@ -578,7 +566,6 @@ export default function App() {
         </div>
       )}
 
-      {/* MODAL: LEMBRETE */}
       {isReminderOpen && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn">
           <ReminderModal
@@ -591,19 +578,6 @@ export default function App() {
           />
         </div>
       )}
-
-      {/* TOAST: Sistema carregado */}
-      {/*    {appointments.length > 0 && (
-        <div className="fixed bottom-4 right-4 z-40">
-          <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-4 py-3 rounded-xl shadow-lg flex items-center gap-3 animate-slideInUp">
-            <i className="fas fa-check-circle text-xl"></i>
-            <div>
-              <p className="font-semibold">Sistema Carregado</p>
-              <p className="text-sm opacity-90">{appointments.length} agendamentos sincronizados</p>
-            </div>
-          </div>
-        </div>
-      )} */}
 
       <RemindersListModal
         open={isRemindersListOpen}
@@ -622,12 +596,9 @@ export default function App() {
           toast.success("Lembrete adiado +7 dias!");
         }}
         onOpenAppointment={(appointmentId) => {
-          // aqui você pode buscar o appointment e abrir openEditModal
-          // (se quiser, eu te passo a função getAppointmentById no appointmentsRepo)
           toast.info(`Abrir agendamento: ${appointmentId}`);
         }}
       />
-
     </div>
   );
 }
