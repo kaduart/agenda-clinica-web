@@ -483,14 +483,17 @@ export const syncDeleteToCRM = async (appointmentId, reason = "Excluído via age
 /**
  * Wrapper inteligente que detecta mudanças e sincroniza automaticamente
  * Use isso no onUpdate/onEdit do App.jsx
- */
-/**
- * Wrapper inteligente que detecta mudanças e sincroniza automaticamente
- * Use isso no onUpdate/onEdit do App.jsx
  * 
  * CORREÇÃO: Quando status muda para "Confirmado", chama o endpoint de confirmação
  */
 export const syncIfNeeded = async (oldAppointment, newAppointment) => {
+    console.log("[syncIfNeeded] ==========================================");
+    console.log("[syncIfNeeded] Iniciando comparação...");
+    console.log("[syncIfNeeded] oldAppointment.status:", oldAppointment?.status);
+    console.log("[syncIfNeeded] newAppointment.status:", newAppointment?.status);
+    console.log("[syncIfNeeded] oldAppointment.preAgendamento:", oldAppointment?.preAgendamento);
+    console.log("[syncIfNeeded] oldAppointment.export:", oldAppointment?.export);
+
     const changes = {};
 
     // Detecta mudanças
@@ -499,7 +502,11 @@ export const syncIfNeeded = async (oldAppointment, newAppointment) => {
     if (oldAppointment.professional !== newAppointment.professional) changes.professional = newAppointment.professional;
     if (oldAppointment.specialty !== newAppointment.specialty) changes.specialty = newAppointment.specialty;
     if (oldAppointment.observations !== newAppointment.observations) changes.observations = newAppointment.observations;
-    if (oldAppointment.status !== newAppointment.status) changes.status = newAppointment.status;
+    if (oldAppointment.status !== newAppointment.status) {
+        changes.status = newAppointment.status;
+        console.log("[syncIfNeeded] ⚠️ MUDANÇA DE STATUS DETECTADA!");
+        console.log("[syncIfNeeded] De:", oldAppointment.status, "Para:", newAppointment.status);
+    }
     if (oldAppointment.patient !== newAppointment.patient) {
         changes.patientInfo = {
             fullName: newAppointment.patient,
@@ -509,7 +516,10 @@ export const syncIfNeeded = async (oldAppointment, newAppointment) => {
         };
     }
 
+    console.log("[syncIfNeeded] Mudanças detectadas:", Object.keys(changes));
+
     if (Object.keys(changes).length === 0) {
+        console.log("[syncIfNeeded] Nenhuma mudança detectada, retornando...");
         return { success: true, skipped: true, reason: "no_changes" };
     }
 
@@ -520,8 +530,12 @@ export const syncIfNeeded = async (oldAppointment, newAppointment) => {
     const temPreAgendamento = oldAppointment.preAgendamento?.crmPreAgendamentoId;
     const aindaNaoFoiImportado = !oldAppointment.export?.crmAppointmentId;
 
+    console.log("[syncIfNeeded] mudouParaConfirmado?", mudouParaConfirmado);
+    console.log("[syncIfNeeded] temPreAgendamento?", temPreAgendamento);
+    console.log("[syncIfNeeded] aindaNaoFoiImportado?", aindaNaoFoiImportado);
+
     if (mudouParaConfirmado && temPreAgendamento && aindaNaoFoiImportado) {
-        console.log("[syncIfNeeded] 🚀 Detectada mudança para Confirmado! Chamando confirmarAgendamento...");
+        console.log("[syncIfNeeded] 🚀 CONDIÇÃO ATENDIDA! Chamando confirmarAgendamento...");
 
         // Chama a confirmação que cria o agendamento real no CRM
         const confirmResult = await confirmarAgendamento(newAppointment, {
@@ -529,6 +543,8 @@ export const syncIfNeeded = async (oldAppointment, newAppointment) => {
             time: newAppointment.time,
             sessionValue: newAppointment.crm?.paymentAmount || 200
         });
+
+        console.log("[syncIfNeeded] Resultado de confirmarAgendamento:", confirmResult);
 
         if (confirmResult.success) {
             console.log("[syncIfNeeded] ✅ Agendamento confirmado no CRM:", confirmResult.appointmentId);
@@ -544,6 +560,7 @@ export const syncIfNeeded = async (oldAppointment, newAppointment) => {
         }
     }
 
+    console.log("[syncIfNeeded] Condição de confirmação NÃO atendida, fazendo syncUpdate normal...");
     // Se não for confirmação, faz o update normal
     return syncUpdateToCRM(oldAppointment, changes);
 };
