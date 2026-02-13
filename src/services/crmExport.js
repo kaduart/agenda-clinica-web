@@ -1,6 +1,6 @@
 import { database } from "../config/firebase";
 import { resolveSpecialtyKey } from "../utils/specialty";
-import { EXPORT_TOKEN, BACKEND_URL } from "../config/constants";
+import { EXPORT_TOKEN, BACKEND_URL } from "../constants";
 
 /* const BACKEND_URL =
     window.location.hostname === "localhost"
