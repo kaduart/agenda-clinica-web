@@ -1,10 +1,11 @@
 import { database } from "../config/firebase";
 import { resolveSpecialtyKey } from "../utils/specialty";
+import { EXPORT_TOKEN, BACKEND_URL } from "../config/constants";
 
-const BACKEND_URL =
+/* const BACKEND_URL =
     window.location.hostname === "localhost"
         ? "http://localhost:5000"
-        : "https://fono-inova-crm-back.onrender.com";
+        : "https://fono-inova-crm-back.onrender.com"; */
 
 export const exportToCRM = async (appointment) => {
     const EXPORT_TOKEN = import.meta.env.VITE_AGENDA_EXPORT_TOKEN;
@@ -176,8 +177,6 @@ export const exportToCRM = async (appointment) => {
 };
 
 export const autoSendPreAgendamento = async (appointment) => {
-    const EXPORT_TOKEN = import.meta.env.VITE_AGENDA_EXPORT_TOKEN;
-
     try {
         const payload = {
             firebaseAppointmentId: appointment.id,
