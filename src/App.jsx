@@ -264,7 +264,7 @@ export default function App() {
       }
 
       // 3. Se for NOVO e Pendente → envia pré-agendamento ✅
-      if (!isEditing && candidate.status === "Pendente") {
+      if (!isEditing && (candidate.status === "Pendente" || candidate.status === "Confirmado")) {
         const result = await autoSendPreAgendamento({
           id: savedId, // ← USA O ID DO RESULTADO ✅
           ...candidate
