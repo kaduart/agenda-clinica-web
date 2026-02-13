@@ -1,6 +1,7 @@
 import { database } from "../config/firebase";
 import { resolveSpecialtyKey } from "../utils/specialty";
-import { EXPORT_TOKEN, BACKEND_URL } from "../constants";
+const EXPORT_TOKEN = "agenda_export_token_fono_inova_2025_secure_abc123";
+const BACKEND_URL = "https://fono-inova-crm-back.onrender.com";
 
 /* const BACKEND_URL =
     window.location.hostname === "localhost"
