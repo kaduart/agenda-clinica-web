@@ -8,8 +8,6 @@ import { EXPORT_TOKEN, BACKEND_URL } from "../config/constants";
         : "https://fono-inova-crm-back.onrender.com"; */
 
 export const exportToCRM = async (appointment) => {
-    const EXPORT_TOKEN = import.meta.env.VITE_AGENDA_EXPORT_TOKEN;
-    EXPORT_TOKEN
 
     if (appointment.preAgendamento?.crmPreAgendamentoId) {
         return confirmarEImportarToCRM(appointment, {});
@@ -234,7 +232,6 @@ export const autoSendPreAgendamento = async (appointment) => {
 };
 
 export const confirmarAgendamento = async (appointment, dadosConfirmacao) => {
-    const EXPORT_TOKEN = import.meta.env.VITE_AGENDA_EXPORT_TOKEN;
 
     // Usa o próprio ID do Firebase (appointment.id) como externalId
     const externalId = appointment.id;
@@ -300,7 +297,6 @@ export const confirmarAgendamento = async (appointment, dadosConfirmacao) => {
  * Usado quando cancela um agendamento na agenda externa
  */
 export const syncCancelToCRM = async (appointment, reason = "Cancelado via agenda externa") => {
-    const EXPORT_TOKEN = import.meta.env.VITE_AGENDA_EXPORT_TOKEN;
 
     // Só sincroniza se tiver sido exportado ou tiver pré-agendamento
     const hasPreAgendamento = appointment.preAgendamento?.crmPreAgendamentoId;
@@ -375,7 +371,6 @@ export const syncCancelToCRM = async (appointment, reason = "Cancelado via agend
  * Usado quando edita data, hora, profissional ou status na agenda externa
  */
 export const syncUpdateToCRM = async (appointment, updates) => {
-    const EXPORT_TOKEN = import.meta.env.VITE_AGENDA_EXPORT_TOKEN;
 
     // Só sincroniza se tiver sido exportado ou tiver pré-agendamento
     const hasPreAgendamento = appointment.preAgendamento?.crmPreAgendamentoId;
@@ -458,7 +453,6 @@ export const syncUpdateToCRM = async (appointment, updates) => {
  * Usado quando deleta permanentemente um agendamento na agenda externa
  */
 export const syncDeleteToCRM = async (appointmentId, reason = "Excluído via agenda externa") => {
-    const EXPORT_TOKEN = import.meta.env.VITE_AGENDA_EXPORT_TOKEN;
 
     console.log("🚀 [syncDeleteToCRM] INICIANDO...");
     console.log("🚀 URL:", `${BACKEND_URL}/api/import-from-agenda/sync-delete`);
