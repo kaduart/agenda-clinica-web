@@ -484,6 +484,12 @@ export const syncDeleteToCRM = async (appointmentId, reason = "Excluído via age
  * Wrapper inteligente que detecta mudanças e sincroniza automaticamente
  * Use isso no onUpdate/onEdit do App.jsx
  */
+/**
+ * Wrapper inteligente que detecta mudanças e sincroniza automaticamente
+ * Use isso no onUpdate/onEdit do App.jsx
+ * 
+ * CORREÇÃO: Quando status muda para "Confirmado", chama o endpoint de confirmação
+ */
 export const syncIfNeeded = async (oldAppointment, newAppointment) => {
     const changes = {};
 
@@ -507,5 +513,37 @@ export const syncIfNeeded = async (oldAppointment, newAppointment) => {
         return { success: true, skipped: true, reason: "no_changes" };
     }
 
+    // 🎯 CORREÇÃO: Se status mudou para "Confirmado" e tinha pré-agendamento, CONFIRMAR!
+    const mudouParaConfirmado = changes.status === "Confirmado" &&
+        oldAppointment.status !== "Confirmado";
+
+    const temPreAgendamento = oldAppointment.preAgendamento?.crmPreAgendamentoId;
+    const aindaNaoFoiImportado = !oldAppointment.export?.crmAppointmentId;
+
+    if (mudouParaConfirmado && temPreAgendamento && aindaNaoFoiImportado) {
+        console.log("[syncIfNeeded] 🚀 Detectada mudança para Confirmado! Chamando confirmarAgendamento...");
+
+        // Chama a confirmação que cria o agendamento real no CRM
+        const confirmResult = await confirmarAgendamento(newAppointment, {
+            date: newAppointment.date,
+            time: newAppointment.time,
+            sessionValue: newAppointment.crm?.paymentAmount || 200
+        });
+
+        if (confirmResult.success) {
+            console.log("[syncIfNeeded] ✅ Agendamento confirmado no CRM:", confirmResult.appointmentId);
+            return {
+                success: true,
+                confirmed: true,
+                appointmentId: confirmResult.appointmentId,
+                changes
+            };
+        } else {
+            console.error("[syncIfNeeded] ❌ Erro ao confirmar:", confirmResult.error);
+            return { success: false, error: confirmResult.error, changes };
+        }
+    }
+
+    // Se não for confirmação, faz o update normal
     return syncUpdateToCRM(oldAppointment, changes);
 };
