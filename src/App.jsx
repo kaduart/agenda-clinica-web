@@ -224,6 +224,7 @@ export default function App() {
       ...appointmentData,
       status: appointmentData.status === "Vaga" ? "Pendente" : appointmentData.status,
     };
+    console.log("[saveAppointment] candidate.status:", candidate.status);
 
     if (hasConflict(appointments, candidate, editingAppointment?.id)) {
       toast.error("⚠️ Conflito de horário!");
@@ -233,12 +234,24 @@ export default function App() {
     try {
       // Guarda os dados antigos antes de salvar (pra detectar mudanças)
       const oldAppointment = isEditing ? { ...editingAppointment } : null;
+      console.log("[saveAppointment] Chamando upsertAppointment...");
 
-      // 1. Salva no Firebase
-      await upsertAppointment({ editingAppointment, appointmentData: candidate });
+      // 1. Salva no Firebase e PEGA O ID RETORNADO ✅
+      const result = await upsertAppointment({ editingAppointment, appointmentData: candidate });
+      console.log("[saveAppointment] Resultado:", result);
+      // 3. Se for NOVO e Pendente → envia pré-agendamento
+      console.log("[saveAppointment] Verificando condição:", {
+        isEditing,
+        status: candidate.status,
+        shouldSend: !isEditing && candidate.status === "Pendente"
+      });
+      const savedId = result.id; // ← PEGA O ID AQUI ✅
+      console.log("[saveAppointment] Salvo com ID:", savedId);
 
       // 2. Se for EDIÇÃO e já foi exportado pro CRM, sincroniza mudanças
       if (isEditing && oldAppointment) {
+        console.log("[saveAppointment] ✅ CONDIÇÃO ATENDIDA - Enviando pré-agendamento");
+
         const wasExported = oldAppointment.export?.status === "success" ||
           oldAppointment.preAgendamento?.crmPreAgendamentoId;
 
@@ -250,19 +263,33 @@ export default function App() {
         }
       }
 
-      // 3. Se for NOVO e Pendente → envia pré-agendamento
+      // 3. Se for NOVO e Pendente → envia pré-agendamento ✅
       if (!isEditing && candidate.status === "Pendente") {
-        await autoSendPreAgendamento({ id: editingAppointment?.id || candidate.id, ...candidate });
-        toast.success("Enviado! Aparece no painel de Pré-Agendamentos.");
+        const result = await autoSendPreAgendamento({
+          id: savedId, // ← USA O ID DO RESULTADO ✅
+          ...candidate
+        });
+
+        if (result.success) {
+          toast.success("Enviado! Aparece no painel de Pré-Agendamentos.");
+        } else {
+          toast.error("Erro ao enviar: " + result.error);
+        }
       }
 
       // 4. Se for NOVO e Confirmado → cria e confirma
       else if (!isEditing && candidate.status === "Confirmado") {
-        const result = await autoSendPreAgendamento({ id: editingAppointment?.id || candidate.id, ...candidate });
+        const result = await autoSendPreAgendamento({
+          id: savedId, // ← USA O ID DO RESULTADO ✅
+          ...candidate
+        });
 
         if (result.success) {
           await new Promise(r => setTimeout(r, 500));
-          await confirmarAgendamento({ id: editingAppointment?.id || candidate.id, ...candidate }, {
+          await confirmarAgendamento({
+            id: savedId, // ← USA O ID DO RESULTADO ✅
+            ...candidate
+          }, {
             date: candidate.date,
             time: candidate.time,
             sessionValue: candidate.crm?.paymentAmount || 200
