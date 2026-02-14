@@ -1,604 +1,566 @@
-// src/App.jsx
-import React, { useEffect, useMemo } from "react";
-import { ToastContainer, toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
+import { database } from "../config/firebase";
+import { resolveSpecialtyKey } from "../utils/specialty";
+const EXPORT_TOKEN = "agenda_export_token_fono_inova_2025_secure_abc123";
+const BACKEND_URL = "https://fono-inova-crm-back.onrender.com";
 
-// Firebase database precisa ser importado pro onDelete funcionar
-import { database } from "./config/firebase";
+/* const BACKEND_URL =
+    window.location.hostname === "localhost"
+        ? "http://localhost:5000"
+        : "https://fono-inova-crm-back.onrender.com"; */
 
-import AppointmentTable from "./components/AppointmentTable";
-import FiltersPanel from "./components/FiltersPanel";
-import Header from "./components/Header";
-import SpecialtyDashboard from "./components/SpecialtyDashboard";
-import SpecialtyTabs from "./components/SpecialtyTabs";
+export const exportToCRM = async (appointment) => {
 
-import CalendarView from "./components/CalendarView";
-import WeeklyView from "./components/WeeklyView";
+  if (appointment.preAgendamento?.crmPreAgendamentoId) {
+    return confirmarEImportarToCRM(appointment, {});
+  }
 
-import AppointmentModal from "./components/AppointmentModal";
-import ProfessionalsModal from "./components/ProfessionalsModal";
+  // 1) validações
+  if (appointment.status !== "Confirmado") {
+    toast.warning("⚠️ Apenas agendamentos confirmados podem ser exportados.");
+    return;
+  }
 
-import {
-  deleteAppointment,
-  generateCycleAppointments,
-  hasConflict,
-  listenAppointmentsForMonth,
-  upsertAppointment,
-} from "./services/appointmentsRepo";
-
-import {
-  addProfessional,
-  deleteProfessionalByName,
-  listenProfessionals
-} from "./services/professionalsRepo";
-
-import { confirmToast } from "./utils/confirmToast";
-import { formatDateLocal, getWeeksInMonth } from "./utils/date";
-import { sortAppointmentsByDateTimeAsc } from "./utils/sort";
-import { resolveSpecialtyKey } from "./utils/specialty";
-
-import ReminderModal from "./components/ReminderModal";
-import RemindersListModal from "./components/RemindersListModal";
-import {
-  autoSendPreAgendamento,
-  confirmarAgendamento,
-  syncCancelToCRM,
-  syncDeleteToCRM,
-  syncIfNeeded
-} from "./services/crmExport";
-import { cancelReminder, listenReminders, markReminderDone, snoozeReminderDays } from "./services/remindersRepo";
-import "./styles/app.css";
-
-export default function App() {
-  console.log("📱 [App.jsx] Componente App montando...");
-
-  const [view, setView] = React.useState("list");
-  const [appointments, setAppointments] = React.useState([]);
-  const [professionals, setProfessionals] = React.useState([]);
-
-  const today = new Date();
-  const todayFormatted = formatDateLocal(today);
-  const todayDayOfWeek = (today.getDay() === 0 ? 7 : today.getDay()).toString();
-
-  const [activeSpecialty, setActiveSpecialty] = React.useState("todas");
-  const [currentMonth, setCurrentMonth] = React.useState(new Date().getMonth());
-  const [currentYear, setCurrentYear] = React.useState(new Date().getFullYear());
-
-  const [filters, setFilters] = React.useState({
-    filterDate: todayFormatted,
-    filterProfessional: "",
-    filterStatus: "",
-    filterDay: todayDayOfWeek,
-    filterWeek: null,
-  });
-
-  const [isModalOpen, setIsModalOpen] = React.useState(false);
-  const [editingAppointment, setEditingAppointment] = React.useState(null);
-  const [isProfessionalsModalOpen, setIsProfessionalsModalOpen] = React.useState(false);
-  const [isReminderOpen, setIsReminderOpen] = React.useState(false);
-  const [reminderAppointment, setReminderAppointment] = React.useState(null);
-  const [reminders, setReminders] = React.useState([]);
-  const [isRemindersListOpen, setIsRemindersListOpen] = React.useState(false);
-
-  // ========== REMINDER ==========
-  const openReminder = (appointment) => {
-    setReminderAppointment(appointment);
-    setIsReminderOpen(true);
-  };
-
-  const saveReminder = async (payload) => {
-    try {
-      const candidate = { ...reminderAppointment, ...payload };
-      await upsertAppointment({ editingAppointment: reminderAppointment, appointmentData: candidate });
-      setIsReminderOpen(false);
-      setReminderAppointment(null);
-      toast.success("Lembrete salvo!");
-    } catch (e) {
-      console.error("[saveReminder]", e);
-      toast.error("Erro ao salvar lembrete.");
-    }
-  };
-
-  // ========== LISTENERS ==========
-  useEffect(() => {
-    console.log("👂 [App.jsx] Listener de profissionais iniciado");
-    const unsub = listenProfessionals((data) => {
-      console.log("👂 [App.jsx] Profissionais recebidos:", data.length);
-      setProfessionals(data);
-    });
-    return () => {
-      console.log("👂 [App.jsx] Listener de profissionais desmontado");
-      unsub();
-    };
-  }, []);
-
-  useEffect(() => {
-    let targetYear = currentYear;
-    let targetMonth = currentMonth;
-
-    if (filters.filterDate) {
-      const [y, m] = filters.filterDate.split("-").map(Number);
-      targetYear = y;
-      targetMonth = m - 1;
-    }
-
-    console.log(`👂 [App.jsx] Listener de appointments: ${targetYear}/${targetMonth + 1}`);
-    const unsub = listenAppointmentsForMonth(targetYear, targetMonth, (data) => {
-      console.log("👂 [App.jsx] Appointments recebidos:", data.length);
-      setAppointments(data);
-    });
-    return () => {
-      console.log("👂 [App.jsx] Listener de appointments desmontado");
-      unsub();
-    };
-  }, [currentYear, currentMonth, filters.filterDate]);
-
-  useEffect(() => {
-    const unsub = listenReminders((list) => setReminders(list));
-    return () => unsub();
-  }, []);
-
-  // ========== LABEL DA ESPECIALIDADE ATUAL ==========
-  const activeSpecialtyLabel = useMemo(() => {
-    if (activeSpecialty === "fonoaudiologia") return "Fonoaudiologia";
-    if (activeSpecialty === "psicologia") return "Psicologia";
-    if (activeSpecialty === "terapia_ocupacional") return "Terapia Ocupacional";
-    if (activeSpecialty === "fisioterapia") return "Fisioterapia";
-    return "";
-  }, [activeSpecialty]);
-
-  // ========== FUNÇÕES DE SINCronização ==========
-
-  // EXCLUIR com sync pro CRM
-  const onDelete = async (id) => {
-    const ok = await confirmToast("Tem certeza?");
+  if (appointment.export?.status === "success") {
+    const ok = toast.warning(
+      "⚠️ Este agendamento já foi exportado.\n\n" +
+      `ID no CRM: ${appointment.export.crmAppointmentId}\n\n` +
+      "Deseja exportar novamente? (pode criar duplicata)"
+    );
     if (!ok) return;
+  }
 
-    try {
-      console.log("🚀 EXCLUINDO ID:", id);
+  const missing = [];
+  if (!appointment.patient) missing.push("Nome do paciente");
+  if (!appointment.phone) missing.push("Telefone");
+  if (!appointment.birthDate) missing.push("Data de nascimento");
+  if (!appointment.professional) missing.push("Profissional");
 
-      // Pega dados antes de deletar
-      const snap = await database.ref(`appointments/${id}`).get();
-      const appointment = { id, ...snap.val() };
+  if (missing.length) {
+    toast.warning("❌ Campos obrigatórios faltando:\n\n" + missing.join("\n") + "\n\nPreencha antes de exportar.");
+    return;
+  }
 
-      console.log("Dados:", appointment);
-
-      // VERIFICA SE TEM NO CRM
-      const temNoCRM = appointment.preAgendamento?.crmPreAgendamentoId ||
-        appointment.export?.crmAppointmentId;
-
-      console.log("Tem no CRM?", temNoCRM);
-
-      // Se tem no CRM, avisa pra deletar lá também
-      if (temNoCRM) {
-        console.log("📡 Chamando syncDeleteToCRM...");
-        await syncDeleteToCRM(id);
-        console.log("✅ Deletado no CRM");
-      }
-
-      // Deleta no Firebase
-      await deleteAppointment(id);
-      toast.success("Excluído!");
-
-    } catch (e) {
-      console.error("❌ ERRO:", e);
-      toast.error("Erro: " + e.message);
-    }
-  };
-
-  // CANCELAR específico (pode ser chamado de um botão na tabela)
-  const onCancel = async (appointment) => {
-    const reason = prompt("Motivo do cancelamento:", "Cancelado pelo paciente");
-    if (!reason) return;
-
-    try {
-      // 1. Atualiza status localmente para Cancelado
-      const updatedData = {
-        ...appointment,
-        status: "Cancelado",
-        canceledReason: reason,
-        canceledAt: new Date().toISOString()
-      };
-
-      await upsertAppointment({ editingAppointment: appointment, appointmentData: updatedData });
-
-      // 2. Sincroniza com CRM se já tiver sido exportado
-      if (appointment.export?.status === "success" || appointment.preAgendamento?.crmPreAgendamentoId) {
-        await syncCancelToCRM(appointment, reason);
-      }
-
-      toast.success("Agendamento cancelado e sincronizado!");
-    } catch (e) {
-      console.error("[onCancel]", e);
-      toast.error("Erro ao cancelar: " + e.message);
-    }
-  };
-
-  // SALVAR (criar ou editar)
-  const saveAppointment = async (appointmentData) => {
-    console.log("[saveAppointment] appointmentData:", appointmentData);
-
-    const isEditing = !!editingAppointment?.id;
-    const candidate = {
-      ...editingAppointment,
-      ...appointmentData,
-      status: appointmentData.status === "Vaga" ? "Pendente" : appointmentData.status,
-    };
-
-    if (hasConflict(appointments, candidate, editingAppointment?.id)) {
-      toast.error("⚠️ Conflito de horário!");
-      return;
-    }
-
-    try {
-      // Guarda os dados antigos antes de salvar (pra detectar mudanças)
-      const oldAppointment = isEditing ? { ...editingAppointment } : null;
-
-      // 1. Salva no Firebase
-      await upsertAppointment({ editingAppointment, appointmentData: candidate });
-
-      // 2. Se for EDIÇÃO e já foi exportado pro CRM, sincroniza mudanças
-      if (isEditing && oldAppointment) {
-        const wasExported = oldAppointment.export?.status === "success" ||
-          oldAppointment.preAgendamento?.crmPreAgendamentoId;
-
-        if (wasExported) {
-          const syncResult = await syncIfNeeded(oldAppointment, candidate);
-          if (syncResult.success && !syncResult.skipped) {
-            toast.success("Alterações sincronizadas com o CRM!");
-          }
-        }
-      }
-
-      // 3. Se for NOVO e Pendente → envia pré-agendamento
-      if (!isEditing && candidate.status === "Pendente") {
-        await autoSendPreAgendamento({ id: editingAppointment?.id || candidate.id, ...candidate });
-        toast.success("Enviado! Aparece no painel de Pré-Agendamentos.");
-      }
-
-      // 4. Se for NOVO e Confirmado → cria e confirma
-      else if (!isEditing && candidate.status === "Confirmado") {
-        const result = await autoSendPreAgendamento({ id: editingAppointment?.id || candidate.id, ...candidate });
-
-        if (result.success) {
-          await new Promise(r => setTimeout(r, 500));
-          await confirmarAgendamento({ id: editingAppointment?.id || candidate.id, ...candidate }, {
-            date: candidate.date,
-            time: candidate.time,
-            sessionValue: candidate.crm?.paymentAmount || 200
-          });
-          toast.success("Criado e confirmado no CRM!");
-        } else {
-          toast.error("Erro ao enviar: " + result.error);
-        }
-      }
-
-      setIsModalOpen(false);
-      setEditingAppointment(null);
-
-    } catch (err) {
-      console.error("[saveAppointment] Erro:", err);
-      toast.error("Erro ao salvar. Tente novamente.");
-    }
-  };
-
-  // ========== RESTO DAS FUNÇÕES ==========
-
-  const openEditModal = (appointment) => {
-    console.log("[openEditModal]", appointment);
-    setEditingAppointment(appointment);
-    setIsModalOpen(true);
-  };
-
-  const openCreateModal = () => {
-    console.log("📝 [App.jsx] Abrindo modal de criação");
-
-    const specialtyLabel = (() => {
-      if (activeSpecialty === "fonoaudiologia") return "Fonoaudiologia";
-      if (activeSpecialty === "psicologia") return "Psicologia";
-      if (activeSpecialty === "terapia_ocupacional") return "Terapia Ocupacional";
-      if (activeSpecialty === "fisioterapia") return "Fisioterapia";
-      return "Fonoaudiologia";
-    })();
-
-    setEditingAppointment({
-      date: formatDateLocal(new Date()),
-      time: "08:00",
-      professional: professionals[0] || "",
-      specialty: specialtyLabel,
-      status: "Pendente",
-      patient: "",
-      responsible: "",
-      observations: "",
+  // 2) marcar como exporting
+  let updated = appointment;
+  try {
+    await database.ref(`appointments/${appointment.id}/export`).update({
+      status: "exporting",
+      lastError: null,
+      lastErrorMessage: null,
+      lastAttemptAt: new Date().toISOString(),
     });
 
-    setIsModalOpen(true);
-  };
+    const snap = await database.ref(`appointments/${appointment.id}`).get();
+    updated = { id: appointment.id, ...snap.val() };
+  } catch (err) {
+    console.error("❌ [EXPORT] Erro ao atualizar Firebase:", err);
+    toast.error("Erro ao preparar exportação. Tente novamente.");
+    return;
+  }
 
-  const handleSlotClick = (payload) => {
-    console.log("[handleSlotClick]", payload);
+  // 3) enviar
+  try {
+    const payload = {
+      firebaseAppointmentId: updated.id,
+      professionalName: updated.professional,
+      date: updated.date,
+      time: updated.time,
+      specialty: updated.specialty || "Fonoaudiologia",
+      specialtyKey: updated.specialtyKey || resolveSpecialtyKey(updated.specialty || "Fonoaudiologia"),
+      patientInfo: {
+        fullName: updated.patient,
+        phone: (updated.phone || "").replace(/\D/g, ""),
+        birthDate: updated.birthDate,
+        email: updated.email || undefined,
+      },
+      responsible: updated.responsible || undefined,
+      observations: updated.observations || undefined,
+      crm: {
+        serviceType: updated.crm?.serviceType || "individual_session",
+        sessionType: updated.crm?.sessionType || "avaliacao",
+        paymentMethod: updated.crm?.paymentMethod || "pix",
+        paymentAmount: Number(updated.crm?.paymentAmount || 0),
+        usePackage: !!updated.crm?.usePackage,
+        status: "scheduled",
+      },
+    };
 
-    if (payload?.__isEmptySlot) {
-      const specialtyLabel = (() => {
-        if (activeSpecialty === "fonoaudiologia") return "Fonoaudiologia";
-        if (activeSpecialty === "psicologia") return "Psicologia";
-        if (activeSpecialty === "terapia_ocupacional") return "Terapia Ocupacional";
-        if (activeSpecialty === "fisioterapia") return "Fisioterapia";
-        return "Fonoaudiologia";
-      })();
+    const res = await fetch(`${BACKEND_URL}/api/import-from-agenda`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${EXPORT_TOKEN}`,
+      },
+      body: JSON.stringify(payload),
+    });
 
-      setEditingAppointment({
-        date: payload.date,
-        time: payload.time,
-        professional: payload.professional || (professionals[0] || ""),
-        specialty: specialtyLabel,
-        status: "Pendente",
-        patient: "",
-        responsible: "",
-        observations: "",
+    const data = await res.json();
+
+    if (data.success) {
+      await database.ref(`appointments/${appointment.id}/export`).update({
+        status: "success",
+        crmPatientId: data.patientId,
+        crmAppointmentId: data.appointmentId,
+        crmPaymentId: data.paymentId,
+        crmSessionId: data.sessionId,
+        exportedAt: new Date().toISOString(),
+        lastError: null,
+        lastErrorMessage: null,
       });
 
-      setIsModalOpen(true);
+      toast.success(
+        "✅ Agendamento exportado com sucesso!\n\n" +
+        `Paciente ID: ${data.patientId}\n` +
+        `Agendamento ID: ${data.appointmentId}\n\n` +
+        "Agendamento criado no CRM."
+      );
       return;
     }
 
-    openEditModal(payload);
-  };
+    if (data.code === "TIME_CONFLICT") {
+      const alternatives = data.alternatives || [];
+      if (alternatives.length) {
+        const msg =
+          `⚠️ Horário ${appointment.time} já foi ocupado.\n\n` +
+          "Horários disponíveis:\n" +
+          alternatives.map((t, i) => `${i + 1}. ${t}`).join("\n") +
+          `\n\nDigite o número (1-${alternatives.length}) ou Cancelar:`;
 
-  // ========== FILTROS + SORT ==========
-  const filteredAppointments = React.useMemo(() => {
-    const weeks = getWeeksInMonth(currentYear, currentMonth);
+        const choice = prompt(msg);
+        const idx = Number(choice) - 1;
 
-    let base = (appointments || []).filter((appointment) => {
-      if (activeSpecialty !== "todas") {
-        if (resolveSpecialtyKey(appointment) !== activeSpecialty) {
-          return false;
-        }
-      }
-
-      if (filters.filterDate) {
-        if (appointment.date !== filters.filterDate) {
-          return false;
+        if (!Number.isNaN(idx) && idx >= 0 && idx < alternatives.length) {
+          const newTime = alternatives[idx];
+          await database.ref(`appointments/${appointment.id}`).update({ time: newTime });
+          toast.success(`Horário atualizado para ${newTime}. Exportando novamente...`);
+          setTimeout(() => exportToCRM({ ...appointment, time: newTime }), 400);
         }
       } else {
-        if (filters.filterDay) {
-          if (!appointment.date) return false;
-          const [y, m, d] = appointment.date.split("-").map(Number);
-          const dateObj = new Date(y, m - 1, d);
-          const jsDay = dateObj.getDay();
-          const targetDay = Number(filters.filterDay);
-          if (jsDay !== targetDay) return false;
-        }
-
-        if (filters.filterWeek !== null && filters.filterWeek !== undefined) {
-          const w = weeks[filters.filterWeek];
-          if (!w) return false;
-          const toKey = (v) => {
-            if (typeof v === "string") return v.replaceAll("-", "");
-            return formatDateLocal(v).replaceAll("-", "");
-          };
-          const dKey = toKey(appointment.date);
-          const startKey = toKey(w.start);
-          const endKey = toKey(w.end);
-          if (!(dKey >= startKey && dKey <= endKey)) return false;
-        }
+        toast.error("❌ Horário não disponível e não há alternativas.\n\nEscolha outro horário manualmente.");
       }
+      return;
+    }
 
-      if (filters.filterProfessional) {
-        if (filters.filterProfessional.toLowerCase() === "livre") {
-          const isLivre =
-            (appointment.professional && appointment.professional.toLowerCase().includes("livre")) ||
-            (appointment.patient && appointment.patient.toLowerCase().includes("livre")) ||
-            (appointment.observations && appointment.observations.toLowerCase().includes("livre"));
-          if (!isLivre) return false;
-        } else if (appointment.professional !== filters.filterProfessional) {
-          return false;
-        }
-      }
+    if (data.code === "DOCTOR_NOT_FOUND") {
+      await database.ref(`appointments/${appointment.id}/export`).update({
+        status: "error",
+        lastError: data.code,
+        lastErrorMessage: data.error,
+      });
 
-      if (filters.filterStatus && appointment.status !== filters.filterStatus) {
-        return false;
-      }
+      toast.error(
+        "❌ Profissional não encontrado no CRM:\n\n" +
+        `"${appointment.professional}"\n\n` +
+        "Verifique se o nome está cadastrado corretamente."
+      );
+      return;
+    }
 
-      return true;
+    await database.ref(`appointments/${appointment.id}/export`).update({
+      status: "error",
+      lastError: data.code || "UNKNOWN_ERROR",
+      lastErrorMessage: data.error || "Erro desconhecido",
     });
 
-    base = sortAppointmentsByDateTimeAsc(base);
-    return base;
-  }, [appointments, activeSpecialty, filters, currentYear, currentMonth]);
+    toast.error("❌ Erro ao exportar:\n\n" + (data.error || "Erro desconhecido"));
 
-  // ========== PROFESSIONALS ==========
-  const onOpenProfessionals = () => {
-    console.log("👤 [App.jsx] Abrindo modal de profissionais");
-    setIsProfessionalsModalOpen(true);
-  };
-
-  const handleAddProfessional = async (name) => {
-    try {
-      await addProfessional(name);
-      toast.success(`Profissional "${name}" adicionado!`);
-    } catch (e) {
-      console.error("[handleAddProfessional]", e);
-      toast.error("Erro ao adicionar profissional.");
-    }
-  };
-
-  const handleResetFilters = () => {
-    console.log("🔄 [App.jsx] Limpando filtros...");
-    setFilters({
-      filterDate: "",
-      filterProfessional: "",
-      filterStatus: "",
-      filterDay: "",
-      filterWeek: null,
+  } catch (err) {
+    await database.ref(`appointments/${appointment.id}/export`).update({
+      status: "error",
+      lastError: "NETWORK_ERROR",
+      lastErrorMessage: err.message,
     });
-  };
 
-  const handleDeleteProfessional = async (name) => {
-    const ok = await confirmToast(`Remover o profissional "${name}"?`);
-    if (!ok) return;
-    try {
-      await deleteProfessionalByName(name);
-      toast.success(`Profissional "${name}" removido!`);
-    } catch (e) {
-      console.error("[handleDeleteProfessional]", e);
-      toast.error("Erro ao remover profissional.");
+    toast.error("❌ Erro de conexão com o servidor.\n\nVerifique sua internet e tente novamente.");
+  }
+};
+
+export const autoSendPreAgendamento = async (appointment) => {
+  try {
+    const payload = {
+      firebaseAppointmentId: appointment.id,
+      professionalName: appointment.professional,
+      date: appointment.date,
+      time: appointment.time,
+      specialty: appointment.specialty || "Fonoaudiologia",
+      patientInfo: {
+        fullName: appointment.patient,
+        phone: (appointment.phone || "").replace(/\D/g, ""),
+        birthDate: appointment.birthDate,
+        email: appointment.email,
+      },
+      responsible: appointment.responsible,
+      observations: appointment.observations,
+      crm: {
+        serviceType: appointment.crm?.serviceType || "individual_session",
+        sessionType: appointment.crm?.sessionType || "evaluation",
+        paymentMethod: appointment.crm?.paymentMethod || "pix",
+        paymentAmount: Number(appointment.crm?.paymentAmount || 0),
+      },
+      source: 'agenda_externa'
+    };
+
+    const res = await fetch(`${BACKEND_URL}/api/pre-agendamento/webhook`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${EXPORT_TOKEN}`,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await res.json();
+
+    if (data.success) {
+      await database.ref(`appointments/${appointment.id}/preAgendamento`).set({
+        status: "enviado",
+        crmPreAgendamentoId: data.id,
+        sentAt: new Date().toISOString(),
+      });
+      return { success: true };
     }
-  };
 
-  // ========== RENDER ==========
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-gray-100 to-blue-50">
-      <div className="relative z-50 pointer-events-auto">
-        <Header view={view} setView={setView} />
-      </div>
-      <ToastContainer position="top-center" newestOnTop closeOnClick={false} draggable={false} />
+    throw new Error(data.error);
 
-      <main className="max-w-screen-2xl mx-auto px-2 sm:px-4 lg:px-6 py-6 space-y-6">
-        <div className="bg-gradient-to-r from-white to-gray-50 rounded-2xl shadow-xl border border-gray-200 p-4 sm:p-6">
-          <SpecialtyDashboard appointments={appointments} activeSpecialty={activeSpecialty} />
-        </div>
+  } catch (err) {
+    console.error("Erro:", err);
+    await database.ref(`appointments/${appointment.id}/preAgendamento`).set({
+      status: "error",
+      error: err.message,
+    });
+    return { success: false, error: err.message };
+  }
+};
 
-        <div className="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden">
-          <FiltersPanel
-            professionals={professionals}
-            currentYear={currentYear}
-            currentMonth={currentMonth}
-            filters={filters}
-            setFilters={setFilters}
-            onNewAppointment={openCreateModal}
-            onOpenProfessionals={onOpenProfessionals}
-            onResetFilters={handleResetFilters}
-          />
-        </div>
+export const confirmarAgendamento = async (appointment, dadosConfirmacao) => {
 
-        {view === "list" && (
-          <div className="space-y-4 animate-fadeIn">
-            <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-2">
-              <SpecialtyTabs
-                activeTab={activeSpecialty}
-                onTabChange={setActiveSpecialty}
-                remindersPendingCount={reminders.filter(r => r.status === "pending").length}
-                onOpenReminders={() => setIsRemindersListOpen(true)}
-              />
-            </div>
+  // Usa o próprio ID do Firebase (appointment.id) como externalId
+  const externalId = appointment.id;
 
-            <AppointmentTable
-              activeSpecialty={activeSpecialty}
-              appointments={filteredAppointments}
-              onEdit={openEditModal}
-              onDelete={onDelete}
-              onCancel={onCancel}  // <-- Passa a função de cancelar aqui
-              onReminder={openReminder}
-              onConfirmCycle={async (payload, baseAppointment) => {
-                try {
-                  const result = await generateCycleAppointments(baseAppointment, payload, {
-                    statusForGenerated: "Confirmado",
-                    skipConflicts: true,
-                  });
-                  const msg = result.skipped?.length
-                    ? `${result.createdCount} criadas, ${result.skipped.length} puladas por conflito.`
-                    : `${result.createdCount} sessões criadas.`;
-                  toast.success(`Ciclo ${result.cycleId} gerado! ${msg}`);
-                } catch (e) {
-                  console.error(e);
-                  toast.error("Erro ao gerar ciclo.");
-                }
-              }}
-            />
-          </div>
-        )}
+  if (!externalId) {
+    alert("Erro: ID do agendamento não encontrado");
+    return { success: false };
+  }
 
-        {view === "calendar" && (
-          <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-4 sm:p-6 animate-fadeIn">
-            <CalendarView
-              appointments={appointments}
-              professionals={professionals}
-              currentMonth={currentMonth}
-              currentYear={currentYear}
-              setCurrentMonth={setCurrentMonth}
-              setCurrentYear={setCurrentYear}
-              filterWeek={filters.filterWeek}
-              setFilterWeek={(w) => setFilters((prev) => ({ ...prev, filterWeek: w }))}
-              onSlotClick={handleSlotClick}
-            />
-          </div>
-        )}
+  try {
+    // NOVO ENDPOINT: usa externalId no body ao invés de URL
+    const res = await fetch(
+      `${BACKEND_URL}/api/import-from-agenda/confirmar-por-external-id`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${EXPORT_TOKEN}`,
+        },
+        body: JSON.stringify({
+          externalId: externalId,  // ID do Firebase (-OkjTXe5...)
+          doctorId: dadosConfirmacao.doctorId,
+          date: dadosConfirmacao.date || appointment.date,
+          time: dadosConfirmacao.time || appointment.time,
+          sessionValue: dadosConfirmacao.sessionValue || appointment.crm?.paymentAmount || 200,
+          serviceType: appointment.crm?.serviceType || "evaluation",
+          paymentMethod: appointment.crm?.paymentMethod || "pix",
+          notes: "Confirmado pela secretária",
+        }),
+      }
+    );
 
-        {view === "weekly" && (
-          <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-4 sm:p-6 animate-fadeIn">
-            <WeeklyView
-              appointments={appointments}
-              professionals={professionals}
-              activeSpecialtyLabel={activeSpecialtyLabel}
-              currentYear={currentYear}
-              currentMonth={currentMonth}
-              filters={filters}
-              onSlotClick={handleSlotClick}
-            />
-          </div>
-        )}
-      </main>
+    const data = await res.json();
 
-      {/* MODALS */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn">
-          <AppointmentModal
-            appointment={editingAppointment}
-            professionals={professionals}
-            onSave={saveAppointment}
-            onClose={() => {
-              setIsModalOpen(false);
-              setEditingAppointment(null);
-            }}
-          />
-        </div>
-      )}
+    if (data.success) {
+      await database.ref(`appointments/${appointment.id}`).update({
+        status: "Confirmado",
+        export: {
+          status: "success",
+          crmAppointmentId: data.appointmentId,
+          exportedAt: new Date().toISOString(),
+        },
+        preAgendamento: {
+          status: "importado",
+          crmPreAgendamentoId: data.preAgendamentoId, // agora guardamos
+        }
+      });
+      return { success: true, appointmentId: data.appointmentId };
+    }
 
-      {isProfessionalsModalOpen && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn">
-          <ProfessionalsModal
-            professionals={professionals}
-            onAdd={handleAddProfessional}
-            onDelete={handleDeleteProfessional}
-            onClose={() => setIsProfessionalsModalOpen(false)}
-          />
-        </div>
-      )}
+    throw new Error(data.error);
 
-      {isReminderOpen && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn">
-          <ReminderModal
-            appointment={reminderAppointment}
-            onSave={saveReminder}
-            onClose={() => {
-              setIsReminderOpen(false);
-              setReminderAppointment(null);
-            }}
-          />
-        </div>
-      )}
+  } catch (err) {
+    alert("Erro ao confirmar: " + err.message);
+    return { success: false, error: err.message };
+  }
+};
 
-      <RemindersListModal
-        open={isRemindersListOpen}
-        reminders={reminders}
-        onClose={() => setIsRemindersListOpen(false)}
-        onDone={async (r) => {
-          await markReminderDone(r.id);
-          toast.success("Lembrete concluído!");
-        }}
-        onCancel={async (r) => {
-          await cancelReminder(r.id);
-          toast.success("Lembrete cancelado!");
-        }}
-        onSnooze7={async (r) => {
-          await snoozeReminderDays(r.id, 7);
-          toast.success("Lembrete adiado +7 dias!");
-        }}
-        onOpenAppointment={(appointmentId) => {
-          toast.info(`Abrir agendamento: ${appointmentId}`);
-        }}
-      />
-    </div>
-  );
-}
+// Adicione estas funções no seu crmExport.js (mesmo arquivo)
+
+/**
+ * Sincroniza CANCELAMENTO com o CRM
+ * Usado quando cancela um agendamento na agenda externa
+ */
+export const syncCancelToCRM = async (appointment, reason = "Cancelado via agenda externa") => {
+
+  // Só sincroniza se tiver sido exportado ou tiver pré-agendamento
+  const hasPreAgendamento = appointment.preAgendamento?.crmPreAgendamentoId;
+  const hasExport = appointment.export?.crmAppointmentId;
+
+  if (!hasPreAgendamento && !hasExport) {
+    console.log("[syncCancelToCRM] Agendamento nunca foi exportado, ignorando sync");
+    return { success: true, skipped: true };
+  }
+
+  try {
+    // Marca como sincronizando
+    await database.ref(`appointments/${appointment.id}/syncCancel`).update({
+      status: "syncing",
+      lastError: null,
+      lastAttemptAt: new Date().toISOString(),
+    });
+
+    const payload = {
+      externalId: appointment.id, // firebaseAppointmentId
+      reason: reason,
+      confirmedAbsence: appointment.confirmedAbsence || false
+    };
+
+    const res = await fetch(`${BACKEND_URL}/api/import-from-agenda/sync-cancel`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${EXPORT_TOKEN}`,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await res.json();
+
+    if (data.success) {
+      await database.ref(`appointments/${appointment.id}/syncCancel`).update({
+        status: "success",
+        crmPreAgendamentoId: data.preAgendamentoId,
+        crmAppointmentId: data.appointmentId,
+        syncedAt: new Date().toISOString(),
+        lastError: null,
+      });
+
+      // Atualiza também o export para refletir cancelamento
+      if (appointment.export) {
+        await database.ref(`appointments/${appointment.id}/export`).update({
+          status: "canceled",
+          canceledAt: new Date().toISOString(),
+        });
+      }
+
+      console.log("[syncCancelToCRM] ✅ Sucesso:", data);
+      return { success: true, data };
+    }
+
+    throw new Error(data.error || "Erro desconhecido");
+
+  } catch (err) {
+    console.error("[syncCancelToCRM] ❌ Erro:", err);
+    await database.ref(`appointments/${appointment.id}/syncCancel`).update({
+      status: "error",
+      lastError: err.message,
+      lastAttemptAt: new Date().toISOString(),
+    });
+    return { success: false, error: err.message };
+  }
+};
+
+/**
+ * Sincroniza EDIÇÃO/ATUALIZAÇÃO com o CRM
+ * Usado quando edita data, hora, profissional ou status na agenda externa
+ */
+export const syncUpdateToCRM = async (appointment, updates) => {
+
+  // Só sincroniza se tiver sido exportado ou tiver pré-agendamento
+  const hasPreAgendamento = appointment.preAgendamento?.crmPreAgendamentoId;
+  const hasExport = appointment.export?.crmAppointmentId;
+
+  if (!hasPreAgendamento && !hasExport) {
+    console.log("[syncUpdateToCRM] Agendamento nunca foi exportado, ignorando sync");
+    return { success: true, skipped: true };
+  }
+
+  try {
+    // Marca como sincronizando
+    await database.ref(`appointments/${appointment.id}/syncUpdate`).update({
+      status: "syncing",
+      lastError: null,
+      lastAttemptAt: new Date().toISOString(),
+    });
+
+    const payload = {
+      externalId: appointment.id,
+      date: updates.date || appointment.date,
+      time: updates.time || appointment.time,
+      professionalName: updates.professional || appointment.professional,
+      specialty: updates.specialty || appointment.specialty,
+      observations: updates.observations || appointment.observations,
+      patientInfo: updates.patientInfo || {
+        fullName: appointment.patient,
+        phone: (appointment.phone || "").replace(/\D/g, ""),
+        birthDate: appointment.birthDate,
+        email: appointment.email,
+      },
+      status: updates.status || appointment.status // Pendente, Confirmado, Cancelado
+    };
+
+    // Remove campos undefined
+    Object.keys(payload).forEach(key => {
+      if (payload[key] === undefined) delete payload[key];
+    });
+
+    const res = await fetch(`${BACKEND_URL}/api/import-from-agenda/sync-update`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${EXPORT_TOKEN}`,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await res.json();
+
+    if (data.success) {
+      await database.ref(`appointments/${appointment.id}/syncUpdate`).update({
+        status: "success",
+        crmPreAgendamentoId: data.preAgendamentoId,
+        crmAppointmentId: data.appointmentId,
+        syncedAt: new Date().toISOString(),
+        updatedFields: data.updatedFields || Object.keys(updates),
+        lastError: null,
+      });
+
+      console.log("[syncUpdateToCRM] ✅ Sucesso:", data);
+      return { success: true, data };
+    }
+
+    throw new Error(data.error || "Erro desconhecido");
+
+  } catch (err) {
+    console.error("[syncUpdateToCRM] ❌ Erro:", err);
+    await database.ref(`appointments/${appointment.id}/syncUpdate`).update({
+      status: "error",
+      lastError: err.message,
+      lastAttemptAt: new Date().toISOString(),
+    });
+    return { success: false, error: err.message };
+  }
+};
+
+/**
+ * Sincroniza EXCLUSÃO com o CRM
+ * Usado quando deleta permanentemente um agendamento na agenda externa
+ */
+export const syncDeleteToCRM = async (appointmentId, reason = "Excluído via agenda externa") => {
+
+  console.log("🚀 [syncDeleteToCRM] INICIANDO...");
+  console.log("🚀 URL:", `${BACKEND_URL}/api/import-from-agenda/sync-delete`);
+  console.log("🚀 Token existe?", !!EXPORT_TOKEN);
+
+  try {
+    const res = await fetch(`${BACKEND_URL}/api/import-from-agenda/sync-delete`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${EXPORT_TOKEN}`,
+      },
+      body: JSON.stringify({ externalId: appointmentId, reason }),
+    });
+
+    console.log("🚀 Resposta HTTP:", res.status); // <-- Qual número aparece aqui?
+
+    const data = await res.json();
+    console.log("🚀 Dados:", data);
+    return data;
+  } catch (err) {
+    console.error("❌ ERRO NO FETCH:", err); // <-- O erro aparece aqui?
+    throw err;
+  }
+};
+
+/**
+ * Wrapper inteligente que detecta mudanças e sincroniza automaticamente
+ * Use isso no onUpdate/onEdit do App.jsx
+ * 
+ * CORREÇÃO: Quando status muda para "Confirmado", chama o endpoint de confirmação
+ */
+export const syncIfNeeded = async (oldAppointment, newAppointment) => {
+  console.log("[syncIfNeeded] ==========================================");
+  console.log("[syncIfNeeded] Iniciando comparação...");
+  console.log("[syncIfNeeded] oldAppointment.status:", oldAppointment?.status);
+  console.log("[syncIfNeeded] newAppointment.status:", newAppointment?.status);
+  console.log("[syncIfNeeded] oldAppointment.preAgendamento:", oldAppointment?.preAgendamento);
+  console.log("[syncIfNeeded] oldAppointment.export:", oldAppointment?.export);
+
+  const changes = {};
+
+  // Detecta mudanças
+  if (oldAppointment.date !== newAppointment.date) changes.date = newAppointment.date;
+  if (oldAppointment.time !== newAppointment.time) changes.time = newAppointment.time;
+  if (oldAppointment.professional !== newAppointment.professional) changes.professional = newAppointment.professional;
+  if (oldAppointment.specialty !== newAppointment.specialty) changes.specialty = newAppointment.specialty;
+  if (oldAppointment.observations !== newAppointment.observations) changes.observations = newAppointment.observations;
+  if (oldAppointment.status !== newAppointment.status) {
+    changes.status = newAppointment.status;
+    console.log("[syncIfNeeded] ⚠️ MUDANÇA DE STATUS DETECTADA!");
+    console.log("[syncIfNeeded] De:", oldAppointment.status, "Para:", newAppointment.status);
+  }
+  if (oldAppointment.patient !== newAppointment.patient) {
+    changes.patientInfo = {
+      fullName: newAppointment.patient,
+      phone: (newAppointment.phone || "").replace(/\D/g, ""),
+      birthDate: newAppointment.birthDate,
+      email: newAppointment.email,
+    };
+  }
+
+  console.log("[syncIfNeeded] Mudanças detectadas:", Object.keys(changes));
+
+  if (Object.keys(changes).length === 0) {
+    console.log("[syncIfNeeded] Nenhuma mudança detectada, retornando...");
+    return { success: true, skipped: true, reason: "no_changes" };
+  }
+
+  // 🎯 CORREÇÃO: Se status mudou para "Confirmado" e tinha pré-agendamento, CONFIRMAR!
+  const mudouParaConfirmado = changes.status === "Confirmado" &&
+    oldAppointment.status !== "Confirmado";
+
+  const temPreAgendamento = oldAppointment.preAgendamento?.crmPreAgendamentoId;
+  const aindaNaoFoiImportado = !oldAppointment.export?.crmAppointmentId;
+
+  console.log("[syncIfNeeded] mudouParaConfirmado?", mudouParaConfirmado);
+  console.log("[syncIfNeeded] temPreAgendamento?", temPreAgendamento);
+  console.log("[syncIfNeeded] aindaNaoFoiImportado?", aindaNaoFoiImportado);
+
+  if (mudouParaConfirmado && temPreAgendamento && aindaNaoFoiImportado) {
+    console.log("[syncIfNeeded] 🚀 CONDIÇÃO ATENDIDA! Chamando confirmarAgendamento...");
+
+    // Chama a confirmação que cria o agendamento real no CRM
+    const confirmResult = await confirmarAgendamento(newAppointment, {
+      date: newAppointment.date,
+      time: newAppointment.time,
+      sessionValue: newAppointment.crm?.paymentAmount || 200
+    });
+
+    console.log("[syncIfNeeded] Resultado de confirmarAgendamento:", confirmResult);
+
+    if (confirmResult.success) {
+      console.log("[syncIfNeeded] ✅ Agendamento confirmado no CRM:", confirmResult.appointmentId);
+      return {
+        success: true,
+        confirmed: true,
+        appointmentId: confirmResult.appointmentId,
+        changes
+      };
+    } else {
+      console.error("[syncIfNeeded] ❌ Erro ao confirmar:", confirmResult.error);
+      return { success: false, error: confirmResult.error, changes };
+    }
+  }
+
+  console.log("[syncIfNeeded] Condição de confirmação NÃO atendida, fazendo syncUpdate normal...");
+  // Se não for confirmação, faz o update normal
+  return syncUpdateToCRM(oldAppointment, changes);
+};

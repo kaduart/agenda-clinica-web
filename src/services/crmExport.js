@@ -484,15 +484,14 @@ export const syncDeleteToCRM = async (appointmentId, reason = "Excluído via age
  * Wrapper inteligente que detecta mudanças e sincroniza automaticamente
  * Use isso no onUpdate/onEdit do App.jsx
  * 
- * CORREÇÃO: Quando status muda para "Confirmado", chama o endpoint de confirmação
+ * CORREÇÃO: Quando status muda para "Confirmado" e tem pré-agendamento,
+ * chama confirmarAgendamento (cria agendamento no CRM) em vez de syncUpdateToCRM
  */
 export const syncIfNeeded = async (oldAppointment, newAppointment) => {
     console.log("[syncIfNeeded] ==========================================");
     console.log("[syncIfNeeded] Iniciando comparação...");
     console.log("[syncIfNeeded] oldAppointment.status:", oldAppointment?.status);
     console.log("[syncIfNeeded] newAppointment.status:", newAppointment?.status);
-    console.log("[syncIfNeeded] oldAppointment.preAgendamento:", oldAppointment?.preAgendamento);
-    console.log("[syncIfNeeded] oldAppointment.export:", oldAppointment?.export);
 
     const changes = {};
 
@@ -505,7 +504,6 @@ export const syncIfNeeded = async (oldAppointment, newAppointment) => {
     if (oldAppointment.status !== newAppointment.status) {
         changes.status = newAppointment.status;
         console.log("[syncIfNeeded] ⚠️ MUDANÇA DE STATUS DETECTADA!");
-        console.log("[syncIfNeeded] De:", oldAppointment.status, "Para:", newAppointment.status);
     }
     if (oldAppointment.patient !== newAppointment.patient) {
         changes.patientInfo = {
@@ -523,7 +521,7 @@ export const syncIfNeeded = async (oldAppointment, newAppointment) => {
         return { success: true, skipped: true, reason: "no_changes" };
     }
 
-    // 🎯 CORREÇÃO: Se status mudou para "Confirmado" e tinha pré-agendamento, CONFIRMAR!
+    // 🎯 CORREÇÃO CRÍTICA: Se status mudou para "Confirmado" e tem pré-agendamento → CONFIRMA!
     const mudouParaConfirmado = changes.status === "Confirmado" &&
         oldAppointment.status !== "Confirmado";
 
@@ -536,8 +534,9 @@ export const syncIfNeeded = async (oldAppointment, newAppointment) => {
 
     if (mudouParaConfirmado && temPreAgendamento && aindaNaoFoiImportado) {
         console.log("[syncIfNeeded] 🚀 CONDIÇÃO ATENDIDA! Chamando confirmarAgendamento...");
+        console.log("[syncIfNeeded] Isso vai criar o agendamento real no CRM!");
 
-        // Chama a confirmação que cria o agendamento real no CRM
+        // Chama confirmarAgendamento que usa o endpoint /confirmar-por-external-id
         const confirmResult = await confirmarAgendamento(newAppointment, {
             date: newAppointment.date,
             time: newAppointment.time,
@@ -547,7 +546,7 @@ export const syncIfNeeded = async (oldAppointment, newAppointment) => {
         console.log("[syncIfNeeded] Resultado de confirmarAgendamento:", confirmResult);
 
         if (confirmResult.success) {
-            console.log("[syncIfNeeded] ✅ Agendamento confirmado no CRM:", confirmResult.appointmentId);
+            console.log("[syncIfNeeded] ✅ Agendamento criado no CRM:", confirmResult.appointmentId);
             return {
                 success: true,
                 confirmed: true,
@@ -561,6 +560,6 @@ export const syncIfNeeded = async (oldAppointment, newAppointment) => {
     }
 
     console.log("[syncIfNeeded] Condição de confirmação NÃO atendida, fazendo syncUpdate normal...");
-    // Se não for confirmação, faz o update normal
+    // Para outras mudanças (data, hora, etc.), faz o update normal
     return syncUpdateToCRM(oldAppointment, changes);
 };
