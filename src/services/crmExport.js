@@ -1,12 +1,13 @@
 import { database } from "../config/firebase";
 import { resolveSpecialtyKey } from "../utils/specialty";
 const EXPORT_TOKEN = "agenda_export_token_fono_inova_2025_secure_abc123";
-const BACKEND_URL = "https://fono-inova-crm-back.onrender.com";
 
-/* const BACKEND_URL =
-    window.location.hostname === "localhost"
-        ? "http://localhost:5000"
-        : "https://fono-inova-crm-back.onrender.com"; */
+// crmExport.js
+const BACKEND_URL = import.meta.env?.VITE_BACKEND_URL ||
+    import.meta.env?.REACT_APP_BACKEND_URL ||
+    "https://fono-inova-crm-back.onrender.com";
+
+console.log("🚀 [crmExport.js] BACKEND_URL:", BACKEND_URL);
 
 export const exportToCRM = async (appointment) => {
 
@@ -175,7 +176,11 @@ export const exportToCRM = async (appointment) => {
     }
 };
 
+console.log("🚀 [crmExport.js] Carregado! BACKEND_URL:", BACKEND_URL);
+
 export const autoSendPreAgendamento = async (appointment) => {
+    console.log("🚀 [autoSendPreAgendamento] INICIANDO...", appointment.id);
+
     try {
         const payload = {
             firebaseAppointmentId: appointment.id,
@@ -200,6 +205,9 @@ export const autoSendPreAgendamento = async (appointment) => {
             source: 'agenda_externa'
         };
 
+        console.log("🚀 [autoSendPreAgendamento] Enviando para:", `${BACKEND_URL}/api/pre-agendamento/webhook`);
+        console.log("🚀 [autoSendPreAgendamento] Payload:", JSON.stringify(payload, null, 2));
+
         const res = await fetch(`${BACKEND_URL}/api/pre-agendamento/webhook`, {
             method: "POST",
             headers: {
@@ -209,9 +217,13 @@ export const autoSendPreAgendamento = async (appointment) => {
             body: JSON.stringify(payload),
         });
 
+        console.log("🚀 [autoSendPreAgendamento] Resposta HTTP:", res.status);
+
         const data = await res.json();
+        console.log("🚀 [autoSendPreAgendamento] Resposta JSON:", data);
 
         if (data.success) {
+            console.log("🚀 [autoSendPreAgendamento] SUCESSO! ID:", data.id);
             await database.ref(`appointments/${appointment.id}/preAgendamento`).set({
                 status: "enviado",
                 crmPreAgendamentoId: data.id,
@@ -220,10 +232,10 @@ export const autoSendPreAgendamento = async (appointment) => {
             return { success: true };
         }
 
-        throw new Error(data.error);
+        throw new Error(data.error || "Erro desconhecido");
 
     } catch (err) {
-        console.error("Erro:", err);
+        console.error("🚀 [autoSendPreAgendamento] ERRO:", err);
         await database.ref(`appointments/${appointment.id}/preAgendamento`).set({
             status: "error",
             error: err.message,
@@ -233,17 +245,31 @@ export const autoSendPreAgendamento = async (appointment) => {
 };
 
 export const confirmarAgendamento = async (appointment, dadosConfirmacao) => {
+    console.log("🚀 [confirmarAgendamento] INICIANDO...", appointment.id);
 
-    // Usa o próprio ID do Firebase (appointment.id) como externalId
     const externalId = appointment.id;
 
     if (!externalId) {
+        console.error("🚀 [confirmarAgendamento] ERRO: ID não encontrado");
         alert("Erro: ID do agendamento não encontrado");
         return { success: false };
     }
 
     try {
-        // NOVO ENDPOINT: usa externalId no body ao invés de URL
+        const body = {
+            externalId: externalId,
+            doctorId: dadosConfirmacao.doctorId,
+            date: dadosConfirmacao.date || appointment.date,
+            time: dadosConfirmacao.time || appointment.time,
+            sessionValue: dadosConfirmacao.sessionValue || appointment.crm?.paymentAmount || 200,
+            serviceType: appointment.crm?.serviceType || "evaluation",
+            paymentMethod: appointment.crm?.paymentMethod || "pix",
+            notes: "Confirmado pela secretária",
+        };
+
+        console.log("🚀 [confirmarAgendamento] Enviando para:", `${BACKEND_URL}/api/import-from-agenda/confirmar-por-external-id`);
+        console.log("🚀 [confirmarAgendamento] Body:", JSON.stringify(body, null, 2));
+
         const res = await fetch(
             `${BACKEND_URL}/api/import-from-agenda/confirmar-por-external-id`,
             {
@@ -252,22 +278,17 @@ export const confirmarAgendamento = async (appointment, dadosConfirmacao) => {
                     "Content-Type": "application/json",
                     Authorization: `Bearer ${EXPORT_TOKEN}`,
                 },
-                body: JSON.stringify({
-                    externalId: externalId,  // ID do Firebase (-OkjTXe5...)
-                    doctorId: dadosConfirmacao.doctorId,
-                    date: dadosConfirmacao.date || appointment.date,
-                    time: dadosConfirmacao.time || appointment.time,
-                    sessionValue: dadosConfirmacao.sessionValue || appointment.crm?.paymentAmount || 200,
-                    serviceType: appointment.crm?.serviceType || "evaluation",
-                    paymentMethod: appointment.crm?.paymentMethod || "pix",
-                    notes: "Confirmado pela secretária",
-                }),
+                body: JSON.stringify(body),
             }
         );
 
+        console.log("🚀 [confirmarAgendamento] Resposta HTTP:", res.status);
+
         const data = await res.json();
+        console.log("🚀 [confirmarAgendamento] Resposta JSON:", data);
 
         if (data.success) {
+            console.log("🚀 [confirmarAgendamento] SUCESSO! AppointmentID:", data.appointmentId);
             await database.ref(`appointments/${appointment.id}`).update({
                 status: "Confirmado",
                 export: {
@@ -277,15 +298,16 @@ export const confirmarAgendamento = async (appointment, dadosConfirmacao) => {
                 },
                 preAgendamento: {
                     status: "importado",
-                    crmPreAgendamentoId: data.preAgendamentoId, // agora guardamos
+                    crmPreAgendamentoId: data.preAgendamentoId,
                 }
             });
             return { success: true, appointmentId: data.appointmentId };
         }
 
-        throw new Error(data.error);
+        throw new Error(data.error || "Erro desconhecido");
 
     } catch (err) {
+        console.error("🚀 [confirmarAgendamento] ERRO:", err);
         alert("Erro ao confirmar: " + err.message);
         return { success: false, error: err.message };
     }
@@ -484,8 +506,7 @@ export const syncDeleteToCRM = async (appointmentId, reason = "Excluído via age
  * Wrapper inteligente que detecta mudanças e sincroniza automaticamente
  * Use isso no onUpdate/onEdit do App.jsx
  * 
- * CORREÇÃO: Quando status muda para "Confirmado" e tem pré-agendamento,
- * chama confirmarAgendamento (cria agendamento no CRM) em vez de syncUpdateToCRM
+ * CORREÇÃO: Quando status muda para "Confirmado", cria/confirma agendamento no CRM
  */
 export const syncIfNeeded = async (oldAppointment, newAppointment) => {
     console.log("[syncIfNeeded] ==========================================");
@@ -504,6 +525,7 @@ export const syncIfNeeded = async (oldAppointment, newAppointment) => {
     if (oldAppointment.status !== newAppointment.status) {
         changes.status = newAppointment.status;
         console.log("[syncIfNeeded] ⚠️ MUDANÇA DE STATUS DETECTADA!");
+        console.log("[syncIfNeeded] De:", oldAppointment.status, "Para:", newAppointment.status);
     }
     if (oldAppointment.patient !== newAppointment.patient) {
         changes.patientInfo = {
@@ -521,45 +543,86 @@ export const syncIfNeeded = async (oldAppointment, newAppointment) => {
         return { success: true, skipped: true, reason: "no_changes" };
     }
 
-    // 🎯 CORREÇÃO CRÍTICA: Se status mudou para "Confirmado" e tem pré-agendamento → CONFIRMA!
+    // 🎯 CORREÇÃO: Se mudou para "Confirmado" → CONFIRMA! (com ou sem pré-agendamento)
     const mudouParaConfirmado = changes.status === "Confirmado" &&
         oldAppointment.status !== "Confirmado";
 
-    const temPreAgendamento = oldAppointment.preAgendamento?.crmPreAgendamentoId;
     const aindaNaoFoiImportado = !oldAppointment.export?.crmAppointmentId;
 
     console.log("[syncIfNeeded] mudouParaConfirmado?", mudouParaConfirmado);
-    console.log("[syncIfNeeded] temPreAgendamento?", temPreAgendamento);
     console.log("[syncIfNeeded] aindaNaoFoiImportado?", aindaNaoFoiImportado);
 
-    if (mudouParaConfirmado && temPreAgendamento && aindaNaoFoiImportado) {
-        console.log("[syncIfNeeded] 🚀 CONDIÇÃO ATENDIDA! Chamando confirmarAgendamento...");
-        console.log("[syncIfNeeded] Isso vai criar o agendamento real no CRM!");
+    if (mudouParaConfirmado && aindaNaoFoiImportado) {
+        console.log("[syncIfNeeded] 🚀 CONDIÇÃO ATENDIDA! Criando agendamento no CRM...");
 
-        // Chama confirmarAgendamento que usa o endpoint /confirmar-por-external-id
-        const confirmResult = await confirmarAgendamento(newAppointment, {
-            date: newAppointment.date,
-            time: newAppointment.time,
-            sessionValue: newAppointment.crm?.paymentAmount || 200
-        });
+        // Se já tem pré-agendamento, confirma ele
+        if (oldAppointment.preAgendamento?.crmPreAgendamentoId) {
+            console.log("[syncIfNeeded] Tem pré-agendamento, chamando confirmarAgendamento...");
 
-        console.log("[syncIfNeeded] Resultado de confirmarAgendamento:", confirmResult);
+            const confirmResult = await confirmarAgendamento(newAppointment, {
+                date: newAppointment.date,
+                time: newAppointment.time,
+                sessionValue: newAppointment.crm?.paymentAmount || 200
+            });
 
-        if (confirmResult.success) {
-            console.log("[syncIfNeeded] ✅ Agendamento criado no CRM:", confirmResult.appointmentId);
-            return {
-                success: true,
-                confirmed: true,
-                appointmentId: confirmResult.appointmentId,
-                changes
-            };
-        } else {
-            console.error("[syncIfNeeded] ❌ Erro ao confirmar:", confirmResult.error);
-            return { success: false, error: confirmResult.error, changes };
+            console.log("[syncIfNeeded] Resultado confirmarAgendamento:", confirmResult);
+
+            if (confirmResult.success) {
+                console.log("[syncIfNeeded] ✅ Agendamento confirmado no CRM:", confirmResult.appointmentId);
+                return {
+                    success: true,
+                    confirmed: true,
+                    appointmentId: confirmResult.appointmentId,
+                    changes
+                };
+            } else {
+                console.error("[syncIfNeeded] ❌ Erro ao confirmar:", confirmResult.error);
+                return { success: false, error: confirmResult.error, changes };
+            }
+        }
+
+        // Se NÃO tem pré-agendamento, cria e confirma
+        else {
+            console.log("[syncIfNeeded] Não tem pré-agendamento, criando primeiro...");
+
+            const preResult = await autoSendPreAgendamento(newAppointment);
+            console.log("[syncIfNeeded] Resultado autoSendPreAgendamento:", preResult);
+
+            if (preResult.success) {
+                console.log("[syncIfNeeded] Pré-agendamento criado, aguardando 500ms...");
+                await new Promise(r => setTimeout(r, 500));
+
+                console.log("[syncIfNeeded] Chamando confirmarAgendamento...");
+                const confirmResult = await confirmarAgendamento(newAppointment, {
+                    date: newAppointment.date,
+                    time: newAppointment.time,
+                    sessionValue: newAppointment.crm?.paymentAmount || 200
+                });
+
+                console.log("[syncIfNeeded] Resultado confirmarAgendamento:", confirmResult);
+
+                if (confirmResult.success) {
+                    console.log("[syncIfNeeded] ✅ Criado e confirmado no CRM:", confirmResult.appointmentId);
+                    return {
+                        success: true,
+                        confirmed: true,
+                        createdAndConfirmed: true,
+                        appointmentId: confirmResult.appointmentId,
+                        changes
+                    };
+                } else {
+                    console.error("[syncIfNeeded] ❌ Erro ao confirmar:", confirmResult.error);
+                    return { success: false, error: confirmResult.error, changes };
+                }
+            } else {
+                console.error("[syncIfNeeded] ❌ Erro ao criar pré-agendamento:", preResult.error);
+                return { success: false, error: preResult.error, changes };
+            }
         }
     }
 
     console.log("[syncIfNeeded] Condição de confirmação NÃO atendida, fazendo syncUpdate normal...");
+
     // Para outras mudanças (data, hora, etc.), faz o update normal
     return syncUpdateToCRM(oldAppointment, changes);
 };
