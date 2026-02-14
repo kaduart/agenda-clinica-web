@@ -215,6 +215,7 @@ export default function App() {
   };
 
   // SALVAR (criar ou editar)
+  // SALVAR (criar ou editar)
   const saveAppointment = async (appointmentData) => {
     console.log("[saveAppointment] appointmentData:", appointmentData);
 
@@ -231,18 +232,56 @@ export default function App() {
     }
 
     try {
-      // Guarda os dados antigos antes de salvar (pra detectar mudanças)
       const oldAppointment = isEditing ? { ...editingAppointment } : null;
 
       // 1. Salva no Firebase
       await upsertAppointment({ editingAppointment, appointmentData: candidate });
 
-      // 2. Se for EDIÇÃO e já foi exportado pro CRM, sincroniza mudanças
+      // 2. Se for EDIÇÃO
       if (isEditing && oldAppointment) {
         const wasExported = oldAppointment.export?.status === "success" ||
           oldAppointment.preAgendamento?.crmPreAgendamentoId;
 
-        if (wasExported) {
+        // 🎯 NOVO: Se mudou de Pendente para Confirmado, cria agendamento no CRM
+        const mudouParaConfirmado = oldAppointment.status !== "Confirmado" &&
+          candidate.status === "Confirmado";
+
+        if (mudouParaConfirmado) {
+          console.log("🚀 Mudou para Confirmado! Criando agendamento no CRM...");
+
+          // Se já tem pré-agendamento, confirma ele
+          if (oldAppointment.preAgendamento?.crmPreAgendamentoId) {
+            const confirmResult = await confirmarAgendamento(candidate, {
+              date: candidate.date,
+              time: candidate.time,
+              sessionValue: candidate.crm?.paymentAmount || 200
+            });
+
+            if (confirmResult.success) {
+              toast.success("✅ Agendamento confirmado no CRM!");
+            } else {
+              toast.error("Erro ao confirmar: " + confirmResult.error);
+            }
+          }
+          // Se NÃO tem pré-agendamento, cria direto (novo endpoint ou fluxo)
+          else {
+            // Cria pré-agendamento primeiro
+            const preResult = await autoSendPreAgendamento(candidate);
+            if (preResult.success) {
+              await new Promise(r => setTimeout(r, 500));
+              const confirmResult = await confirmarAgendamento(candidate, {
+                date: candidate.date,
+                time: candidate.time,
+                sessionValue: candidate.crm?.paymentAmount || 200
+              });
+              if (confirmResult.success) {
+                toast.success("✅ Criado e confirmado no CRM!");
+              }
+            }
+          }
+        }
+        // Se não mudou para Confirmado mas já foi exportado, faz sync normal
+        else if (wasExported) {
           const syncResult = await syncIfNeeded(oldAppointment, candidate);
           if (syncResult.success && !syncResult.skipped) {
             toast.success("Alterações sincronizadas com o CRM!");
@@ -251,7 +290,7 @@ export default function App() {
       }
 
       // 3. Se for NOVO e Pendente → envia pré-agendamento
-      if (!isEditing && candidate.status === "Pendente") {
+      else if (!isEditing && candidate.status === "Pendente") {
         await autoSendPreAgendamento({ id: editingAppointment?.id || candidate.id, ...candidate });
         toast.success("Enviado! Aparece no painel de Pré-Agendamentos.");
       }
@@ -281,7 +320,6 @@ export default function App() {
       toast.error("Erro ao salvar. Tente novamente.");
     }
   };
-
   // ========== RESTO DAS FUNÇÕES ==========
 
   const openEditModal = (appointment) => {
