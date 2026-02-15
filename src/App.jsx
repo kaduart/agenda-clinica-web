@@ -216,23 +216,23 @@ export default function App() {
 
   const saveAppointment = async (appointmentData) => {
     console.log("🔥🔥🔥 [saveAppointment] INICIANDO");
-    console.log("🔥🔥🔥 editingAppointment:", editingAppointment); // Debug
+    console.log("🔥🔥🔥 editingAppointment:", editingAppointment);
     console.log("🔥🔥🔥 appointmentData:", appointmentData);
-    console.log("🔥🔥🔥 appointmentData.id:", appointmentData.id); // Deve ter ID!
 
-    // ✅ USA O ID DO appointmentData (que vem do modal) se editingAppointment falhar
-    const effectiveId = appointmentData.id || editingAppointment?.id;
-    const isEditing = !!effectiveId;
+    // ✅ DETECTA EDIÇÃO PELO ID QUE VEM DO MODAL OU DO ESTADO
+    const appointmentId = appointmentData.id || editingAppointment?.id;
+    const isEditing = !!appointmentId;
 
-    console.log("🔥🔥🔥 effectiveId:", effectiveId);
+    console.log("🔥🔥🔥 appointmentId detectado:", appointmentId);
     console.log("🔥🔥🔥 isEditing:", isEditing);
 
     const candidate = {
-      ...editingAppointment,
+      ...(isEditing ? editingAppointment : {}), // Só spread se for edição
       ...appointmentData,
-      id: effectiveId, // ✅ Garante o ID
+      id: appointmentId, // ✅ ID garantido
       status: appointmentData.status === "Vaga" ? "Pendente" : appointmentData.status,
     };
+    console.log("🔥🔥🔥 candidate final:", candidate);
 
 
     if (hasConflict(appointments, candidate, editingAppointment?.id)) {
