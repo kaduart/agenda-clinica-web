@@ -1,13 +1,12 @@
 import { database } from "../config/firebase";
 import { resolveSpecialtyKey } from "../utils/specialty";
 const EXPORT_TOKEN = "agenda_export_token_fono_inova_2025_secure_abc123";
+const BACKEND_URL = "https://fono-inova-crm-back.onrender.com";
 
-// crmExport.js
-const BACKEND_URL = import.meta.env?.VITE_BACKEND_URL ||
-    import.meta.env?.REACT_APP_BACKEND_URL ||
-    "https://fono-inova-crm-back.onrender.com";
-
-console.log("🚀 [crmExport.js] BACKEND_URL:", BACKEND_URL);
+/* const BACKEND_URL =
+    window.location.hostname === "localhost"
+        ? "http://localhost:5000"
+        : "https://fono-inova-crm-back.onrender.com"; */
 
 export const exportToCRM = async (appointment) => {
 

@@ -214,11 +214,8 @@ export default function App() {
     }
   };
 
-  // SALVAR (criar ou editar)
   const saveAppointment = async (appointmentData) => {
     console.log("🔥🔥🔥 [saveAppointment] INICIANDO");
-    console.log("🔥🔥🔥 editingAppointment:", editingAppointment);
-    console.log("🔥🔥🔥 appointmentData:", appointmentData);
 
     const isEditing = !!editingAppointment?.id;
     console.log("🔥🔥🔥 isEditing:", isEditing);
@@ -228,7 +225,6 @@ export default function App() {
       ...appointmentData,
       status: appointmentData.status === "Vaga" ? "Pendente" : appointmentData.status,
     };
-    console.log("🔥🔥🔥 candidate:", candidate);
 
     if (hasConflict(appointments, candidate, editingAppointment?.id)) {
       toast.error("⚠️ Conflito de horário!");
@@ -238,109 +234,121 @@ export default function App() {
     try {
       const oldAppointment = isEditing ? { ...editingAppointment } : null;
 
-      // 1. Salva no Firebase
-      await upsertAppointment({ editingAppointment, appointmentData: candidate });
+      // ✅ 1. Salva no Firebase E CAPTURA O RESULTADO COM ID
+      console.log("🔥 Salvando no Firebase...");
+      const saveResult = await upsertAppointment({ editingAppointment, appointmentData: candidate });
+      console.log("🔥 Resultado do save:", saveResult);
 
-      // 2. Se for EDIÇÃO
+      // ✅ 2. GARANTE que o candidate tenha o ID correto
+      if (saveResult?.id) {
+        candidate.id = saveResult.id;
+        console.log("🔥 Agendamento salvo com ID:", candidate.id);
+      } else {
+        console.error("❌ ERRO: saveResult não tem ID!");
+        toast.error("Erro ao salvar: ID não retornado");
+        return;
+      }
+
+      // 3. Se for EDIÇÃO
       if (isEditing && oldAppointment) {
         console.log("🔥 ENTROU NO BLOCO DE EDIÇÃO");
-        console.log("🔥 oldAppointment:", oldAppointment);
         console.log("🔥 oldAppointment.status:", oldAppointment.status);
         console.log("🔥 candidate.status:", candidate.status);
-        console.log("🔥 oldAppointment.preAgendamento:", oldAppointment.preAgendamento);
 
         const mudouParaConfirmado = oldAppointment.status !== "Confirmado" &&
           candidate.status === "Confirmado";
         console.log("🔥 mudouParaConfirmado:", mudouParaConfirmado);
 
         if (mudouParaConfirmado) {
-          console.log("🚀 VAI ENTRAR NO IF DO CONFIRMADO");
+          console.log("🚀 Mudou para Confirmado!");
 
-          // Se já tem pré-agendamento, confirma ele
           if (oldAppointment.preAgendamento?.crmPreAgendamentoId) {
-            console.log("🚀 TEM PRÉ-AGENDAMENTO, vai chamar confirmarAgendamento");
+            // Já tem pré-agendamento, só confirma
+            console.log("🚀 Tem pré-agendamento, confirmando...");
+            const result = await confirmarAgendamento(candidate, {
+              date: candidate.date,
+              time: candidate.time,
+              sessionValue: candidate.crm?.paymentAmount || 200
+            });
 
-            try {
+            if (result.success) {
+              toast.success("✅ Confirmado no CRM!");
+            } else {
+              toast.error("Erro ao confirmar: " + result.error);
+            }
+          } else {
+            // Não tem pré-agendamento, cria e confirma
+            console.log("🚀 Não tem pré-agendamento, criando...");
+            const preResult = await autoSendPreAgendamento(candidate);
+
+            if (preResult.success) {
+              console.log("🚀 Pré-agendamento criado, aguardando...");
+              await new Promise(r => setTimeout(r, 500));
+
               const confirmResult = await confirmarAgendamento(candidate, {
                 date: candidate.date,
                 time: candidate.time,
                 sessionValue: candidate.crm?.paymentAmount || 200
               });
-              console.log("🚀 Resultado confirmarAgendamento:", confirmResult);
 
               if (confirmResult.success) {
-                toast.success("✅ Agendamento confirmado no CRM!");
+                toast.success("✅ Criado e confirmado no CRM!");
               } else {
                 toast.error("Erro ao confirmar: " + confirmResult.error);
               }
-            } catch (err) {
-              console.error("🚀 ERRO em confirmarAgendamento:", err);
-              toast.error("Erro: " + err.message);
-            }
-          }
-          // Se NÃO tem pré-agendamento, cria direto
-          else {
-            console.log("🚀 NÃO TEM PRÉ-AGENDAMENTO, vai chamar autoSendPreAgendamento");
-
-            try {
-              console.log("🚀 Chamando autoSendPreAgendamento...");
-              const preResult = await autoSendPreAgendamento(candidate);
-              console.log("🚀 Resultado autoSendPreAgendamento:", preResult);
-
-              if (preResult.success) {
-                console.log("🚀 Pré-agendamento criado com sucesso, esperando 500ms...");
-                await new Promise(r => setTimeout(r, 500));
-
-                console.log("🚀 Chamando confirmarAgendamento...");
-                const confirmResult = await confirmarAgendamento(candidate, {
-                  date: candidate.date,
-                  time: candidate.time,
-                  sessionValue: candidate.crm?.paymentAmount || 200
-                });
-                console.log("🚀 Resultado confirmarAgendamento:", confirmResult);
-
-                if (confirmResult.success) {
-                  toast.success("✅ Criado e confirmado no CRM!");
-                } else {
-                  toast.error("Erro ao confirmar: " + confirmResult.error);
-                }
-              } else {
-                console.log("🚀 Falha no autoSendPreAgendamento:", preResult.error);
-                toast.error("Erro ao enviar: " + preResult.error);
-              }
-            } catch (err) {
-              console.error("🚀 ERRO no fluxo:", err);
-              toast.error("Erro: " + err.message);
+            } else {
+              toast.error("Erro ao criar pré-agendamento: " + preResult.error);
             }
           }
         }
-        // ... resto do código
       }
 
-      // 3. Se for NOVO e Pendente → envia pré-agendamento
+      // ✅ 4. Se for NOVO e Pendente → envia pré-agendamento
       else if (!isEditing && candidate.status === "Pendente") {
-        console.log("🔥🔥🔥 NÃO ENTROU NO BLOCO DE EDIÇÃO - isEditing:", isEditing, "oldAppointment:", oldAppointment);
+        console.log("🚀 NOVO agendamento Pendente, enviando para CRM...");
+        console.log("🚀 ID:", candidate.id, "Paciente:", candidate.patient);
 
+        try {
+          const result = await autoSendPreAgendamento(candidate);
+          console.log("🚀 Resultado:", result);
 
-        await autoSendPreAgendamento({ id: editingAppointment?.id || candidate.id, ...candidate });
-        toast.success("Enviado! Aparece no painel de Pré-Agendamentos.");
+          if (result.success) {
+            toast.success("📤 Enviado para o CRM!");
+          } else {
+            toast.error("❌ Erro ao enviar: " + result.error);
+          }
+        } catch (err) {
+          console.error("🚀 ERRO:", err);
+          toast.error("Erro: " + err.message);
+        }
       }
 
-      // 4. Se for NOVO e Confirmado → cria e confirma
+      // ✅ 5. Se for NOVO e Confirmado → cria e confirma
       else if (!isEditing && candidate.status === "Confirmado") {
-        const result = await autoSendPreAgendamento({ id: editingAppointment?.id || candidate.id, ...candidate });
-        console.log("🚀 Resultado autoSendPreAgendamento:", result);
+        console.log("🚀 NOVO agendamento Confirmado, criando no CRM...");
 
-        if (result.success) {
-          await new Promise(r => setTimeout(r, 500));
-          await confirmarAgendamento({ id: editingAppointment?.id || candidate.id, ...candidate }, {
-            date: candidate.date,
-            time: candidate.time,
-            sessionValue: candidate.crm?.paymentAmount || 200
-          });
-          toast.success("Criado e confirmado no CRM!");
-        } else {
-          toast.error("Erro ao enviar: " + result.error);
+        try {
+          const preResult = await autoSendPreAgendamento(candidate);
+
+          if (preResult.success) {
+            await new Promise(r => setTimeout(r, 500));
+            const confirmResult = await confirmarAgendamento(candidate, {
+              date: candidate.date,
+              time: candidate.time,
+              sessionValue: candidate.crm?.paymentAmount || 200
+            });
+
+            if (confirmResult.success) {
+              toast.success("✅ Criado e confirmado no CRM!");
+            } else {
+              toast.error("Erro ao confirmar: " + confirmResult.error);
+            }
+          } else {
+            toast.error("Erro ao criar: " + preResult.error);
+          }
+        } catch (err) {
+          console.error("🚀 ERRO:", err);
+          toast.error("Erro: " + err.message);
         }
       }
 
@@ -349,9 +357,10 @@ export default function App() {
 
     } catch (err) {
       console.error("[saveAppointment] Erro:", err);
-      toast.error("Erro ao salvar. Tente novamente.");
+      toast.error("Erro ao salvar: " + err.message);
     }
   };
+
   // ========== RESTO DAS FUNÇÕES ==========
 
   const openEditModal = (appointment) => {
