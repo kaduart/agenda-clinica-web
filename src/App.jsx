@@ -216,15 +216,24 @@ export default function App() {
 
   const saveAppointment = async (appointmentData) => {
     console.log("🔥🔥🔥 [saveAppointment] INICIANDO");
+    console.log("🔥🔥🔥 editingAppointment:", editingAppointment); // Debug
+    console.log("🔥🔥🔥 appointmentData:", appointmentData);
+    console.log("🔥🔥🔥 appointmentData.id:", appointmentData.id); // Deve ter ID!
 
-    const isEditing = !!editingAppointment?.id;
+    // ✅ USA O ID DO appointmentData (que vem do modal) se editingAppointment falhar
+    const effectiveId = appointmentData.id || editingAppointment?.id;
+    const isEditing = !!effectiveId;
+
+    console.log("🔥🔥🔥 effectiveId:", effectiveId);
     console.log("🔥🔥🔥 isEditing:", isEditing);
 
     const candidate = {
       ...editingAppointment,
       ...appointmentData,
+      id: effectiveId, // ✅ Garante o ID
       status: appointmentData.status === "Vaga" ? "Pendente" : appointmentData.status,
     };
+
 
     if (hasConflict(appointments, candidate, editingAppointment?.id)) {
       toast.error("⚠️ Conflito de horário!");
