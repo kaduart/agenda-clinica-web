@@ -114,7 +114,14 @@ export default function AppointmentModal({ appointment, professionals, onSave, o
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        onSave(formData);
+
+        // ✅ Se for edição, inclui o ID
+        const dataToSave = appointment?.id
+            ? { ...formData, id: appointment.id }
+            : formData;
+
+        console.log("Enviando para onSave:", dataToSave); // Debug
+        onSave(dataToSave);
     };
 
     const isEdit = !!appointment?.id;
