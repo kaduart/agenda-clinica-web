@@ -219,23 +219,22 @@ export default function App() {
     console.log("🔥🔥🔥 editingAppointment:", editingAppointment);
     console.log("🔥🔥🔥 appointmentData:", appointmentData);
 
-    // ✅ DETECTA EDIÇÃO PELO ID QUE VEM DO MODAL OU DO ESTADO
-    const appointmentId = appointmentData.id || editingAppointment?.id;
+    // ✅ DETECTA EDIÇÃO PELO ID DO editingAppointment (estado do App)
+    const appointmentId = editingAppointment?.id;
     const isEditing = !!appointmentId;
 
-    console.log("🔥🔥🔥 appointmentId detectado:", appointmentId);
+    console.log("🔥🔥🔥 appointmentId:", appointmentId);
     console.log("🔥🔥🔥 isEditing:", isEditing);
 
     const candidate = {
-      ...(isEditing ? editingAppointment : {}), // Só spread se for edição
-      ...appointmentData,
-      id: appointmentId, // ✅ ID garantido
+      ...(isEditing ? editingAppointment : {}), // Dados originais se for edição
+      ...appointmentData, // Sobrescreve com novos dados
+      id: appointmentId, // ✅ ID garantido (ou undefined se for novo)
       status: appointmentData.status === "Vaga" ? "Pendente" : appointmentData.status,
     };
-    console.log("🔥🔥🔥 candidate final:", candidate);
+    console.log("🔥🔥🔥 candidate:", candidate);
 
-
-    if (hasConflict(appointments, candidate, editingAppointment?.id)) {
+    if (hasConflict(appointments, candidate, appointmentId)) {
       toast.error("⚠️ Conflito de horário!");
       return;
     }
@@ -245,7 +244,10 @@ export default function App() {
 
       // ✅ 1. Salva no Firebase E CAPTURA O RESULTADO COM ID
       console.log("🔥 Salvando no Firebase...");
-      const saveResult = await upsertAppointment({ editingAppointment, appointmentData: candidate });
+      const saveResult = await upsertAppointment({
+        editingAppointment: isEditing ? { id: appointmentId } : null,
+        appointmentData: candidate
+      });
       console.log("🔥 Resultado do save:", saveResult);
 
       // ✅ 2. GARANTE que o candidate tenha o ID correto
