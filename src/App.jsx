@@ -48,8 +48,10 @@ import {
 } from "./services/crmExport";
 import { cancelReminder, listenReminders, markReminderDone, snoozeReminderDays } from "./services/remindersRepo";
 import "./styles/app.css";
+console.log("🚀🚀🚀 APP.JSX CARREGADO - VERSÃO NOVA!");
 
 export default function App() {
+  console.log("📱 [App.jsx] Componente App montando - VERSÃO NOVA!");
   console.log("📱 [App.jsx] Componente App montando...");
 
   const [view, setView] = React.useState("list");
