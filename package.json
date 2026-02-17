@@ -7,13 +7,15 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "deploy": "npm run build && npx vercel --prod"
   },
   "dependencies": {
-    "firebase": "^12.6.0",
+    "axios": "^1.13.5",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "react-toastify": "^11.0.5"
+    "react-toastify": "^11.0.5",
+    "socket.io-client": "^4.8.3"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
@@ -27,9 +29,6 @@
     "globals": "^16.5.0",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.17",
-    "vite": "npm:rolldown-vite@7.2.5"
-  },
-  "overrides": {
     "vite": "npm:rolldown-vite@7.2.5"
   }
 }

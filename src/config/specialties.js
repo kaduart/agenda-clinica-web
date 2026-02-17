@@ -26,6 +26,24 @@ export const SPECIALTIES = {
         borderColor: "border-violet-300",
         metricColor: "bg-violet-50",
     },
+    psicomotricidade: {
+        name: "Psicomotricidade",
+        icon: "fa-child-reaching",
+        bgColor: "bg-emerald-600",
+        lightBg: "bg-emerald-50",
+        textColor: "text-emerald-700",
+        borderColor: "border-emerald-300",
+        metricColor: "bg-emerald-50",
+    },
+    psicopedagogia: {
+        name: "Psicopedagogia",
+        icon: "fa-book-open",
+        bgColor: "bg-indigo-600",
+        lightBg: "bg-indigo-50",
+        textColor: "text-indigo-700",
+        borderColor: "border-indigo-300",
+        metricColor: "bg-indigo-50",
+    },
     terapia_ocupacional: {
         name: "Terapia Ocupacional",
         icon: "fa-hands-holding-child",
@@ -46,9 +64,13 @@ export const SPECIALTIES = {
     },
 };
 
+
 export const SPECIALTY_KEY_BY_LABEL = {
+    Todas: "todas",
     Fonoaudiologia: "fonoaudiologia",
     Psicologia: "psicologia",
+    Psicomotricidade: "psicomotricidade",
+    Psicopedagogia: "psicopedagogia",
     "Terapia Ocupacional": "terapia_ocupacional",
     Fisioterapia: "fisioterapia",
 };

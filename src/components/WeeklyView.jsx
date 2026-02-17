@@ -181,11 +181,11 @@ export default function WeeklyView({
                     <div className="space-y-2">
                         {(professionals || []).map((pro) => (
                             <div
-                                key={pro}
+                                key={pro.id || pro.fullName}
                                 className="grid grid-cols-[240px_repeat(5,minmax(140px,1fr))] gap-2"
                             >
                                 <div className="px-3 py-3 rounded-lg bg-white border border-gray-200">
-                                    <div className="text-sm font-bold text-gray-900 truncate">{pro}</div>
+                                    <div className="text-sm font-bold text-gray-900 truncate">{pro.fullName}</div>
                                     <div className="text-xs text-gray-500 mt-1">
                                         {activeSpecialtyLabel ? `Especialidade: ${activeSpecialtyLabel}` : "—"}
                                     </div>
@@ -193,8 +193,8 @@ export default function WeeklyView({
 
                                 {days.map((d, idx) => {
                                     const dateYMD = formatDateLocal(d);
-                                    const freeTimes = getFreeTimesFor(dateYMD, pro);
-                                    const busyCount = getBusyCountFor(dateYMD, pro);
+                                    const freeTimes = getFreeTimesFor(dateYMD, pro.fullName);
+                                    const busyCount = getBusyCountFor(dateYMD, pro.fullName);
 
                                     const showTimes = freeTimes.slice(0, maxShow);
                                     const extra = Math.max(0, freeTimes.length - showTimes.length);
@@ -224,7 +224,7 @@ export default function WeeklyView({
                                                                 __isEmptySlot: true,
                                                                 date: dateYMD,
                                                                 time: t,
-                                                                professional: pro,
+                                                                professional: pro.fullName,
                                                             })
                                                         }
                                                         className="px-2 py-1 rounded-md text-xs font-bold bg-emerald-200 text-emerald-900 border border-emerald-300 hover:bg-emerald-300"
@@ -245,7 +245,7 @@ export default function WeeklyView({
                                                     <>
                                                         <div className="w-full h-px bg-gray-200 my-1" />
                                                         {slots.map((t) => {
-                                                            const apt = index.get(`${dateYMD}|${t}|${pro}`);
+                                                            const apt = index.get(`${dateYMD}|${t}|${pro.fullName}`);
                                                             if (!isOccupied(apt)) return null;
 
                                                             return (
@@ -253,8 +253,11 @@ export default function WeeklyView({
                                                                     key={t}
                                                                     type="button"
                                                                     onClick={() => onSlotClick(apt)}
-                                                                    className="px-2 py-1 rounded-md text-xs font-bold bg-yellow-200 text-yellow-900 border border-yellow-300 hover:bg-yellow-300"
-                                                                    title={apt?.patient ? `Ocupado: ${apt.patient}` : "Ocupado"}
+                                                                    className={`px-2 py-1 rounded-md text-xs font-bold border ${apt.__isPreAgendamento
+                                                                        ? "bg-indigo-200 text-indigo-900 border-indigo-300 hover:bg-indigo-300"
+                                                                        : "bg-yellow-200 text-yellow-900 border-yellow-300 hover:bg-yellow-300"
+                                                                        }`}
+                                                                    title={apt.__isPreAgendamento ? `Interesse: ${apt.patientName || apt.patient?.fullName || apt.patient}` : (apt.patientName || apt.patient?.fullName || apt.patient || "Ocupado")}
                                                                 >
                                                                     {t}
                                                                 </button>
@@ -279,6 +282,10 @@ export default function WeeklyView({
                         <div className="flex items-center gap-2">
                             <span className="w-3 h-3 rounded bg-yellow-300 border border-yellow-400" />
                             <span className="text-gray-700 font-semibold">Ocupado</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <span className="w-3 h-3 rounded bg-indigo-300 border border-indigo-400" />
+                            <span className="text-gray-700 font-semibold">Interesse (Pré-Agendamento)</span>
                         </div>
                     </div>
                 </div>

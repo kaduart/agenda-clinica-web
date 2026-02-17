@@ -14,7 +14,7 @@ export default function AppointmentModal({ appointment, professionals, onSave, o
         professional: "",
         specialty: appointment?.specialty || "Fonoaudiologia",
         specialtyKey: appointment?.specialtyKey || resolveSpecialtyKey(appointment?.specialty || "Fonoaudiologia"),
-        status: "Confirmado",
+        status: "Pendente",
         observations: "",
         createdAt: appointment?.createdAt || null,
         crm: {
@@ -30,20 +30,28 @@ export default function AppointmentModal({ appointment, professionals, onSave, o
         const today = formatDateLocal(new Date());
 
         if (appointment) {
+            // Extract patient data carefully
+            const pObj = typeof appointment.patient === 'object' ? appointment.patient : {};
+            const pName = pObj.fullName || appointment.patientName || appointment.patient;
+
+            // Extract professional data
+            const dObj = typeof appointment.doctor === 'object' ? appointment.doctor : {};
+            const profName = dObj.fullName || appointment.professional || appointment.professionalName;
+
             setFormData({
-                patient: appointment.patient || "",
-                phone: appointment.phone || "",
-                birthDate: appointment.birthDate || "",
-                email: appointment.email || "",
+                patient: pName || "",
+                phone: appointment.phone || pObj.phone || "",
+                birthDate: appointment.birthDate || pObj.dateOfBirth || "",
+                email: appointment.email || pObj.email || "",
                 responsible: appointment.responsible || "",
                 date: appointment.date || today,
                 time: appointment.time || "08:00",
-                professional: appointment.professional || (professionals?.[0] || ""),
+                professional: profName || (professionals?.[0] || ""),
                 specialty: appointment.specialty || "Fonoaudiologia",
                 specialtyKey:
                     appointment.specialtyKey ||
                     resolveSpecialtyKey(appointment.specialty || "Fonoaudiologia"),
-                status: appointment.status || "Confirmado",
+                status: appointment.status || "Pendente",
                 observations: appointment.observations || "",
                 createdAt: appointment.createdAt || null,
                 crm: {
@@ -66,7 +74,7 @@ export default function AppointmentModal({ appointment, professionals, onSave, o
                 professional: professionals?.[0] || "",
                 specialty: "Fonoaudiologia",
                 specialtyKey: resolveSpecialtyKey("Fonoaudiologia"),
-                status: "Confirmado",
+                status: "Pendente",
                 observations: "",
                 createdAt: null,
                 crm: {
@@ -79,6 +87,7 @@ export default function AppointmentModal({ appointment, professionals, onSave, o
             });
         }
     }, [appointment, professionals]);
+    const [isLoading, setIsLoading] = React.useState(false);
 
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
@@ -112,30 +121,52 @@ export default function AppointmentModal({ appointment, professionals, onSave, o
         setFormData((prev) => ({ ...prev, [name]: value }));
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
 
-        // ✅ Se for edição, inclui o ID
-        const dataToSave = appointment?.id
-            ? { ...formData, id: appointment.id }
-            : formData;
+        if (isLoading) return;
 
-        console.log("Enviando para onSave:", dataToSave); // Debug
-        onSave(dataToSave);
+        setIsLoading(true);
+
+        try {
+            const dataToSave = appointment?.id
+                ? { ...formData, id: appointment.id }
+                : formData;
+
+            await onSave(dataToSave);
+        } catch (error) {
+            console.error("Erro ao salvar:", error);
+        } finally {
+            setIsLoading(false);
+        }
     };
 
-    const isEdit = !!appointment?.id;
 
+    const isEdit = !!appointment?.id && !appointment?.__isPreAgendamento;
+    const isPre = !!appointment?.__isPreAgendamento;
+    const source = appointment?.source || appointment?.metadata?.origin?.source || appointment?.originalData?.source;
+
+    // Se for pré-agendamento, mapeamos de preferredDate/Time
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-            <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-                <div className="px-6 py-4 border-b border-gray-200 bg-gray-50 sticky top-0">
-                    <h3 className="text-lg font-semibold text-gray-800">
-                        {isEdit ? "Editar Agendamento" : "Novo Agendamento"}
-                    </h3>
-                    <p className="text-xs text-gray-500 mt-1">
-                        Atendimento: 08:00 → 18:40 (intervalo 40min)
-                    </p>
+            <div className={`bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto relative ${isLoading ? "opacity-80 pointer-events-none" : ""}`}>
+
+                <div className="p-6">
+                    <div className="flex justify-between items-start mb-4">
+                        <div>
+                            <h3 className="text-lg font-semibold text-gray-800">
+                                {isPre ? "Confirmar Pré-Agendamento" : isEdit ? "Editar Agendamento" : "Novo Agendamento"}
+                            </h3>
+                            {source && (
+                                <p className="text-xs text-indigo-600 font-medium">
+                                    Origem: <span className="uppercase">{source}</span>
+                                </p>
+                            )}
+                        </div>
+                        <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
+                            <i className="fas fa-times text-xl"></i>
+                        </button>
+                    </div>
                 </div>
 
                 <form onSubmit={handleSubmit}>
@@ -242,8 +273,8 @@ export default function AppointmentModal({ appointment, professionals, onSave, o
                                     required
                                 >
                                     {(professionals || []).map((p, idx) => (
-                                        <option key={idx} value={p}>
-                                            {p}
+                                        <option key={idx} value={p.fullName}>
+                                            {p.fullName}
                                         </option>
                                     ))}
                                 </select>
@@ -369,18 +400,45 @@ export default function AppointmentModal({ appointment, professionals, onSave, o
 
                     <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3 bg-gray-50 sticky bottom-0">
                         <button
-                            type="button"
-                            onClick={onClose}
-                            className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 font-semibold"
-                        >
-                            Cancelar
-                        </button>
-                        <button
                             type="submit"
-                            className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 font-semibold"
+                            disabled={isLoading}
+                            className={`px-4 py-2 rounded-lg font-semibold flex items-center justify-center gap-2
+        ${isLoading
+                                    ? "bg-gray-400 cursor-not-allowed text-white"
+                                    : "bg-teal-600 hover:bg-teal-700 text-white"
+                                }`}
                         >
-                            {isEdit ? "Atualizar" : "Criar"} Agendamento
+                            {isLoading && (
+                                <svg
+                                    className="animate-spin h-4 w-4 text-white"
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <circle
+                                        className="opacity-25"
+                                        cx="12"
+                                        cy="12"
+                                        r="10"
+                                        stroke="currentColor"
+                                        strokeWidth="4"
+                                    />
+                                    <path
+                                        className="opacity-75"
+                                        fill="currentColor"
+                                        d="M4 12a8 8 0 018-8v8H4z"
+                                    />
+                                </svg>
+                            )}
+                            {isLoading
+                                ? "Processando..."
+                                : isPre
+                                    ? "Confirmar e Agendar"
+                                    : isEdit
+                                        ? "Atualizar Agendamento"
+                                        : "Criar Agendamento"}
                         </button>
+
                     </div>
                 </form>
             </div>

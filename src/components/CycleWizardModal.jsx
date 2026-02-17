@@ -144,7 +144,7 @@ export default function CycleWizardModal({ open, appointment, onClose, onConfirm
                     <div>
                         <h3 className="text-lg font-extrabold text-gray-900">Gerar sessões do ciclo (20→20)</h3>
                         <p className="text-sm text-gray-600">
-                            Base: <span className="font-semibold">{appointment?.patient || "Paciente"}</span> •{" "}
+                            Base: <span className="font-semibold">{appointment?.patientName || "Paciente"}</span> •{" "}
                             {seedDate || "—"} {seedTime || ""}
                         </p>
                     </div>

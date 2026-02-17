@@ -1,10 +1,10 @@
+
 // src/App.jsx
 import React, { useEffect, useMemo } from "react";
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
-// Firebase database precisa ser importado pro onDelete funcionar
-import { database } from "./config/firebase";
+// Firebase removido - Agora usamos API + Socket.io
 
 import AppointmentTable from "./components/AppointmentTable";
 import FiltersPanel from "./components/FiltersPanel";
@@ -19,12 +19,16 @@ import AppointmentModal from "./components/AppointmentModal";
 import ProfessionalsModal from "./components/ProfessionalsModal";
 
 import {
-  deleteAppointment,
-  generateCycleAppointments,
   hasConflict,
   listenAppointmentsForMonth,
+  listenToNotifications,
   upsertAppointment,
+  confirmAppointment,
+  cancelAppointment,
+  hardDeleteAppointment,
 } from "./services/appointmentsRepo";
+
+import { approvePreAppointment, discardPreAppointment, fetchPreAppointments } from "./services/preAppointmentsRepo";
 
 import {
   addProfessional,
@@ -39,20 +43,16 @@ import { resolveSpecialtyKey } from "./utils/specialty";
 
 import ReminderModal from "./components/ReminderModal";
 import RemindersListModal from "./components/RemindersListModal";
-import {
-  autoSendPreAgendamento,
-  confirmarAgendamento,
-  syncCancelToCRM,
-  syncDeleteToCRM,
-  syncIfNeeded
-} from "./services/crmExport";
+
+// crmExport removido pois a sincronização agora é automática no repo
+// import { ... } from "./services/crmExport"; 
+
 import { cancelReminder, listenReminders, markReminderDone, snoozeReminderDays } from "./services/remindersRepo";
 import "./styles/app.css";
-console.log("🚀🚀🚀 APP.JSX CARREGADO - VERSÃO NOVA!");
+console.log("🚀🚀🚀 APP.JSX CARREGADO - VERSÃO MIGRADA API!");
 
 export default function App() {
-  console.log("📱 [App.jsx] Componente App montando - VERSÃO NOVA!");
-  console.log("📱 [App.jsx] Componente App montando...");
+  console.log("📱 [App.jsx] Componente App montando - VERSÃO API!");
 
   const [view, setView] = React.useState("list");
   const [appointments, setAppointments] = React.useState([]);
@@ -82,6 +82,29 @@ export default function App() {
   const [reminders, setReminders] = React.useState([]);
   const [isRemindersListOpen, setIsRemindersListOpen] = React.useState(false);
 
+  const [preAppointments, setPreAppointments] = React.useState([]);
+  const [availableSlots, setAvailableSlots] = React.useState([]);
+
+  // ========== DISPONIBILIDADE REAL (Slots Virtuais) ==========
+  useEffect(() => {
+    const fetchSlots = async () => {
+      // Só busca se houver profissional E data selecionados
+      if (filters.filterProfessional && filters.filterDate && filters.filterProfessional.toLowerCase() !== "livre") {
+        const doc = (professionals || []).find(p => p.fullName === filters.filterProfessional);
+        if (doc?.id) {
+          console.log(`🔍 [App.jsx] Buscando slots para ${doc.fullName} em ${filters.filterDate}`);
+          const slots = await fetchAvailableSlots(doc.id, filters.filterDate);
+          setAvailableSlots(slots);
+        } else {
+          setAvailableSlots([]);
+        }
+      } else {
+        setAvailableSlots([]);
+      }
+    };
+    fetchSlots();
+  }, [filters.filterProfessional, filters.filterDate, professionals]);
+
   // ========== REMINDER ==========
   const openReminder = (appointment) => {
     setReminderAppointment(appointment);
@@ -110,7 +133,7 @@ export default function App() {
     });
     return () => {
       console.log("👂 [App.jsx] Listener de profissionais desmontado");
-      unsub();
+      unsub(); // É async/no-op agora, mas mantemos a chamada
     };
   }, []);
 
@@ -140,6 +163,33 @@ export default function App() {
     return () => unsub();
   }, []);
 
+  useEffect(() => {
+    const unsub = listenToNotifications((notif) => {
+      console.log("🔔 [App.jsx] Notificação recebida:", notif);
+      if (notif.type === 'pre_appointment') {
+        // 🛡️ Filtro: Só mostra toast se o interesse foi criado nos últimos 5 minutos
+        const createdAt = notif.data?.createdAt ? new Date(notif.data.createdAt) : new Date();
+        const diffMinutes = (new Date() - createdAt) / (1000 * 60);
+
+        if (diffMinutes <= 5) {
+          toast.info(
+            <div className="flex flex-col">
+              <span className="font-bold">🌟 {notif.title}</span>
+              <span className="text-sm">{notif.message}</span>
+            </div>,
+            { autoClose: 5000 }
+          );
+        } else {
+          console.log("⏳ [App.jsx] Notificação ignorada por ser antiga (Toast filtrado)");
+        }
+        // O listener de appointments já recarrega a lista via socket, 
+        // mas podemos forçar o fetch de pré-agendamentos se necessário.
+        fetchPreAppointments(filters.filterDate || todayFormatted).then(setPreAppointments);
+      }
+    });
+    return () => unsub();
+  }, [filters.filterDate, todayFormatted]);
+
   // ========== LABEL DA ESPECIALIDADE ATUAL ==========
   const activeSpecialtyLabel = useMemo(() => {
     if (activeSpecialty === "fonoaudiologia") return "Fonoaudiologia";
@@ -149,228 +199,163 @@ export default function App() {
     return "";
   }, [activeSpecialty]);
 
-  // ========== FUNÇÕES DE SINCronização ==========
+  // ========== FUNÇÕES DE AÇÃO (Simplificadas para API) ==========
 
-  // EXCLUIR com sync pro CRM
+  // EXCLUIR (Hard Delete) - Remove do banco
   const onDelete = async (id) => {
-    const ok = await confirmToast("Tem certeza?");
+    const isPre = (filteredAppointments || []).find(a => a.id === id)?.__isPreAgendamento;
+
+    // Se for pré, também podemos excluir permanentemente se o usuário quiser (limpar lixo)
+    const msg = isPre
+      ? "⚠ Tem certeza que deseja EXCLUIR PERMANENTEMENTE este interesse? (Não poderá ser desfeito)"
+      : "⚠ Tem certeza que deseja EXCLUIR PERMANENTEMENTE este agendamento? (Histórico será perdido)";
+
+    const ok = await confirmToast(msg);
     if (!ok) return;
 
     try {
-      console.log("🚀 EXCLUINDO ID:", id);
+      console.log("🚀 PROCESSANDO HARD DELETE ID:", id);
+      // Para pré-agendamentos, a rota de delete também funciona se for pelo ID do banco
+      // Se for um pré-agendamento apenas em memória (sem ID), não dá pra excluir do banco.
 
-      // Pega dados antes de deletar
-      const snap = await database.ref(`appointments/${id}`).get();
-      const appointment = { id, ...snap.val() };
+      await hardDeleteAppointment(id);
+      toast.success("Registro excluído permanentemente!");
 
-      console.log("Dados:", appointment);
-
-      // VERIFICA SE TEM NO CRM
-      const temNoCRM = appointment.preAgendamento?.crmPreAgendamentoId ||
-        appointment.export?.crmAppointmentId;
-
-      console.log("Tem no CRM?", temNoCRM);
-
-      // Se tem no CRM, avisa pra deletar lá também
-      if (temNoCRM) {
-        console.log("📡 Chamando syncDeleteToCRM...");
-        await syncDeleteToCRM(id);
-        console.log("✅ Deletado no CRM");
+      // Atualiza listas
+      if (isPre) {
+        fetchPreAppointments(filters.filterDate || todayFormatted).then(setPreAppointments);
+      } else {
+        // Force refresh
+        setFilters(prev => ({ ...prev }));
       }
-
-      // Deleta no Firebase
-      await deleteAppointment(id);
-      toast.success("Excluído!");
 
     } catch (e) {
       console.error("❌ ERRO:", e);
-      toast.error("Erro: " + e.message);
+      toast.error("Erro ao excluir: " + (e.response?.data?.error || e.message));
     }
   };
 
-  // CANCELAR específico (pode ser chamado de um botão na tabela)
+  // CANCELAR específico (Unificado: Soft Delete para Regular e Discard para Pre)
   const onCancel = async (appointment) => {
-    const reason = prompt("Motivo do cancelamento:", "Cancelado pelo paciente");
-    if (!reason) return;
+    const isPre = appointment.__isPreAgendamento;
+    const actionName = isPre ? "descartar este interesse" : "cancelar este agendamento";
+
+    // Confirmação rápida (opcional, mas bom para evitar cliques acidentais se não tiver prompt)
+    // Para regular pede motivo, para pre poderia só confirmar ou pedir motivo também.
+
+    let reason = "Cancelado via Web App";
+
+    if (isPre) {
+      // Para pré, apenas confirmamos (ou usamos prompt se quiser motivo de descarte)
+      const ok = await confirmToast(`Deseja ${actionName}?`);
+      if (!ok) return;
+      reason = "Descartado pela secretária";
+    } else {
+      reason = prompt("Motivo do cancelamento:", "Cancelado pelo paciente");
+      if (!reason) return;
+    }
 
     try {
-      // 1. Atualiza status localmente para Cancelado
-      const updatedData = {
-        ...appointment,
-        status: "Cancelado",
-        canceledReason: reason,
-        canceledAt: new Date().toISOString()
-      };
-
-      await upsertAppointment({ editingAppointment: appointment, appointmentData: updatedData });
-
-      // 2. Sincroniza com CRM se já tiver sido exportado
-      if (appointment.export?.status === "success" || appointment.preAgendamento?.crmPreAgendamentoId) {
-        await syncCancelToCRM(appointment, reason);
+      if (isPre) {
+        await discardPreAppointment(appointment.id, reason);
+        toast.success("Interesse descartado (Cancelado)!");
+      } else {
+        await cancelAppointment(appointment.id, reason);
+        toast.success("Agendamento cancelado!");
       }
-
-      toast.success("Agendamento cancelado e sincronizado!");
     } catch (e) {
       console.error("[onCancel]", e);
       toast.error("Erro ao cancelar: " + e.message);
     }
   };
 
-  const saveAppointment = async (appointmentData) => {
-    console.log("🔥🔥🔥 [saveAppointment] INICIANDO");
-    console.log("🔥🔥🔥 editingAppointment:", editingAppointment);
-    console.log("🔥🔥🔥 appointmentData:", appointmentData);
+  // CONFIRMAR (Amanda/Agenda Externa)
+  const handleConfirmAppointment = async (appointment) => {
+    // 1. Extrair ID do pré-agendamento ou External ID
+    // O backend bindou: metadata.origin.preAgendamentoId
+    const preAgendamentoId = appointment.metadata?.origin?.preAgendamentoId;
 
-    // ✅ DETECTA EDIÇÃO PELO ID DO editingAppointment (estado do App)
-    const appointmentId = editingAppointment?.id;
-    const isEditing = !!appointmentId;
-
-    console.log("🔥🔥🔥 appointmentId:", appointmentId);
-    console.log("🔥🔥🔥 isEditing:", isEditing);
-
-    const candidate = {
-      ...(isEditing ? editingAppointment : {}), // Dados originais se for edição
-      ...appointmentData, // Sobrescreve com novos dados
-      id: appointmentId, // ✅ ID garantido (ou undefined se for novo)
-      status: appointmentData.status === "Vaga" ? "Pendente" : appointmentData.status,
-    };
-    console.log("🔥🔥🔥 candidate:", candidate);
-
-    if (hasConflict(appointments, candidate, appointmentId)) {
-      toast.error("⚠️ Conflito de horário!");
+    if (!preAgendamentoId) {
+      console.error("Agendamento sem preAgendamentoId:", appointment);
+      toast.error("Erro: Agendamento sem vínculo claro com a solicitação original.");
       return;
     }
 
-    try {
-      const oldAppointment = isEditing ? { ...editingAppointment } : null;
+    const ok = await confirmToast(`Confirmar agendamento de ${appointment.patientName || "Paciente"}?`);
+    if (!ok) return;
 
-      // ✅ 1. Salva no Firebase E CAPTURA O RESULTADO COM ID
-      console.log("🔥 Salvando no Firebase...");
-      const saveResult = await upsertAppointment({
+    try {
+      await confirmAppointment(preAgendamentoId);
+      toast.success("Agendamento confirmado com sucesso!");
+    } catch (error) {
+      console.error(error);
+      toast.error("Erro ao confirmar: " + (error.response?.data?.error || error.message));
+    }
+  };
+
+  const saveAppointment = async (appointmentData) => {
+    console.log("🔥🔥🔥 [saveAppointment] START");
+    const appointmentId = editingAppointment?.id;
+    const isEditing = !!appointmentId && !editingAppointment?.__isPreAgendamento;
+    const isImportingPre = !!editingAppointment?.__isPreAgendamento;
+
+    if (isImportingPre) {
+      try {
+        console.log("🔥 [saveAppointment] Confirmando Pré-Agendamento...");
+        const doc = (professionals || []).find(p => p.fullName === appointmentData.professional);
+
+        const importData = {
+          doctorId: doc?.id,
+          date: appointmentData.date,
+          time: appointmentData.time,
+          sessionValue: Number(appointmentData.crm?.paymentAmount || 0),
+          serviceType: appointmentData.crm?.sessionType === 'avaliacao' ? 'evaluation' : 'session',
+          paymentMethod: appointmentData.crm?.paymentMethod || 'pix',
+          notes: appointmentData.observations
+        };
+
+        await approvePreAppointment(appointmentId, importData);
+        toast.success("Agendamento confirmado com sucesso!");
+        setIsModalOpen(false);
+        setEditingAppointment(null);
+        return;
+      } catch (err) {
+        console.error("❌ Erro ao confirmar pré-agendamento:", err);
+        toast.error("Erro ao confirmar: " + (err.response?.data?.error || err.message));
+        return;
+      }
+    }
+
+    const candidate = {
+      ...(isEditing ? editingAppointment : {}),
+      ...appointmentData,
+      status: appointmentData.status === "Vaga" ? "Pendente" : appointmentData.status,
+    };
+
+    if (appointmentId && isEditing) candidate.id = appointmentId;
+
+    // 1. Checagem de conflito local visual (rápida)
+    if (hasConflict(appointments, candidate, isEditing ? appointmentId : null)) {
+      toast.warning("⚠️ Atenção: Conflito visual detectado no seu calendário.");
+    }
+
+    try {
+      console.log("🔥 Enviando para API...");
+      const result = await upsertAppointment({
         editingAppointment: isEditing ? { id: appointmentId } : null,
         appointmentData: candidate
       });
-      console.log("🔥 Resultado do save:", saveResult);
 
-      // ✅ 2. GARANTE que o candidate tenha o ID correto
-      if (saveResult?.id) {
-        candidate.id = saveResult.id;
-        console.log("🔥 Agendamento salvo com ID:", candidate.id);
-      } else {
-        console.error("❌ ERRO: saveResult não tem ID!");
-        toast.error("Erro ao salvar: ID não retornado");
-        return;
-      }
-
-      // 3. Se for EDIÇÃO
-      if (isEditing && oldAppointment) {
-        console.log("🔥 ENTROU NO BLOCO DE EDIÇÃO");
-        console.log("🔥 oldAppointment.status:", oldAppointment.status);
-        console.log("🔥 candidate.status:", candidate.status);
-
-        const mudouParaConfirmado = oldAppointment.status !== "Confirmado" &&
-          candidate.status === "Confirmado";
-        console.log("🔥 mudouParaConfirmado:", mudouParaConfirmado);
-
-        if (mudouParaConfirmado) {
-          console.log("🚀 Mudou para Confirmado!");
-
-          if (oldAppointment.preAgendamento?.crmPreAgendamentoId) {
-            // Já tem pré-agendamento, só confirma
-            console.log("🚀 Tem pré-agendamento, confirmando...");
-            const result = await confirmarAgendamento(candidate, {
-              date: candidate.date,
-              time: candidate.time,
-              sessionValue: candidate.crm?.paymentAmount || 200
-            });
-
-            if (result.success) {
-              toast.success("✅ Confirmado no CRM!");
-            } else {
-              toast.error("Erro ao confirmar: " + result.error);
-            }
-          } else {
-            // Não tem pré-agendamento, cria e confirma
-            console.log("🚀 Não tem pré-agendamento, criando...");
-            const preResult = await autoSendPreAgendamento(candidate);
-
-            if (preResult.success) {
-              console.log("🚀 Pré-agendamento criado, aguardando...");
-              await new Promise(r => setTimeout(r, 500));
-
-              const confirmResult = await confirmarAgendamento(candidate, {
-                date: candidate.date,
-                time: candidate.time,
-                sessionValue: candidate.crm?.paymentAmount || 200
-              });
-
-              if (confirmResult.success) {
-                toast.success("✅ Criado e confirmado no CRM!");
-              } else {
-                toast.error("Erro ao confirmar: " + confirmResult.error);
-              }
-            } else {
-              toast.error("Erro ao criar pré-agendamento: " + preResult.error);
-            }
-          }
-        }
-      }
-
-      // ✅ 4. Se for NOVO e Pendente → envia pré-agendamento
-      else if (!isEditing && candidate.status === "Pendente") {
-        console.log("🚀 NOVO agendamento Pendente, enviando para CRM...");
-        console.log("🚀 ID:", candidate.id, "Paciente:", candidate.patient);
-
-        try {
-          const result = await autoSendPreAgendamento(candidate);
-          console.log("🚀 Resultado:", result);
-
-          if (result.success) {
-            toast.success("📤 Enviado para o CRM!");
-          } else {
-            toast.error("❌ Erro ao enviar: " + result.error);
-          }
-        } catch (err) {
-          console.error("🚀 ERRO:", err);
-          toast.error("Erro: " + err.message);
-        }
-      }
-
-      // ✅ 5. Se for NOVO e Confirmado → cria e confirma
-      else if (!isEditing && candidate.status === "Confirmado") {
-        console.log("🚀 NOVO agendamento Confirmado, criando no CRM...");
-
-        try {
-          const preResult = await autoSendPreAgendamento(candidate);
-
-          if (preResult.success) {
-            await new Promise(r => setTimeout(r, 500));
-            const confirmResult = await confirmarAgendamento(candidate, {
-              date: candidate.date,
-              time: candidate.time,
-              sessionValue: candidate.crm?.paymentAmount || 200
-            });
-
-            if (confirmResult.success) {
-              toast.success("✅ Criado e confirmado no CRM!");
-            } else {
-              toast.error("Erro ao confirmar: " + confirmResult.error);
-            }
-          } else {
-            toast.error("Erro ao criar: " + preResult.error);
-          }
-        } catch (err) {
-          console.error("🚀 ERRO:", err);
-          toast.error("Erro: " + err.message);
-        }
-      }
+      console.log("🔥 Resultado API:", result);
+      toast.success(isEditing ? "Agendamento atualizado!" : "Agendamento criado!");
 
       setIsModalOpen(false);
       setEditingAppointment(null);
 
     } catch (err) {
       console.error("[saveAppointment] Erro:", err);
-      toast.error("Erro ao salvar: " + err.message);
+      const msg = err.response?.data?.error || err.message;
+      toast.error("Erro ao salvar: " + msg);
     }
   };
 
@@ -441,17 +426,15 @@ export default function App() {
   const filteredAppointments = React.useMemo(() => {
     const weeks = getWeeksInMonth(currentYear, currentMonth);
 
+    // 1. Filtrar agendamentos reais (Data/Semana/Especialidade)
     let base = (appointments || []).filter((appointment) => {
-      if (activeSpecialty !== "todas") {
-        if (resolveSpecialtyKey(appointment) !== activeSpecialty) {
-          return false;
-        }
+      // Se tiver especialidade ativa, filtra por ela
+      if (activeSpecialty && activeSpecialty !== "todas") {
+        if (resolveSpecialtyKey(appointment) !== activeSpecialty) return false;
       }
 
       if (filters.filterDate) {
-        if (appointment.date !== filters.filterDate) {
-          return false;
-        }
+        if (appointment.date !== filters.filterDate) return false;
       } else {
         if (filters.filterDay) {
           if (!appointment.date) return false;
@@ -475,15 +458,22 @@ export default function App() {
           if (!(dKey >= startKey && dKey <= endKey)) return false;
         }
       }
+      return true;
+    });
 
+    // 2. Pré-Agendamentos (Já vêm unificados do backend na lista 'appointments')
+    // Não precisamos mais do merge manual aqui.
+    // 3. Filtros Secundários (Profissional e Status) aplicados na lista unificada
+    base = base.filter(appointment => {
       if (filters.filterProfessional) {
         if (filters.filterProfessional.toLowerCase() === "livre") {
+          const pName = appointment.patient?.fullName || appointment.patient || "";
           const isLivre =
             (appointment.professional && appointment.professional.toLowerCase().includes("livre")) ||
-            (appointment.patient && appointment.patient.toLowerCase().includes("livre")) ||
+            (pName.toLowerCase().includes("livre")) ||
             (appointment.observations && appointment.observations.toLowerCase().includes("livre"));
           if (!isLivre) return false;
-        } else if (appointment.professional !== filters.filterProfessional) {
+        } else if ((appointment.professional || "").toLowerCase() !== filters.filterProfessional.toLowerCase()) {
           return false;
         }
       }
@@ -491,13 +481,31 @@ export default function App() {
       if (filters.filterStatus && appointment.status !== filters.filterStatus) {
         return false;
       }
-
       return true;
     });
 
+    // 4. Injeção de Slots Virtuais (Fase 4)
+    if (filters.filterProfessional && filters.filterDate && availableSlots.length > 0) {
+      const virtualAppointments = availableSlots.map(time => ({
+        id: `virtual_${filters.filterDate}_${time}_${filters.filterProfessional}`,
+        date: filters.filterDate,
+        time,
+        professional: filters.filterProfessional,
+        patient: "Livre",
+        status: "Vaga",
+        __isVirtual: true
+      }));
+
+      // Evita duplicatas visuais se já houver um agendamento real ou pré-agendamento no mesmo horário
+      const realTimes = new Set(base.map(a => `${a.time}|${a.professional}`));
+      const uniqueVirtuals = virtualAppointments.filter(v => !realTimes.has(`${v.time}|${v.professional}`));
+
+      base = [...base, ...uniqueVirtuals];
+    }
+
     base = sortAppointmentsByDateTimeAsc(base);
     return base;
-  }, [appointments, activeSpecialty, filters, currentYear, currentMonth]);
+  }, [appointments, preAppointments, activeSpecialty, filters, currentYear, currentMonth, availableSlots]);
 
   // ========== PROFESSIONALS ==========
   const onOpenProfessionals = () => {
@@ -580,8 +588,9 @@ export default function App() {
               appointments={filteredAppointments}
               onEdit={openEditModal}
               onDelete={onDelete}
-              onCancel={onCancel}  // <-- Passa a função de cancelar aqui
+              onCancel={onCancel}
               onReminder={openReminder}
+              onConfirm={handleConfirmAppointment}
               onConfirmCycle={async (payload, baseAppointment) => {
                 try {
                   const result = await generateCycleAppointments(baseAppointment, payload, {

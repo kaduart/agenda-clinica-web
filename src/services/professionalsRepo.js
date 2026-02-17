@@ -1,36 +1,36 @@
-import { database } from "../config/firebase";
+
+import api from "./api";
 
 export const listenProfessionals = (onData) => {
-  const ref = database.ref("professionals");
-
-  const handler = (snapshot) => {
-    const data = snapshot.val();
-    const list = data ? Object.values(data) : [];
-    list.sort((a, b) => String(a).localeCompare(String(b), "pt-BR"));
-    onData(list);
+  const fetchData = async () => {
+    try {
+      const response = await api.get('/api/doctors');
+      // Retorna objetos completos para permitir uso do ID em buscas de slots
+      const professionals = response.data
+        .map(doc => ({
+          id: doc._id,
+          fullName: doc.fullName,
+          name: doc.name || doc.fullName,
+          specialty: doc.specialty
+        }))
+        .sort((a, b) => a.fullName.localeCompare(b.fullName));
+      onData(professionals);
+    } catch (error) {
+      console.error("Erro ao buscar profissionais:", error);
+      onData([]);
+    }
   };
 
-  ref.on("value", handler);
-  return () => ref.off("value", handler);
+  fetchData();
+
+  // Retorna função de "unsubscribe" síncrona
+  return () => { };
 };
 
 export const addProfessional = async (name) => {
-  const trimmed = (name || "").trim();
-  if (!trimmed) return;
-
-  const ref = database.ref("professionals").push();
-  await ref.set(trimmed);
+  console.warn("Adicionar profissional via frontend web desabilitado na migração.");
 };
 
 export const deleteProfessionalByName = async (name) => {
-  const target = (name || "").trim();
-  if (!target) return;
-
-  const snap = await database.ref("professionals").get();
-
-  snap.forEach((child) => {
-    if (child.val() === target) {
-      database.ref(`professionals/${child.key}`).remove();
-    }
-  });
+  console.warn("Remover profissional via frontend web desabilitado na migração.");
 };

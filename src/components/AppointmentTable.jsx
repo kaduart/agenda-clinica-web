@@ -5,8 +5,8 @@ import CycleWizardModal from "./CycleWizardModal";
 
 export default function AppointmentTable({
     activeSpecialty, appointments,
-    onEdit, onDelete, onReminder,
-    onConfirmCycle }) {
+    onEdit, onDelete, onReminder, onCancel,
+    onConfirmCycle, onConfirm }) {
 
     const [cycleWizardOpen, setCycleWizardOpen] = useState(false);
     const [baseAppointment, setBaseAppointment] = useState(null);
@@ -249,8 +249,10 @@ export default function AppointmentTable({
                                                 index={index}
                                                 onEdit={onEdit}
                                                 onDelete={onDelete}
+                                                onCancel={onCancel} // ✅ Passando onCancel
                                                 onReminder={onReminder}
                                                 onGenerateCycle={handleGenerateCycle}
+                                                onConfirm={onConfirm}
                                             />
                                         ))}
                                     </tbody>

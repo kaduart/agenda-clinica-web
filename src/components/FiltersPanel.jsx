@@ -180,8 +180,8 @@ export default function FiltersPanel({
                             <option value="">Todos os profissionais</option>
                             <option value="livre">📅 Horários livres</option>
                             {professionals.map((p, idx) => (
-                                <option key={idx} value={p}>
-                                    {p}
+                                <option key={idx} value={p.fullName}>
+                                    {p.fullName}
                                 </option>
                             ))}
                         </select>

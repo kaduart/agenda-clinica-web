@@ -1,5 +1,48 @@
-import { database } from "../config/firebase";
+
+import api from "./api";
+import io from 'socket.io-client';
 import { formatDateLocal } from "../utils/date";
+
+// Gerenciamento de Socket
+let socket;
+
+const getSocket = () => {
+    if (!socket) {
+        socket = io(import.meta.env.VITE_API_URL || 'http://localhost:5000', {
+            transports: ['websocket'],
+            autoConnect: true,
+        });
+
+        socket.on('connect', () => {
+            console.log('🔌 Socket conectado:', socket.id);
+        });
+
+        socket.on('connect_error', (error) => {
+            console.error('⚠️ Erro de conexão Socket:', error);
+        });
+    }
+    return socket;
+};
+
+// Hook para notificações globais (Toasts)
+export const listenToNotifications = (onNotification) => {
+    const s = getSocket();
+
+    const handleNewPre = (data) => {
+        onNotification({
+            type: 'pre_appointment',
+            title: 'Novo Interesse!',
+            message: `${data.patientName} tem interesse em ${data.specialty}`,
+            data
+        });
+    };
+
+    s.on('preagendamento:new', handleNewPre);
+
+    return () => {
+        s.off('preagendamento:new', handleNewPre);
+    };
+};
 
 export const listenAppointmentsForMonth = (year, month, onData) => {
     const firstDay = new Date(year, month, 1);
@@ -7,271 +50,269 @@ export const listenAppointmentsForMonth = (year, month, onData) => {
     const startDate = formatDateLocal(firstDay);
     const endDate = formatDateLocal(lastDay);
 
-    console.log(`[listenAppointments] Range: ${startDate} → ${endDate}`);
+    console.log(`[fetchAppointments] Range: ${startDate} → ${endDate}`);
 
-    const ref = database
-        .ref("appointments")
-        .orderByChild("date")
-        .startAt(startDate)
-        .endAt(endDate);
+    // Função interna para buscar dados
+    const fetchData = async () => {
+        try {
+            const response = await api.get('/api/appointments', {
+                params: {
+                    startDate,
+                    endDate,
+                    limit: 1000 // Garantir que venha tudo do mês
+                }
+            });
 
-    const handler = (snapshot) => {
-        const data = snapshot.val();
-        const list = data
-            ? Object.entries(data).map(([id, appointment]) => ({ id, ...appointment }))
-            : [];
-
-        console.log(`[listenAppointments] Recebidos ${list.length} agendamentos`);
-        onData(list);
+            // O backend retorna um array de calendarEvents já formatado
+            // O frontend espera { id, ...campos }
+            // O backend /api/appointments já retorna [{ id: "...", title: "...", start: "...", ... }]
+            const list = response.data;
+            console.log(`[fetchAppointments] Recebidos ${list.length} agendamentos`);
+            onData(list);
+        } catch (error) {
+            console.error('[fetchAppointments] Erro:', error);
+            onData([]);
+        }
     };
 
-    ref.on("value", handler);
-    return () => ref.off("value", handler);
+    // 1. Busca inicial
+    fetchData();
+
+    // 2. Configura Socket Listener para atualizações em tempo real
+    const s = getSocket();
+
+    const handleUpdate = (data) => {
+        console.log('📡 Evento Socket recebido:', data);
+        // Estratégia simples: recarregar o mês inteiro em qualquer mudança
+        // Isso garante consistência sem complexidade de merge no frontend
+        fetchData();
+    };
+
+    s.on('appointmentCreated', handleUpdate);
+    s.on('appointmentUpdated', handleUpdate);
+    s.on('preagendamento:new', handleUpdate); // Se a agenda mostrar pré-agendamentos
+    s.on('preagendamento:updated', handleUpdate);
+    s.on('preagendamento:imported', handleUpdate);
+
+    // Retorna função de limpeza
+    return () => {
+        s.off('appointmentCreated', handleUpdate);
+        s.off('appointmentUpdated', handleUpdate);
+        s.off('preagendamento:new', handleUpdate);
+        s.off('preagendamento:updated', handleUpdate);
+        s.off('preagendamento:imported', handleUpdate);
+    };
 };
 
 export const hasConflict = (appointments, candidate, editingId) => {
+    // Mantido lógica local para feedback rápido, mas o backend valida também
     return (appointments || []).some((a) =>
         a.id !== editingId &&
         a.date === candidate.date &&
         a.time === candidate.time &&
-        a.professional === candidate.professional &&
+        a.professional === candidate.professional && // backend usa doctorId, mas frontend usa professional
         a.status !== "Cancelado"
     );
 };
 
 export const upsertAppointment = async ({ editingAppointment, appointmentData }) => {
     const safeStatus = appointmentData.status === "Vaga" ? "Pendente" : appointmentData.status;
-    const createdAt =
-        editingAppointment?.createdAt ||
-        appointmentData.createdAt ||
-        new Date().toISOString();
 
-    const cleanPhone = (appointmentData.phone || "").replace(/\D/g, "");
-
-    // ✅ NORMALIZAR TIPOS CRM
+    // Payload unificado
     const payload = {
-        ...editingAppointment,
-        ...appointmentData,
+        externalId: editingAppointment?.id || `ext_${Date.now()}`,
+
+        // Dados do paciente
+        patientInfo: {
+            fullName: appointmentData.patientName || appointmentData.patient,
+            phone: appointmentData.phone,
+            birthDate: appointmentData.birthDate,
+            email: appointmentData.email
+        },
+        responsible: appointmentData.responsible,
+
+        // Dados do agendamento
+        professionalName: appointmentData.professional,
+        specialty: appointmentData.specialty,
+        date: appointmentData.date,
+        time: appointmentData.time,
         status: safeStatus,
-        phone: cleanPhone,
-        createdAt,
+        observations: appointmentData.observations,
+
+        // Dados CRM (financeiro/técnico)
         crm: {
-            serviceType: appointmentData.crm?.serviceType || "individual_session",
+            serviceType: appointmentData.crm?.serviceType === "individual_session" ? "session" : (appointmentData.crm?.serviceType || "evaluation"),
             sessionType: appointmentData.crm?.sessionType || "avaliacao",
             paymentMethod: appointmentData.crm?.paymentMethod || "pix",
-            paymentAmount: Number(appointmentData.crm?.paymentAmount || 0), // ⚠️ force Number
-            usePackage: Boolean(appointmentData.crm?.usePackage), // ⚠️ force Boolean
-        },
+            paymentAmount: Number(appointmentData.crm?.paymentAmount || 0),
+            usePackage: Boolean(appointmentData.crm?.usePackage),
+        }
     };
 
-    console.log("[upsertAppointment] Payload final:", JSON.stringify(payload, null, 2));
+    console.log("[upsertAppointment] Enviando para API...", payload);
 
-    if (editingAppointment?.id) {
-        await database.ref(`appointments/${editingAppointment.id}`).update(payload);
-        console.log(`[upsertAppointment] ✅ Atualizado: ${editingAppointment.id}`);
-        return { mode: "update", id: editingAppointment.id };
+    try {
+        if (editingAppointment?.id) {
+            // Edição -> sync-update
+            const response = await api.post('/api/import-from-agenda/sync-update', payload);
+            console.log(`[upsertAppointment] ✅ Atualizado via API`);
+            return { mode: "update", id: editingAppointment.id };
+        } else {
+            // Criação -> Apenas cria o Pré-Agendamento (Pendente)
+            // A confirmação será feita depois pela secretária.
+            console.log(`[upsertAppointment] Criando Pré-Agendamento...`);
+            const preRes = await api.post('/api/import-from-agenda', payload);
+
+            if (!preRes.data.success) {
+                throw new Error(preRes.data.error || "Erro ao criar pré-agendamento");
+            }
+
+            const preId = preRes.data.preAgendamentoId;
+            console.log(`[upsertAppointment] ✅ Pré-Agendamento criado com sucesso: ${preId}`);
+
+            // Retorna o ID do pré-agendamento. O frontend deve lidar com isso (ex: mostrar na lista como pendente)
+            return { mode: "create", id: preId, status: "pending_confirmation" };
+        }
+    } catch (error) {
+        console.error('[upsertAppointment] Erro na API:', error.response?.data || error.message);
+        throw error; // Propaga erro para a UI tratar
     }
-
-    const ref = database.ref("appointments").push();
-    await ref.set(payload);
-    console.log(`[upsertAppointment] ✅ Criado: ${ref.key}`);
-    return { mode: "create", id: ref.key };
 };
 
-export const deleteAppointment = async (id) => {
-    console.log(`[deleteAppointment] Excluindo: ${id}`);
-    await database.ref(`appointments/${id}`).remove();
+// Mantendo deleteAppointment como alias para compatibilidade, mas o nome correto agora é cancelAppointment
+export const cancelAppointment = async (id, reason = "Cancelado via Web App", options = {}) => {
+    console.log(`[cancelAppointment] Cancelando via API: ${id}`);
+    try {
+        await api.patch(`/api/appointments/${id}/cancel`, {
+            reason,
+            confirmedAbsence: options.confirmedAbsence || false,
+            notifyPatient: options.notifyPatient || false // Passando caso o backend suporte futuramente ou em middleware
+        });
+    } catch (error) {
+        console.error('[cancelAppointment] Erro ao cancelar:', error);
+        throw error;
+    }
+};
+
+export const deleteAppointment = cancelAppointment; // Alias para retrocompatibilidade
+
+// NOVO: Exclusão permanente (Hard Delete)
+export const hardDeleteAppointment = async (id) => {
+    console.log(`[hardDeleteAppointment] Excluindo permanentemente: ${id}`);
+    try {
+        await api.delete(`/api/appointments/${id}`);
+    } catch (error) {
+        console.error('[hardDeleteAppointment] Erro ao excluir:', error);
+        throw error;
+    }
 };
 
 // ===============================
-// CICLOS (20→20) - Firebase
+// CICLOS (Mantidos como "stub" ou adaptados se necessário)
+// Nesta migração, ciclos complexos podem precisar de revisão.
+// Por enquanto, desabilitamos a geração em lote no frontend para evitar inconsistência,
+// ou mantemos chamando upsert em loop (menos eficiente mas funcional).
 // ===============================
 
-// gera um id simples e único pro ciclo
-export const createCycleId = () =>
-    `cyc_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+export const createCycleId = () => `cyc_${Date.now()}`;
 
-// busca appointments por range de datas (YYYY-MM-DD)
-// usa o mesmo padrão do listenAppointmentsForMonth (orderByChild("date")) :contentReference[oaicite:3]{index=3}
+// Busca slots disponíveis Reais via API do CRM
+export const fetchAvailableSlots = async (doctorId, date) => {
+    try {
+        const response = await api.get('/api/appointments/available-slots', {
+            params: { doctorId, date }
+        });
+        return response.data; // Retorna array de strings ["08:00", "08:40", ...]
+    } catch (error) {
+        console.error('[fetchAvailableSlots] Erro:', error);
+        return [];
+    }
+};
+
+// Adaptação: fetch via API
 export const fetchAppointmentsInRange = async (startDate, endDate) => {
-    const snap = await database
-        .ref("appointments")
-        .orderByChild("date")
-        .startAt(startDate)
-        .endAt(endDate)
-        .get();
-
-    const data = snap.val();
-    return data ? Object.entries(data).map(([id, a]) => ({ id, ...a })) : [];
+    const response = await api.get('/api/appointments', {
+        params: { startDate, endDate }
+    });
+    return response.data;
 };
 
-// cria as sessões do ciclo em lote e retorna resumo
+// Gerador de Ciclo: Adaptado para chamar upsertAppointment em loop
+// (Solução temporária mas robusta para Fase 1)
 export const generateCycleAppointments = async (baseAppointment, payload, opts = {}) => {
-    const {
-        statusForGenerated = baseAppointment?.status || "Confirmado",
-        writeCycleMeta = true,
-        skipConflicts = true,
-    } = opts;
-
-    if (!baseAppointment) throw new Error("baseAppointment ausente");
-    if (!payload?.selectedSlots?.length) throw new Error("selectedSlots vazio");
-
-    const cycleId = payload.cycleId || createCycleId();
-    const cycleStartDate = String(payload.cycleStartDate || "").trim();
-    const cycleEndDate = String(payload.cycleEndDate || "").trim();
-
-    if (!cycleStartDate || !cycleEndDate) {
-        throw new Error("cycleStartDate/cycleEndDate ausentes");
-    }
-
-    // pega tudo do período 20→20 numa tacada só (ciclo pode atravessar meses)
-    const existing = await fetchAppointmentsInRange(cycleStartDate, cycleEndDate);
-
-    const nowIso = new Date().toISOString();
-    const appointmentsRef = database.ref("appointments");
-
-    const updates = {};
+    console.warn("⚠️ Geração de ciclo via API (em loop) - pode ser lento");
+    const { selectedSlots } = payload;
     const createdIds = [];
     const skipped = [];
 
-    for (const slot of payload.selectedSlots) {
-        const date = slot?.date;
-        const time = slot?.time;
-        if (!date || !time) continue;
+    // Busca existentes para conflito
+    const startDate = payload.cycleStartDate;
+    const endDate = payload.cycleEndDate;
+    const existing = await fetchAppointmentsInRange(startDate, endDate);
 
-        const conflict = existing.some((a) =>
-            a.date === date &&
-            a.time === time &&
-            a.professional === baseAppointment.professional &&
-            a.status !== "Cancelado" // mesma regra do hasConflict :contentReference[oaicite:4]{index=4}
-        );
-
-        if (conflict && skipConflicts) {
-            skipped.push({ date, time, reason: "CONFLICT" });
-            continue;
+    for (const slot of selectedSlots) {
+        if (opts.skipConflicts) {
+            const conflict = hasConflict(existing, {
+                date: slot.date,
+                time: slot.time,
+                professional: baseAppointment.professional
+            }, null);
+            if (conflict) {
+                skipped.push(slot);
+                continue;
+            }
         }
 
-        const id = appointmentsRef.push().key;
-        createdIds.push(id);
-
-        updates[`appointments/${id}`] = {
-            // campos “padrão” do seu appointment
-            patient: baseAppointment.patient || "",
-            phone: baseAppointment.phone || "",
-            birthDate: baseAppointment.birthDate || "",
-            email: baseAppointment.email || "",
-            responsible: baseAppointment.responsible || "",
-            professional: baseAppointment.professional || "",
-            specialty: baseAppointment.specialty || "Fonoaudiologia",
-            specialtyKey: baseAppointment.specialtyKey || undefined,
-
-            date,
-            time,
-            status: statusForGenerated,
-            observations:
-                (baseAppointment.observations ? `${baseAppointment.observations}\n` : "") +
-                `Ciclo automático ${cycleStartDate}→${cycleEndDate} (${payload.sessionsPerWeek}x/semana)`,
-
-            createdAt: nowIso,
-
-            // mantém crm igual seu upsert normaliza :contentReference[oaicite:5]{index=5}
-            crm: {
-                serviceType: baseAppointment.crm?.serviceType || "individual_session",
-                sessionType: baseAppointment.crm?.sessionType || "avaliacao",
-                paymentMethod: baseAppointment.crm?.paymentMethod || "pix",
-                paymentAmount: Number(baseAppointment.crm?.paymentAmount || 0),
-                usePackage: Boolean(baseAppointment.crm?.usePackage),
-            },
-
-            // ✅ CHAVE DO CICLO (pra agrupar / cancelar / apagar)
-            cycleId,
-            cycle: {
-                id: cycleId,
-                startDate: cycleStartDate,
-                endDate: cycleEndDate,
-                sessionsPerWeek: Number(payload.sessionsPerWeek || 0),
-                totalSessions: Number(payload.totalSessions || 0),
-                generatedAt: nowIso,
-                baseAppointmentId: baseAppointment.id || null,
-            },
+        // Prepara dados para criar
+        const apptData = {
+            ...baseAppointment,
+            date: slot.date,
+            time: slot.time,
+            observations: (baseAppointment.observations || "") + `\n[Ciclo Automático]`
         };
+
+        try {
+            const res = await upsertAppointment({ appointmentData: apptData });
+            createdIds.push(res.id);
+        } catch (e) {
+            console.error(`Erro ao criar item do ciclo ${slot.date}:`, e);
+        }
     }
 
-    // grava meta do ciclo (opcional, mas eu recomendo)
-    if (writeCycleMeta) {
-        updates[`cycles/${cycleId}`] = {
-            id: cycleId,
-            status: "active",
-            createdAt: nowIso,
-            startDate: cycleStartDate,
-            endDate: cycleEndDate,
-            sessionsPerWeek: Number(payload.sessionsPerWeek || 0),
-            totalSessions: Number(payload.totalSessions || 0),
-            baseAppointmentId: baseAppointment.id || null,
-            patient: baseAppointment.patient || "",
-            professional: baseAppointment.professional || "",
-            specialty: baseAppointment.specialty || "",
-            createdCount: createdIds.length,
-            skippedCount: skipped.length,
-        };
-    }
-
-    await database.ref().update(updates);
-
-    return {
-        cycleId,
-        createdCount: createdIds.length,
-        createdIds,
-        skipped,
-    };
+    return { createdCount: createdIds.length, createdIds, skipped };
 };
 
-// busca tudo do ciclo
-export const fetchAppointmentsByCycleId = async (cycleId) => {
-    const snap = await database
-        .ref("appointments")
-        .orderByChild("cycleId")
-        .equalTo(cycleId)
-        .get();
-
-    const data = snap.val();
-    return data ? Object.entries(data).map(([id, a]) => ({ id, ...a })) : [];
+export const cancelCycle = async (cycleId) => {
+    console.warn("Cancelamento de ciclo em lote não implementado na V1 da API.");
 };
 
-// ✅ “Cancelar ciclo” (soft): não apaga, só marca Cancelado (preserva histórico)
-export const cancelCycle = async (cycleId, reason = "Cancelado pelo ciclo") => {
-    if (!cycleId) return;
-
-    const items = await fetchAppointmentsByCycleId(cycleId);
-    if (!items.length) return;
-
-    const updates = {};
-    const nowIso = new Date().toISOString();
-
-    for (const a of items) {
-        updates[`appointments/${a.id}/status`] = "Cancelado";
-        updates[`appointments/${a.id}/canceledAt`] = nowIso;
-        updates[`appointments/${a.id}/observations`] =
-            (a.observations ? `${a.observations}\n` : "") + reason;
-    }
-
-    updates[`cycles/${cycleId}/status`] = "canceled";
-    updates[`cycles/${cycleId}/canceledAt`] = nowIso;
-
-    await database.ref().update(updates);
-};
-
-// ✅ “Apagar ciclo” (hard): remove do Firebase
 export const deleteCycle = async (cycleId) => {
-    if (!cycleId) return;
+    console.warn("Deleção de ciclo em lote não implementado na V1 da API.");
+};
 
-    const items = await fetchAppointmentsByCycleId(cycleId);
-    const updates = {};
 
-    for (const a of items) {
-        updates[`appointments/${a.id}`] = null; // multi-path delete
+// Confirma um agendamento pré-agendado (Amanda/Agenda Externa)
+export const confirmAppointment = async (preAgendamentoId) => {
+    console.log(`[confirmAppointment] Confirmando PreAgendamento: ${preAgendamentoId}`);
+    if (!preAgendamentoId) throw new Error("ID do pré-agendamento ausente.");
+
+    try {
+        const response = await api.post('/api/import-from-agenda/confirmar-agendamento', {
+            preAgendamentoId
+        });
+        return response.data;
+    } catch (error) {
+        throw error;
     }
-    updates[`cycles/${cycleId}`] = null;
+};
 
-    await database.ref().update(updates);
+export const discardPreAppointment = async (id, reason) => {
+    console.log(`[discardPreAppointment] Descartando: ${id}`);
+    try {
+        const response = await api.post(`/api/pre-agendamento/${id}/descartar`, { reason });
+        return response.data;
+    } catch (error) {
+        console.error('[discardPreAppointment] Descartando error:', error);
+        throw error;
+    }
 };

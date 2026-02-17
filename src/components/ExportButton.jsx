@@ -1,15 +1,21 @@
 import { useState } from "react";
 import { toast } from "react-toastify";
-import { database } from "../config/firebase";
-import {
-    autoSendPreAgendamento,
-    confirmarAgendamento
-} from "../services/crmExport";
+
 
 export default function ExportButton({ appointment }) {
+    // Na nova versão integrada, todo agendamento já está no CRM.
+    return (
+        <span className="text-xs text-emerald-600 font-medium" title="Sincronizado automaticamente">
+            ✅ Integrado
+        </span>
+    );
+}
+
+// Código antigo comentado para referência/backup
+/*
+export default function ExportButton({ appointment }) {
     const [loading, setLoading] = useState(false);
-    const [showModal, setShowModal] = useState(false);
-    const [form, setForm] = useState({
+
         doctorId: "",
         sessionValue: appointment.crm?.paymentAmount || 200
     });
@@ -137,4 +143,6 @@ export default function ExportButton({ appointment }) {
             toast.success("Confirmado e importado!");
         }
     }
+    }
 }
+*/
