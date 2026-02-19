@@ -2,7 +2,7 @@ import React from "react";
 import { formatDateLocal, extractDateForInput } from "../utils/date";
 import { resolveSpecialtyKey } from "../utils/specialty";
 
-export default function AppointmentModal({ appointment, professionals, patients, onSave, onClose }) {
+export default function AppointmentModal({ appointment, professionals, patients, onSave, onClose, onReloadPatients, authError }) {
     const [formData, setFormData] = React.useState({
         patient: "",
         phone: "",
@@ -60,6 +60,9 @@ export default function AppointmentModal({ appointment, professionals, patients,
             
             // Para pré-agendamentos, os dados estão em originalData.patientInfo
             const prePatientInfo = appointment.originalData?.patientInfo || {};
+            
+            // Para pré-agendamentos, o patientId pode estar em originalData.patientId
+            const prePatientId = appointment.originalData?.patientId || "";
 
             // Extract professional data
             const dObj = (typeof appointment.doctor === 'object' && appointment.doctor !== null) 
@@ -78,7 +81,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                            "",
                 email: appointment.email || pObj.email || prePatientInfo.email || "",
                 responsible: appointment.responsible || "",
-                patientId: pObj._id || appointment.patientId || "",
+                patientId: pObj._id || appointment.patientId || prePatientId || "",
                 
                 // Dados do agendamento
                 date: appointment.date || today,
@@ -156,9 +159,37 @@ export default function AppointmentModal({ appointment, professionals, patients,
     const [isLoading, setIsLoading] = React.useState(false);
     const [showSuggestions, setShowSuggestions] = React.useState(false);
     const [filteredPatients, setFilteredPatients] = React.useState([]);
+    
+    // Estado para controlar se é paciente novo ou existente
+    const [isNewPatient, setIsNewPatient] = React.useState(() => {
+        // Se já tem patientId (direto ou em originalData para pré-agendamentos), é existente
+        const hasPatientId = appointment?.patientId || 
+                            appointment?.originalData?.patientId ||
+                            (typeof appointment?.patient === 'object' && appointment?.patient?._id);
+        const hasPatientName = appointment?.patientName || (typeof appointment?.patient === 'string' ? appointment?.patient : '');
+        // Se tem ID ou está editando com nome preenchido, não é novo
+        if (hasPatientId) return false;
+        // Se está criando novo e não tem nada, assume novo por padrão
+        if (!appointment?.id && !hasPatientName) return true;
+        // Se tem nome mas não tem ID, pode ser novo
+        return !hasPatientName;
+    });
+
+    // Sincroniza isNewPatient quando formData.patientId muda (ex: ao carregar pré-agendamento)
+    React.useEffect(() => {
+        if (formData.patientId && isNewPatient) {
+            console.log("[AppointmentModal] Auto-ajustando isNewPatient para false (patientId detectado)");
+            setIsNewPatient(false);
+        }
+    }, [formData.patientId]);
 
     const handlePatientChange = (value) => {
-        setFormData(prev => ({ ...prev, patient: value }));
+        setFormData(prev => ({ 
+            ...prev, 
+            patient: value,
+            // Limpa o patientId quando o usuário está digitando manualmente
+            patientId: "" 
+        }));
 
         if (value.length > 2) {
             const matches = (patients || []).filter(p =>
@@ -172,14 +203,46 @@ export default function AppointmentModal({ appointment, professionals, patients,
     };
 
     const selectPatient = (p) => {
+        console.log("🎯 [AppointmentModal] Paciente SELECIONADO da lista:", {
+            id: p._id,
+            name: p.fullName,
+            phone: p.phone,
+            birthDate: p.dateOfBirth
+        });
         setFormData(prev => ({
             ...prev,
             patient: p.fullName,
+            patientId: p._id,  // Guarda o ID do paciente existente
             phone: p.phone || prev.phone,
             birthDate: p.dateOfBirth ? p.dateOfBirth.split('T')[0] : prev.birthDate,
             email: p.email || prev.email,
         }));
         setShowSuggestions(false);
+    };
+
+    // Auto-seleciona paciente se o usuário digitou o nome completo e saiu do campo
+    const handlePatientBlur = () => {
+        // Pequeno delay para permitir que o clique na sugestão seja processado primeiro
+        setTimeout(() => {
+            setShowSuggestions(false);
+            
+            if (formData.patient && !formData.patientId) {
+                const exactMatch = (patients || []).find(p => 
+                    p.fullName.toLowerCase().trim() === formData.patient.toLowerCase().trim()
+                );
+                if (exactMatch) {
+                    console.log("[AppointmentModal] Auto-selecionando paciente existente:", exactMatch.fullName);
+                    setFormData(prev => ({
+                        ...prev,
+                        patient: exactMatch.fullName,
+                        patientId: exactMatch._id,
+                        phone: exactMatch.phone || prev.phone,
+                        birthDate: exactMatch.dateOfBirth ? exactMatch.dateOfBirth.split('T')[0] : prev.birthDate,
+                        email: exactMatch.email || prev.email,
+                    }));
+                }
+            }
+        }, 200);
     };
 
     const handleChange = (e) => {
@@ -222,11 +285,26 @@ export default function AppointmentModal({ appointment, professionals, patients,
         setIsLoading(true);
 
         try {
+            console.log("🚀 [AppointmentModal] SUBMIT iniciado");
+            console.log("🚀 [AppointmentModal] isNewPatient:", isNewPatient);
+            console.log("🚀 [AppointmentModal] formData.patientId:", formData.patientId);
+            console.log("🚀 [AppointmentModal] formData.patient:", formData.patient);
+
+            // Validação: se não é novo paciente, precisa ter selecionado um da lista
+            if (!isNewPatient && !formData.patientId) {
+                console.error("❌ [AppointmentModal] ERRO: Tentou salvar paciente existente sem patientId!");
+                alert("Por favor, selecione um paciente existente da lista ou marque 'Criando novo paciente'");
+                setIsLoading(false);
+                return;
+            }
+
             // Montar payload completo com todos os campos
             const dataToSave = {
                 // Dados do paciente
                 patient: formData.patient,
                 patientName: formData.patient,
+                patientId: isNewPatient ? null : formData.patientId,  // Só envia ID se for existente
+                isNewPatient: isNewPatient,  // Flag para o backend saber
                 phone: formData.phone,
                 birthDate: formData.birthDate,
                 email: formData.email,
@@ -237,6 +315,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                 time: formData.time,
                 professional: formData.professional,
                 professionalName: formData.professional,
+                professionalId: formData.professionalId,
                 specialty: formData.specialty,
                 operationalStatus: formData.operationalStatus,
                 observations: formData.observations,
@@ -248,7 +327,12 @@ export default function AppointmentModal({ appointment, professionals, patients,
                 ...(appointment?.id ? { id: appointment.id } : {})
             };
             
-            console.log("[AppointmentModal] Enviando dados:", dataToSave);
+            console.log("✅ [AppointmentModal] =========================================");
+            console.log("✅ [AppointmentModal] ENVIANDO PARA onSave:");
+            console.log("✅ [AppointmentModal] patientId:", dataToSave.patientId);
+            console.log("✅ [AppointmentModal] isNewPatient:", dataToSave.isNewPatient);
+            console.log("✅ [AppointmentModal] patientName:", dataToSave.patientName);
+            console.log("✅ [AppointmentModal] Payload completo:", JSON.stringify(dataToSave, null, 2));
             await onSave(dataToSave);
         } catch (error) {
             console.error("Erro ao salvar:", error);
@@ -287,33 +371,247 @@ export default function AppointmentModal({ appointment, professionals, patients,
 
                 <form onSubmit={handleSubmit}>
                     <div className="px-6 py-4 space-y-4">
-                        <div className="relative">
-                            <label className="block text-sm font-bold text-gray-700 mb-1">Paciente *</label>
-                            <input
-                                type="text"
-                                name="patient"
-                                value={formData.patient}
-                                onChange={(e) => handlePatientChange(e.target.value)}
-                                onFocus={() => formData.patient.length > 2 && setShowSuggestions(true)}
-                                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
-                                required
-                                autoComplete="off"
-                            />
-                            {showSuggestions && (
-                                <div className="absolute z-[60] left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
-                                    {filteredPatients.map((p) => (
-                                        <div
-                                            key={p._id}
-                                            className="p-3 hover:bg-teal-50 cursor-pointer border-b border-gray-100 last:border-0"
-                                            onClick={() => selectPatient(p)}
-                                        >
-                                            <div className="font-semibold text-gray-800">{p.fullName}</div>
-                                            <div className="text-xs text-gray-500 flex justify-between">
-                                                <span>{p.phone}</span>
-                                                {p.dateOfBirth && <span>{new Date(p.dateOfBirth).toLocaleDateString()}</span>}
-                                            </div>
+                        <div className="space-y-3">
+                            {/* Checkbox para definir se é novo paciente */}
+                            <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                                <input
+                                    id="isNewPatient"
+                                    type="checkbox"
+                                    checked={isNewPatient}
+                                    onChange={(e) => {
+                                        const checked = e.target.checked;
+                                        console.log("☑️ [AppointmentModal] Checkbox 'Novo Paciente' alterado:", checked);
+                                        setIsNewPatient(checked);
+                                        if (checked) {
+                                            // Limpa o patientId ao marcar como novo
+                                            console.log("☑️ [AppointmentModal] Modo NOVO PACIENTE - Limpando patientId");
+                                            setFormData(prev => ({ 
+                                                ...prev, 
+                                                patientId: "",
+                                                patient: "",
+                                                phone: "",
+                                                birthDate: "",
+                                                email: ""
+                                            }));
+                                        } else {
+                                            // Ao desmarcar, limpa para forçar seleção
+                                            console.log("☑️ [AppointmentModal] Modo PACIENTE EXISTENTE - Aguardando seleção");
+                                            setFormData(prev => ({ 
+                                                ...prev, 
+                                                patientId: "",
+                                                patient: ""
+                                            }));
+                                        }
+                                    }}
+                                    className="w-5 h-5 text-teal-600 rounded focus:ring-teal-500"
+                                />
+                                <label htmlFor="isNewPatient" className="text-sm font-semibold text-gray-700 cursor-pointer">
+                                    {isNewPatient ? "✨ Criando novo paciente" : "🔍 Selecionar paciente existente"}
+                                </label>
+                            </div>
+
+                            {/* Se for novo paciente: input livre */}
+                            {isNewPatient ? (
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-1">
+                                        Nome do novo paciente *
+                                    </label>
+                                    <input
+                                        type="text"
+                                        name="patient"
+                                        value={formData.patient}
+                                        onChange={(e) => setFormData(prev => ({ ...prev, patient: e.target.value }))}
+                                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                        required
+                                        autoComplete="off"
+                                        placeholder="Digite o nome completo..."
+                                    />
+                                </div>
+                            ) : (
+                                /* Se for existente: select com busca */
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-1">
+                                        Selecione o paciente *
+                                        {formData.patientId && (
+                                            <span className="ml-2 text-xs font-normal text-green-600 bg-green-100 px-2 py-0.5 rounded-full">
+                                                ✓ Selecionado
+                                            </span>
+                                        )}
+                                    </label>
+                                    
+                                    {/* Verifica se tem erro de autenticação */}
+                                    {authError ? (
+                                        <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-center">
+                                            <p className="text-red-600 text-sm font-medium">
+                                                <i className="fas fa-lock mr-2"></i>
+                                                Erro de autenticação
+                                            </p>
+                                            <p className="text-red-500 text-xs mt-1">
+                                                Token inválido. Verifique o VITE_API_TOKEN no arquivo .env
+                                            </p>
+                                            <button
+                                                type="button"
+                                                onClick={() => onReloadPatients && onReloadPatients()}
+                                                className="mt-2 text-xs bg-red-100 hover:bg-red-200 text-red-700 px-3 py-1.5 rounded font-medium"
+                                            >
+                                                <i className="fas fa-sync-alt mr-1"></i>
+                                                Tentar novamente
+                                            </button>
                                         </div>
-                                    ))}
+                                    ) : /* Verifica se tem pacientes carregados */
+                                    (!patients || patients.length === 0) ? (
+                                        <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                                            <p className="text-amber-800 text-sm font-medium text-center">
+                                                <i className="fas fa-exclamation-triangle mr-2"></i>
+                                                Lista de pacientes não carregou (Erro de autenticação)
+                                            </p>
+                                            <p className="text-amber-600 text-xs mt-1 text-center">
+                                                A rota /api/patients retornou 401. Use uma das opções:
+                                            </p>
+                                            
+                                            {/* Opção 1: Criar novo paciente */}
+                                            <div className="mt-3 p-3 bg-white rounded border border-amber-200">
+                                                <label className="flex items-center gap-2 cursor-pointer">
+                                                    <input
+                                                        type="radio"
+                                                        name="patientMode"
+                                                        checked={isNewPatient}
+                                                        onChange={() => {
+                                                            console.log("☑️ [AppointmentModal] Modo NOVO PACIENTE selecionado (lista vazia)");
+                                                            setIsNewPatient(true);
+                                                            setFormData(prev => ({ 
+                                                                ...prev, 
+                                                                patientId: "",
+                                                                patient: "",
+                                                                phone: "",
+                                                                birthDate: "",
+                                                                email: ""
+                                                            }));
+                                                        }}
+                                                        className="text-teal-600"
+                                                    />
+                                                    <span className="text-sm font-medium text-gray-700">🆕 Criar novo paciente</span>
+                                                </label>
+                                            </div>
+
+                                            {/* Opção 2: Usar ID existente */}
+                                            <div className="mt-2 p-3 bg-white rounded border border-amber-200">
+                                                <label className="flex items-center gap-2 cursor-pointer">
+                                                    <input
+                                                        type="radio"
+                                                        name="patientMode"
+                                                        checked={!isNewPatient}
+                                                        onChange={() => {
+                                                            console.log("☑️ [AppointmentModal] Modo PACIENTE EXISTENTE selecionado (vai digitar ID)");
+                                                            setIsNewPatient(false);
+                                                            setFormData(prev => ({ 
+                                                                ...prev, 
+                                                                patientId: "",
+                                                                patient: ""
+                                                            }));
+                                                        }}
+                                                        className="text-teal-600"
+                                                    />
+                                                    <span className="text-sm font-medium text-gray-700">📝 Usar paciente existente (digite o ID)</span>
+                                                </label>
+                                            </div>
+
+                                            {/* Campos baseado na seleção */}
+                                            {isNewPatient ? (
+                                                <div className="mt-3">
+                                                    <input
+                                                        type="text"
+                                                        value={formData.patient}
+                                                        onChange={(e) => setFormData(prev => ({ ...prev, patient: e.target.value }))}
+                                                        placeholder="Nome completo do novo paciente"
+                                                        className="w-full p-2 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-teal-500"
+                                                        required
+                                                    />
+                                                </div>
+                                            ) : (
+                                                <div className="mt-3 space-y-2">
+                                                    <input
+                                                        type="text"
+                                                        value={formData.patientId}
+                                                        onChange={(e) => setFormData(prev => ({ ...prev, patientId: e.target.value }))}
+                                                        placeholder="Cole o ID do paciente (MongoDB ObjectId)"
+                                                        className="w-full p-2 text-sm border border-gray-300 rounded font-mono text-xs focus:ring-2 focus:ring-teal-500"
+                                                    />
+                                                    <input
+                                                        type="text"
+                                                        value={formData.patient}
+                                                        onChange={(e) => setFormData(prev => ({ ...prev, patient: e.target.value }))}
+                                                        placeholder="Nome do paciente (para exibição)"
+                                                        className="w-full p-2 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-teal-500"
+                                                    />
+                                                    <p className="text-xs text-gray-500">
+                                                        💡 O ID pode ser encontrado no CRM ou na URL do perfil do paciente
+                                                    </p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <>
+                                            {/* Input de busca para filtrar */}
+                                            <div className="relative mb-2">
+                                                <input
+                                                    type="text"
+                                                    placeholder="Buscar paciente..."
+                                                    value={showSuggestions ? undefined : (formData.patient || "")}
+                                                    onChange={(e) => handlePatientChange(e.target.value)}
+                                                    onFocus={() => {
+                                                        setShowSuggestions(true);
+                                                        setFilteredPatients(patients.slice(0, 10));
+                                                    }}
+                                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                                />
+                                                <i className="fas fa-search absolute right-3 top-3.5 text-gray-400"></i>
+                                            </div>
+
+                                            {/* Lista de pacientes */}
+                                            {showSuggestions && (
+                                                <div className="border border-gray-200 rounded-lg max-h-48 overflow-y-auto bg-white">
+                                                    {filteredPatients.length === 0 ? (
+                                                        <div className="p-3 text-gray-500 text-sm text-center">
+                                                            Nenhum paciente encontrado
+                                                        </div>
+                                                    ) : (
+                                                        filteredPatients.map((p) => (
+                                                            <div
+                                                                key={p._id}
+                                                                className={`p-3 cursor-pointer border-b border-gray-100 last:border-0 hover:bg-teal-50 ${
+                                                                    formData.patientId === p._id ? 'bg-teal-50 border-l-4 border-l-teal-500' : ''
+                                                                }`}
+                                                                onClick={() => selectPatient(p)}
+                                                            >
+                                                                <div className="font-semibold text-gray-800">{p.fullName}</div>
+                                                                <div className="text-xs text-gray-500 flex justify-between mt-1">
+                                                                    <span>{p.phone || "Sem telefone"}</span>
+                                                                    {p.dateOfBirth && (
+                                                                        <span>{new Date(p.dateOfBirth).toLocaleDateString()}</span>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        ))
+                                                    )}
+                                                </div>
+                                            )}
+
+                                            {/* Resumo do paciente selecionado */}
+                                            {formData.patientId && (
+                                                <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+                                                    <p className="text-sm font-medium text-green-800">
+                                                        <i className="fas fa-user-check mr-2"></i>
+                                                        {formData.patient}
+                                                    </p>
+                                                    <p className="text-xs text-green-600 mt-1">
+                                                        Telefone: {formData.phone || "-"} | 
+                                                        Nasc: {formData.birthDate ? new Date(formData.birthDate).toLocaleDateString() : "-"}
+                                                    </p>
+                                                </div>
+                                            )}
+                                        </>
+                                    )}
                                 </div>
                             )}
                         </div>

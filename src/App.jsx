@@ -62,6 +62,7 @@ export default function App() {
   const [appointments, setAppointments] = React.useState([]);
   const [professionals, setProfessionals] = React.useState([]);
   const [patients, setPatients] = React.useState([]);
+  const [patientsError, setPatientsError] = React.useState(null);
 
   const today = new Date();
   const todayFormatted = formatDateLocal(today);
@@ -137,7 +138,19 @@ export default function App() {
     });
 
     // Busca lista de pacientes
-    fetchPatients().then(setPatients);
+    fetchPatients().then((data) => {
+      console.log("👥 [App.jsx] Pacientes carregados:", data?.length || 0);
+      setPatients(data || []);
+      if (!data || data.length === 0) {
+        setPatientsError('empty');
+      } else {
+        setPatientsError(null);
+      }
+    }).catch((err) => {
+      console.error("❌ [App.jsx] Erro ao carregar pacientes:", err);
+      setPatientsError('auth');
+      setPatients([]);
+    });
 
     return () => {
       console.log("👂 [App.jsx] Listener de profissionais desmontado");
@@ -311,14 +324,24 @@ export default function App() {
   };
 
   const saveAppointment = async (appointmentData) => {
-    console.log("🔥🔥🔥 [saveAppointment] START");
+    console.log("🔥🔥🔥 [saveAppointment] =========================================");
+    console.log("🔥 [saveAppointment] START");
+    console.log("🔥 [saveAppointment] appointmentData recebido:", JSON.stringify(appointmentData, null, 2));
+    
     const appointmentId = editingAppointment?.id;
     const isEditing = !!appointmentId && !editingAppointment?.__isPreAgendamento;
     const isImportingPre = !!editingAppointment?.__isPreAgendamento;
+    
+    console.log("🔥 [saveAppointment] isEditing:", isEditing);
+    console.log("🔥 [saveAppointment] isImportingPre:", isImportingPre);
+    console.log("🔥 [saveAppointment] appointmentId:", appointmentId);
 
     if (isImportingPre) {
       try {
         console.log("🔥 [saveAppointment] Confirmando Pré-Agendamento...");
+        console.log("📋 [saveAppointment] patientId recebido:", appointmentData.patientId);
+        console.log("📋 [saveAppointment] isNewPatient recebido:", appointmentData.isNewPatient);
+        
         const doc = (professionals || []).find(p => p.fullName === appointmentData.professional);
 
         const importData = {
@@ -328,9 +351,21 @@ export default function App() {
           sessionValue: Number(appointmentData.crm?.paymentAmount || 0),
           serviceType: appointmentData.crm?.sessionType === 'avaliacao' ? 'evaluation' : 'session',
           paymentMethod: appointmentData.crm?.paymentMethod || 'pix',
-          notes: appointmentData.observations
+          notes: appointmentData.observations,
+          // IMPORTANTE: Envia patientId se for paciente existente
+          patientId: appointmentData.patientId || null,
+          isNewPatient: appointmentData.isNewPatient || false,
+          // Também envia os dados do paciente para o caso de ser novo
+          patientInfo: {
+            fullName: appointmentData.patientName || appointmentData.patient,
+            phone: appointmentData.phone,
+            birthDate: appointmentData.birthDate,
+            email: appointmentData.email
+          }
         };
 
+        console.log("📤 [saveAppointment] Enviando para /api/pre-agendamento/${id}/importar:");
+        console.log("📤 [saveAppointment] Payload:", JSON.stringify(importData, null, 2));
         await approvePreAppointment(appointmentId, importData);
         toast.success("Agendamento confirmado com sucesso!");
         setIsModalOpen(false);
@@ -676,6 +711,20 @@ export default function App() {
               setIsModalOpen(false);
               setEditingAppointment(null);
             }}
+            onReloadPatients={async () => {
+              console.log("🔄 [App.jsx] Recarregando pacientes...");
+              try {
+                const data = await fetchPatients();
+                console.log("👥 [App.jsx] Pacientes recarregados:", data?.length || 0);
+                setPatients(data || []);
+                setPatientsError(!data || data.length === 0 ? 'empty' : null);
+              } catch (err) {
+                console.error("❌ [App.jsx] Erro ao recarregar pacientes:", err);
+                setPatientsError('auth');
+                setPatients([]);
+              }
+            }}
+            authError={patientsError === 'auth'}
           />
         </div>
       )}

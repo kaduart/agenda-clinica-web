@@ -151,14 +151,26 @@ const waitForSocketEvent = (eventName, targetId, timeoutMs = 5000) => {
 };
 
 export const upsertAppointment = async ({ editingAppointment, appointmentData }) => {
+    console.log("📝 [appointmentsRepo] upsertAppointment chamado");
+    console.log("📝 [appointmentsRepo] appointmentData.patientId:", appointmentData.patientId);
+    console.log("📝 [appointmentsRepo] appointmentData.isNewPatient:", appointmentData.isNewPatient);
+    console.log("📝 [appointmentsRepo] appointmentData.patientName:", appointmentData.patientName);
+    
     const safeStatus = appointmentData.status === "Vaga" ? "Pendente" : appointmentData.status;
-    const appointmentId = editingAppointment?.id || `ext_${Date.now()}`;
+    
+    // Verifica se é edição (tem ID válido do MongoDB - 24 chars hex)
+    // IDs que começam com 'ext_' são gerados pelo frontend e não devem ser enviados
+    const isEditing = editingAppointment?.id && !editingAppointment.id.startsWith('ext_');
+    const appointmentId = isEditing ? editingAppointment.id : null;
+    
+    console.log("📝 [appointmentsRepo] isEditing:", isEditing);
+    console.log("📝 [appointmentsRepo] appointmentId:", appointmentId);
 
-    // Payload unificado
+    // Payload unificado - só envia _id se for edição (na criação o backend gera)
     const payload = {
-        _id: appointmentId,
-
         // Dados do paciente
+        patientId: appointmentData.patientId,  // ID do paciente se já existir
+        isNewPatient: appointmentData.isNewPatient,  // Flag: true = criar novo paciente
         patientInfo: {
             fullName: appointmentData.patientName || appointmentData.patient,
             phone: appointmentData.phone,
@@ -169,6 +181,7 @@ export const upsertAppointment = async ({ editingAppointment, appointmentData })
 
         // Dados do agendamento
         professionalName: appointmentData.professional,
+        doctorId: appointmentData.professionalId,  // ID do profissional se disponível
         specialty: appointmentData.specialty,
         date: appointmentData.date,
         time: appointmentData.time,
@@ -182,14 +195,14 @@ export const upsertAppointment = async ({ editingAppointment, appointmentData })
             paymentMethod: appointmentData.crm?.paymentMethod || "pix",
             paymentAmount: Number(appointmentData.crm?.paymentAmount || 0),
             usePackage: Boolean(appointmentData.crm?.usePackage),
-        }
+        },
+        
+        // Só envia _id se for edição (na criação o backend gera automaticamente)
+        ...(isEditing && appointmentId ? { _id: appointmentId } : {})
     };
 
-    console.log("[upsertAppointment] Enviando para API...", payload);
-
-    // Para edições, também escutamos o evento socket como "fallback" de sucesso
-    // Isso resolve o problema do backend não responder HTTP mas emitir socket
-    const isEditing = !!editingAppointment?.id;
+    console.log("[upsertAppointment] Enviando para API...");
+    console.log("[upsertAppointment] Payload completo:", JSON.stringify(payload, null, 2));
     
     if (isEditing) {
         // ESTRATÉGIA CORRETA: Sempre esperar a API completar!

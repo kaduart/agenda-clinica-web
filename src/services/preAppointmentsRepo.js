@@ -30,11 +30,18 @@ export const fetchPreAppointments = async (filters = {}) => {
  * @returns {Promise<Object>}
  */
 export const approvePreAppointment = async (id, data) => {
+    console.log("📥 [preAppointmentsRepo] approvePreAppointment chamado");
+    console.log("📥 [preAppointmentsRepo] ID:", id);
+    console.log("📥 [preAppointmentsRepo] data.patientId:", data.patientId);
+    console.log("📥 [preAppointmentsRepo] data.isNewPatient:", data.isNewPatient);
+    console.log("📥 [preAppointmentsRepo] URL:", `/api/pre-agendamento/${id}/importar`);
+    
     try {
         const response = await api.post(`/api/pre-agendamento/${id}/importar`, data);
+        console.log("✅ [preAppointmentsRepo] Sucesso:", response.data);
         return response.data;
     } catch (error) {
-        console.error('❌ Erro ao aprovar pré-agendamento:', error);
+        console.error('❌ [preAppointmentsRepo] Erro ao aprovar pré-agendamento:', error.response?.data || error.message);
         throw error;
     }
 };

@@ -14,10 +14,18 @@ export const fetchPatients = async () => {
             }
         });
 
+        console.log("👥 [patientsRepo] Pacientes recebidos:", response.data?.length || 0);
         // Retorna a lista de pacientes formatada
         return response.data || [];
     } catch (error) {
-        console.error('[fetchPatients] Erro:', error);
+        console.error('[fetchPatients] Erro:', error.response?.data || error.message);
+        
+        // Se for erro de autenticação, propaga o erro para o frontend
+        if (error.response?.status === 401 || error.response?.data?.code === 'INVALID_TOKEN') {
+            console.error('❌ [fetchPatients] Token inválido! Verifique o VITE_API_TOKEN no .env');
+            throw new Error('INVALID_TOKEN');
+        }
+        
         return [];
     }
 };
