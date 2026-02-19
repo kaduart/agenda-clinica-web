@@ -24,17 +24,21 @@ import {
   listenToNotifications,
   upsertAppointment,
   confirmAppointment,
+  confirmPresence,
   cancelAppointment,
   hardDeleteAppointment,
+  fetchAvailableSlots,
+  generateCycleAppointments,
 } from "./services/appointmentsRepo";
 
-import { approvePreAppointment, discardPreAppointment, fetchPreAppointments } from "./services/preAppointmentsRepo";
+import { approvePreAppointment, discardPreAppointment } from "./services/preAppointmentsRepo";
 
 import {
   addProfessional,
   deleteProfessionalByName,
   listenProfessionals
 } from "./services/professionalsRepo";
+import { fetchPatients } from "./services/patientsRepo";
 
 import { confirmToast } from "./utils/confirmToast";
 import { formatDateLocal, getWeeksInMonth } from "./utils/date";
@@ -57,6 +61,7 @@ export default function App() {
   const [view, setView] = React.useState("list");
   const [appointments, setAppointments] = React.useState([]);
   const [professionals, setProfessionals] = React.useState([]);
+  const [patients, setPatients] = React.useState([]);
 
   const today = new Date();
   const todayFormatted = formatDateLocal(today);
@@ -82,7 +87,6 @@ export default function App() {
   const [reminders, setReminders] = React.useState([]);
   const [isRemindersListOpen, setIsRemindersListOpen] = React.useState(false);
 
-  const [preAppointments, setPreAppointments] = React.useState([]);
   const [availableSlots, setAvailableSlots] = React.useState([]);
 
   // ========== DISPONIBILIDADE REAL (Slots Virtuais) ==========
@@ -131,6 +135,10 @@ export default function App() {
       console.log("👂 [App.jsx] Profissionais recebidos:", data.length);
       setProfessionals(data);
     });
+
+    // Busca lista de pacientes
+    fetchPatients().then(setPatients);
+
     return () => {
       console.log("👂 [App.jsx] Listener de profissionais desmontado");
       unsub(); // É async/no-op agora, mas mantemos a chamada
@@ -140,18 +148,20 @@ export default function App() {
   useEffect(() => {
     let targetYear = currentYear;
     let targetMonth = currentMonth;
+    let specificDate = null;
 
     if (filters.filterDate) {
       const [y, m] = filters.filterDate.split("-").map(Number);
       targetYear = y;
       targetMonth = m - 1;
+      specificDate = filters.filterDate; // Passa a data específica para busca otimizada
     }
 
-    console.log(`👂 [App.jsx] Listener de appointments: ${targetYear}/${targetMonth + 1}`);
+    console.log(`👂 [App.jsx] Listener de appointments: ${targetYear}/${targetMonth + 1}${specificDate ? ' (data: ' + specificDate + ')' : ''}`);
     const unsub = listenAppointmentsForMonth(targetYear, targetMonth, (data) => {
       console.log("👂 [App.jsx] Appointments recebidos:", data.length);
       setAppointments(data);
-    });
+    }, specificDate);
     return () => {
       console.log("👂 [App.jsx] Listener de appointments desmontado");
       unsub();
@@ -182,13 +192,11 @@ export default function App() {
         } else {
           console.log("⏳ [App.jsx] Notificação ignorada por ser antiga (Toast filtrado)");
         }
-        // O listener de appointments já recarrega a lista via socket, 
-        // mas podemos forçar o fetch de pré-agendamentos se necessário.
-        fetchPreAppointments(filters.filterDate || todayFormatted).then(setPreAppointments);
+        // O listener de appointments já recarrega a lista via socket.
       }
     });
     return () => unsub();
-  }, [filters.filterDate, todayFormatted]);
+  }, []);
 
   // ========== LABEL DA ESPECIALIDADE ATUAL ==========
   const activeSpecialtyLabel = useMemo(() => {
@@ -223,7 +231,7 @@ export default function App() {
 
       // Atualiza listas
       if (isPre) {
-        fetchPreAppointments(filters.filterDate || todayFormatted).then(setPreAppointments);
+        // fetchPreAppointments removido: lista principal atualiza via socket ou refresh manual se for crítico
       } else {
         // Force refresh
         setFilters(prev => ({ ...prev }));
@@ -269,24 +277,33 @@ export default function App() {
     }
   };
 
-  // CONFIRMAR (Amanda/Agenda Externa)
+  // CONFIRMAR (Amanda/Agenda Externa ou Presença Direta)
   const handleConfirmAppointment = async (appointment) => {
-    // 1. Extrair ID do pré-agendamento ou External ID
-    // O backend bindou: metadata.origin.preAgendamentoId
-    const preAgendamentoId = appointment.metadata?.origin?.preAgendamentoId;
+    const isPre = appointment.__isPreAgendamento;
+    const preAgendamentoId = appointment.metadata?.origin?.preAgendamentoId || (isPre ? appointment.id : null);
 
-    if (!preAgendamentoId) {
-      console.error("Agendamento sem preAgendamentoId:", appointment);
-      toast.error("Erro: Agendamento sem vínculo claro com a solicitação original.");
-      return;
-    }
+    const msg = isPre
+      ? `Confirmar agendamento de ${appointment.patientName || "Paciente"}?`
+      : `Confirmar presença/pagamento de ${appointment.patientName || "Paciente"}?`;
 
-    const ok = await confirmToast(`Confirmar agendamento de ${appointment.patientName || "Paciente"}?`);
+    const ok = await confirmToast(msg);
     if (!ok) return;
 
     try {
-      await confirmAppointment(preAgendamentoId);
-      toast.success("Agendamento confirmado com sucesso!");
+      if (isPre || preAgendamentoId) {
+        // Se tem vínculo com pré, usa a rota de importação
+        await confirmAppointment(preAgendamentoId);
+        toast.success("Agendamento confirmado com sucesso!");
+      } else {
+        // Se é agendamento avulso direto, usa a nova rota de confirmação
+        await confirmPresence(appointment.id);
+        toast.success("Presença confirmada!");
+      }
+
+      // Refresh manual para garantir visibilidade imediata (socket deve cuidar, mas aqui forçamos)
+      if (isPre) {
+        // fetchPreAppointments removido.
+      }
     } catch (error) {
       console.error(error);
       toast.error("Erro ao confirmar: " + (error.response?.data?.error || error.message));
@@ -329,7 +346,7 @@ export default function App() {
     const candidate = {
       ...(isEditing ? editingAppointment : {}),
       ...appointmentData,
-      status: appointmentData.status === "Vaga" ? "Pendente" : appointmentData.status,
+      operationalStatus: appointmentData.operationalStatus || "scheduled",
     };
 
     if (appointmentId && isEditing) candidate.id = appointmentId;
@@ -383,7 +400,7 @@ export default function App() {
       time: "08:00",
       professional: professionals[0] || "",
       specialty: specialtyLabel,
-      status: "Pendente",
+      operationalStatus: "scheduled",
       patient: "",
       responsible: "",
       observations: "",
@@ -409,7 +426,7 @@ export default function App() {
         time: payload.time,
         professional: payload.professional || (professionals[0] || ""),
         specialty: specialtyLabel,
-        status: "Pendente",
+        operationalStatus: "scheduled",
         patient: "",
         responsible: "",
         observations: "",
@@ -424,6 +441,8 @@ export default function App() {
 
   // ========== FILTROS + SORT ==========
   const filteredAppointments = React.useMemo(() => {
+    console.log(`[filteredAppointments] Total appointments: ${appointments?.length}, filterDate: ${filters.filterDate}, activeSpecialty: ${activeSpecialty}`);
+    
     const weeks = getWeeksInMonth(currentYear, currentMonth);
 
     // 1. Filtrar agendamentos reais (Data/Semana/Especialidade)
@@ -504,8 +523,9 @@ export default function App() {
     }
 
     base = sortAppointmentsByDateTimeAsc(base);
+    console.log(`[filteredAppointments] Resultado final: ${base.length} agendamentos`);
     return base;
-  }, [appointments, preAppointments, activeSpecialty, filters, currentYear, currentMonth, availableSlots]);
+  }, [appointments, activeSpecialty, filters, currentYear, currentMonth, availableSlots]);
 
   // ========== PROFESSIONALS ==========
   const onOpenProfessionals = () => {
@@ -550,7 +570,12 @@ export default function App() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-gray-100 to-blue-50">
       <div className="relative z-50 pointer-events-auto">
-        <Header view={view} setView={setView} />
+        <Header
+          view={view}
+          setView={setView}
+          remindersPendingCount={reminders.filter(r => r.status === "pending").length}
+          onOpenReminders={() => setIsRemindersListOpen(true)}
+        />
       </div>
       <ToastContainer position="top-center" newestOnTop closeOnClick={false} draggable={false} />
 
@@ -578,8 +603,6 @@ export default function App() {
               <SpecialtyTabs
                 activeTab={activeSpecialty}
                 onTabChange={setActiveSpecialty}
-                remindersPendingCount={reminders.filter(r => r.status === "pending").length}
-                onOpenReminders={() => setIsRemindersListOpen(true)}
               />
             </div>
 
@@ -647,6 +670,7 @@ export default function App() {
           <AppointmentModal
             appointment={editingAppointment}
             professionals={professionals}
+            patients={patients}
             onSave={saveAppointment}
             onClose={() => {
               setIsModalOpen(false);

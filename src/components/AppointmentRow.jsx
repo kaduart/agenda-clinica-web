@@ -8,25 +8,22 @@ export default function AppointmentRow({ appointment, onEdit, onDelete, onRemind
   // ...
 
   const getStatusColor = (status) => {
-    // Suporte tanto para o friendly status quanto para o technical status
     switch (status) {
       case "confirmed":
       case "paid":
-      case "scheduled": // Agendado/Confirmado a pedido do usuário
       case "Confirmado":
-        return "bg-emerald-200 text-emerald-900";
+        return "bg-emerald-200 text-emerald-900 border border-emerald-300";
+      case "scheduled":
       case "pending":
       case "Pendente":
-        return "bg-amber-200 text-amber-900";
+        return "bg-amber-100 text-amber-800 border border-amber-200";
       case "canceled":
       case "Cancelado":
-        return "bg-red-400 text-red-900";
-      case "missed":
         return "bg-red-100 text-red-800 border border-red-200";
-      case "pre-scheduled":
-        return "bg-indigo-100 text-indigo-800 border border-indigo-200 animate-pulse";
+      case "missed":
+        return "bg-rose-100 text-rose-800 border border-rose-200";
       default:
-        return "bg-gray-200 text-gray-900";
+        return "bg-gray-100 text-gray-800 border border-gray-200";
     }
   };
 
@@ -152,15 +149,15 @@ export default function AppointmentRow({ appointment, onEdit, onDelete, onRemind
 
       <td className="px- py-2">
         <div className="flex gap-2 items-center">
-          {/* Botão de Confirmar para Pré-Agendados */}
-          {appointment.operationalStatus === 'pre-scheduled' && (
+          {/* Botão de Confirmar para Agendamentos Pendentes (scheduled) */}
+          {(appointment.operationalStatus === 'scheduled' || appointment.status === 'Pendente') && !appointment.__isVirtual && !isPre && (
             <button
               type="button"
-              className="p-2 text-indigo-700 hover:text-indigo-900 hover:bg-indigo-100 rounded-lg animate-pulse"
+              className="p-2 text-emerald-700 hover:text-emerald-900 hover:bg-emerald-100 rounded-lg"
               onClick={() => onConfirm?.(appointment)}
-              title="Confirmar Agendamento"
+              title="Confirmar Presença/Pagamento"
             >
-              <i className="fas fa-check-double"></i>
+              <i className="fas fa-check-circle"></i>
             </button>
           )}
 

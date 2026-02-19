@@ -19,9 +19,9 @@ export default function AppointmentTable({
     // Estatísticas em tempo real
     const stats = {
         total: appointments.length,
-        confirmed: appointments.filter(a => a.status === 'Confirmado').length,
-        pending: appointments.filter(a => a.status === 'Pendente').length,
-        canceled: appointments.filter(a => a.status === 'Cancelado').length,
+        confirmed: appointments.filter(a => a.status === 'Confirmado' || ['confirmed', 'paid'].includes(a.operationalStatus)).length,
+        pending: appointments.filter(a => a.status === 'Pendente' || ['scheduled', 'pending'].includes(a.operationalStatus)).length,
+        canceled: appointments.filter(a => a.status === 'Cancelado' || ['canceled', 'missed'].includes(a.operationalStatus)).length,
     };
 
     const specialty = SPECIALTIES[activeSpecialty] || SPECIALTIES.todas;

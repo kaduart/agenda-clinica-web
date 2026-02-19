@@ -2,7 +2,7 @@ import React from "react";
 import { formatDateLocal } from "../utils/date";
 import { resolveSpecialtyKey } from "../utils/specialty";
 
-export default function AppointmentModal({ appointment, professionals, onSave, onClose }) {
+export default function AppointmentModal({ appointment, professionals, patients, onSave, onClose }) {
     const [formData, setFormData] = React.useState({
         patient: "",
         phone: "",
@@ -14,7 +14,7 @@ export default function AppointmentModal({ appointment, professionals, onSave, o
         professional: "",
         specialty: appointment?.specialty || "Fonoaudiologia",
         specialtyKey: appointment?.specialtyKey || resolveSpecialtyKey(appointment?.specialty || "Fonoaudiologia"),
-        status: "Pendente",
+        operationalStatus: appointment?.operationalStatus || "scheduled",
         observations: "",
         createdAt: appointment?.createdAt || null,
         crm: {
@@ -33,6 +33,9 @@ export default function AppointmentModal({ appointment, professionals, onSave, o
             // Extract patient data carefully
             const pObj = typeof appointment.patient === 'object' ? appointment.patient : {};
             const pName = pObj.fullName || appointment.patientName || appointment.patient;
+            
+            // Para pré-agendamentos, os dados estão em originalData.patientInfo
+            const prePatientInfo = appointment.originalData?.patientInfo || {};
 
             // Extract professional data
             const dObj = typeof appointment.doctor === 'object' ? appointment.doctor : {};
@@ -40,9 +43,9 @@ export default function AppointmentModal({ appointment, professionals, onSave, o
 
             setFormData({
                 patient: pName || "",
-                phone: appointment.phone || pObj.phone || "",
-                birthDate: appointment.birthDate || pObj.dateOfBirth || "",
-                email: appointment.email || pObj.email || "",
+                phone: appointment.phone || pObj.phone || prePatientInfo.phone || "",
+                birthDate: appointment.birthDate || pObj.dateOfBirth || prePatientInfo.birthDate || "",
+                email: appointment.email || pObj.email || prePatientInfo.email || "",
                 responsible: appointment.responsible || "",
                 date: appointment.date || today,
                 time: appointment.time || "08:00",
@@ -51,7 +54,7 @@ export default function AppointmentModal({ appointment, professionals, onSave, o
                 specialtyKey:
                     appointment.specialtyKey ||
                     resolveSpecialtyKey(appointment.specialty || "Fonoaudiologia"),
-                status: appointment.status || "Pendente",
+                operationalStatus: appointment.operationalStatus || "scheduled",
                 observations: appointment.observations || "",
                 createdAt: appointment.createdAt || null,
                 crm: {
@@ -74,7 +77,7 @@ export default function AppointmentModal({ appointment, professionals, onSave, o
                 professional: professionals?.[0] || "",
                 specialty: "Fonoaudiologia",
                 specialtyKey: resolveSpecialtyKey("Fonoaudiologia"),
-                status: "Pendente",
+                operationalStatus: "scheduled",
                 observations: "",
                 createdAt: null,
                 crm: {
@@ -88,6 +91,33 @@ export default function AppointmentModal({ appointment, professionals, onSave, o
         }
     }, [appointment, professionals]);
     const [isLoading, setIsLoading] = React.useState(false);
+    const [showSuggestions, setShowSuggestions] = React.useState(false);
+    const [filteredPatients, setFilteredPatients] = React.useState([]);
+
+    const handlePatientChange = (value) => {
+        setFormData(prev => ({ ...prev, patient: value }));
+
+        if (value.length > 2) {
+            const matches = (patients || []).filter(p =>
+                p.fullName.toLowerCase().includes(value.toLowerCase())
+            ).slice(0, 5);
+            setFilteredPatients(matches);
+            setShowSuggestions(matches.length > 0);
+        } else {
+            setShowSuggestions(false);
+        }
+    };
+
+    const selectPatient = (p) => {
+        setFormData(prev => ({
+            ...prev,
+            patient: p.fullName,
+            phone: p.phone || prev.phone,
+            birthDate: p.dateOfBirth ? p.dateOfBirth.split('T')[0] : prev.birthDate,
+            email: p.email || prev.email,
+        }));
+        setShowSuggestions(false);
+    };
 
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
@@ -171,16 +201,35 @@ export default function AppointmentModal({ appointment, professionals, onSave, o
 
                 <form onSubmit={handleSubmit}>
                     <div className="px-6 py-4 space-y-4">
-                        <div>
+                        <div className="relative">
                             <label className="block text-sm font-bold text-gray-700 mb-1">Paciente *</label>
                             <input
                                 type="text"
                                 name="patient"
                                 value={formData.patient}
-                                onChange={handleChange}
+                                onChange={(e) => handlePatientChange(e.target.value)}
+                                onFocus={() => formData.patient.length > 2 && setShowSuggestions(true)}
                                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                                 required
+                                autoComplete="off"
                             />
+                            {showSuggestions && (
+                                <div className="absolute z-[60] left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                                    {filteredPatients.map((p) => (
+                                        <div
+                                            key={p._id}
+                                            className="p-3 hover:bg-teal-50 cursor-pointer border-b border-gray-100 last:border-0"
+                                            onClick={() => selectPatient(p)}
+                                        >
+                                            <div className="font-semibold text-gray-800">{p.fullName}</div>
+                                            <div className="text-xs text-gray-500 flex justify-between">
+                                                <span>{p.phone}</span>
+                                                {p.dateOfBirth && <span>{new Date(p.dateOfBirth).toLocaleDateString()}</span>}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -297,16 +346,17 @@ export default function AppointmentModal({ appointment, professionals, onSave, o
                         </div>
 
                         <div>
-                            <label className="block text-sm font-bold text-gray-700 mb-1">Status *</label>
+                            <label className="block text-sm font-bold text-gray-700 mb-1">Status Operacional *</label>
                             <select
-                                name="status"
-                                value={formData.status}
+                                name="operationalStatus"
+                                value={formData.operationalStatus}
                                 onChange={handleChange}
                                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                             >
-                                <option value="Confirmado">Confirmado</option>
-                                <option value="Pendente">Pendente</option>
-                                <option value="Cancelado">Cancelado</option>
+                                <option value="confirmed">Confirmado</option>
+                                <option value="scheduled">Pendente / Agendado</option>
+                                <option value="canceled">Cancelado</option>
+                                <option value="missed">Faltou</option>
                             </select>
                         </div>
 

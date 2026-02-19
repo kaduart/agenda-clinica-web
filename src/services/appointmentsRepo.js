@@ -44,17 +44,27 @@ export const listenToNotifications = (onNotification) => {
     };
 };
 
-export const listenAppointmentsForMonth = (year, month, onData) => {
-    const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
-    const startDate = formatDateLocal(firstDay);
-    const endDate = formatDateLocal(lastDay);
-
-    console.log(`[fetchAppointments] Range: ${startDate} → ${endDate}`);
+export const listenAppointmentsForMonth = (year, month, onData, specificDate = null) => {
+    let startDate, endDate;
+    
+    // Se tiver data específica, busca apenas aquele dia
+    if (specificDate) {
+        startDate = specificDate;
+        endDate = specificDate;
+        console.log(`[fetchAppointments] Data específica: ${startDate}`);
+    } else {
+        // Busca o mês inteiro
+        const firstDay = new Date(year, month, 1);
+        const lastDay = new Date(year, month + 1, 0);
+        startDate = formatDateLocal(firstDay);
+        endDate = formatDateLocal(lastDay);
+        console.log(`[fetchAppointments] Range mensal: ${startDate} → ${endDate}`);
+    }
 
     // Função interna para buscar dados
     const fetchData = async () => {
         try {
+            console.log(`[fetchAppointments] Buscando: ${startDate} a ${endDate}`);
             const response = await api.get('/api/appointments', {
                 params: {
                     startDate,
@@ -67,7 +77,7 @@ export const listenAppointmentsForMonth = (year, month, onData) => {
             // O frontend espera { id, ...campos }
             // O backend /api/appointments já retorna [{ id: "...", title: "...", start: "...", ... }]
             const list = response.data;
-            console.log(`[fetchAppointments] Recebidos ${list.length} agendamentos`);
+            console.log(`[fetchAppointments] Recebidos ${list.length} agendamentos:`, list.map(a => `${a.date} ${a.time} ${a.patientName}`));
             onData(list);
         } catch (error) {
             console.error('[fetchAppointments] Erro:', error);
@@ -110,8 +120,8 @@ export const hasConflict = (appointments, candidate, editingId) => {
         a.id !== editingId &&
         a.date === candidate.date &&
         a.time === candidate.time &&
-        a.professional === candidate.professional && // backend usa doctorId, mas frontend usa professional
-        a.status !== "Cancelado"
+        a.professional === candidate.professional &&
+        !["canceled", "Cancelado"].includes(a.status || a.operationalStatus)
     );
 };
 
@@ -136,7 +146,7 @@ export const upsertAppointment = async ({ editingAppointment, appointmentData })
         specialty: appointmentData.specialty,
         date: appointmentData.date,
         time: appointmentData.time,
-        status: safeStatus,
+        operationalStatus: appointmentData.operationalStatus || "scheduled",
         observations: appointmentData.observations,
 
         // Dados CRM (financeiro/técnico)
@@ -302,6 +312,17 @@ export const confirmAppointment = async (preAgendamentoId) => {
         });
         return response.data;
     } catch (error) {
+        throw error;
+    }
+};
+
+export const confirmPresence = async (id) => {
+    console.log(`[confirmPresence] Confirmando presença/manual para: ${id}`);
+    try {
+        const response = await api.patch(`/api/appointments/${id}/confirm`);
+        return response.data;
+    } catch (error) {
+        console.error('[confirmPresence] Erro:', error);
         throw error;
     }
 };

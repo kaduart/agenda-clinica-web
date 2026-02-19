@@ -2,9 +2,7 @@ import { SPECIALTIES } from "../config/specialties";
 
 export default function SpecialtyTabs({
     activeTab,
-    onTabChange,
-    remindersPendingCount = 0,
-    onOpenReminders
+    onTabChange
 }) {
     return (
         <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-3">
@@ -43,48 +41,6 @@ export default function SpecialtyTabs({
                         </button>
                     );
                 })}
-
-                {/* Botão de Lembretes - Fica sempre no final */}
-                <div className="ml-auto self-center order-last">
-                    <button
-                        onClick={onOpenReminders}
-                        type="button"
-                        title="Ver lembretes"
-                        className="group relative flex items-center gap-3 px-1 py-3.5 rounded-xl bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-100 hover:border-amber-200 shadow-sm hover:shadow-md transition-all duration-300 hover:scale-[1.02]"
-                    >
-                        {/* Ícone com animação */}
-                        <div className="relative">
-                            <div className="p-2.5 bg-gradient-to-br from-amber-500 to-yellow-500 rounded-xl shadow-sm group-hover:shadow-md transition-shadow duration-300">
-                                <i className="fas fa-bell text-white text-sm"></i>
-                            </div>
-
-                            {/* Efeito pulsante se houver lembretes */}
-                            {remindersPendingCount > 0 && (
-                                <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full animate-pulse shadow-md"></div>
-                            )}
-                        </div>
-
-                        {/* Texto */}
-                        <div className="flex flex-col items-start">
-                            <span className="font-bold text-gray-800 text-sm">Lembretes</span>
-                            <span className="text-xs text-gray-500 mt-0.5">
-                                {remindersPendingCount === 0
-                                    ? "Todos em dia"
-                                    : `${remindersPendingCount} pendente${remindersPendingCount !== 1 ? "s" : ""}`}
-                            </span>
-                        </div>
-
-                        {/* Badge de contador */}
-                        {remindersPendingCount > 0 && (
-                            <div className="ml-2 px-2.5 py-1 bg-gradient-to-r from-red-500 to-red-600 text-white text-xs font-extrabold rounded-full shadow-md transform group-hover:scale-110 transition-transform duration-300">
-                                {remindersPendingCount}
-                            </div>
-                        )}
-
-                        <i className="fas fa-chevron-right text-amber-400 text-sm ml-2 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all duration-300"></i>
-                    </button>
-                </div>
-
             </div>
 
             {/* Indicador de navegação */}
@@ -92,9 +48,6 @@ export default function SpecialtyTabs({
                 <div className="flex items-center gap-2 text-xs text-gray-400">
                     <i className="fas fa-mouse-pointer text-gray-300"></i>
                     <span>Clique para alternar entre especialidades</span>
-                    <div className="h-3 w-px bg-gray-200 mx-2"></div>
-                    <i className="fas fa-info-circle text-amber-400"></i>
-                    <span>Lembretes: {remindersPendingCount} pendentes</span>
                 </div>
             </div>
         </div>
