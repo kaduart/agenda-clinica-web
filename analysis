@@ -1,161 +1,732 @@
-
-Investigating Missing Pre-Appointment
-Confirmei que a API retorna o dado e o App.jsx deveria processá-lo. Vou verificar o componente AppointmentRow para garantir que não haja um erro de renderização ou uma condição que esconda linhas de pré-agendamento. PT-BR mode.
-
-Background Steps
-Running background command
-Relocate
-…\agenda-clinica-web > curl -s -H "Authorization: Bearer agenda_export_token_fono_inova_2025_secure_abc123" "http://localhost:5000/api/appointments?startDate=2026-02-01&endDate=2026-02-28" | grep -i "tese vivi"
-
-
-Always run
-Cancel
-Progress Updates
-1
-Verificando a existência do Pré-Agendamento no banco de dados.
-
-2
-Analisando a lógica de filtragem da rota de agendamentos.
-
-3
-Verificando as configurações de especialidades e o mapeamento.
-
-4
-Comparando a unificação de agendamentos no backend e frontend.
-
-5
-Testando a API diretamente com CURL para verificar o retorno dos dados.
-
-6
-Analisando o componente SpecialtyTabs no frontend.
-
-7
-Analisando o componente AppointmentTable no frontend.
-
-8
-Verificando o estado activeTab no App.jsx.
-
-9
-Verificando se o estado preAppointments é utilizado na filtragem.
-
-10
-Analisando o FiltersPanel para verificar filtros padrão.
-
-11
-Verificando o schema do PreAgendamento.
-
-12
-Testando a API com um intervalo semanal.
-
-13
-Inspecionando o arquivo de agendamentos de hoje.
-
-14
-Analisando o componente AppointmentRow no frontend.
-
-continue
-Error
-You have exhausted your quota on this model.
-You have reached the quota limit for this model. You can resume using this model at 2/24/2026, 6:04:20 PM. You can upgrade to a Google AI plan to receive higher rate limits. See plans.
-continue
-
-Thought for 60s
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Investigating Missing Pre-Appointment
-Estou verificando se a consulta MongoDB usada no backend (com intervalo de datas) realmente retorna o documento. Suspeito de uma falha na comparação de strings de data no Mongo ou no filtro de intervalo. PT-BR mode.
-
-Progress Updates
-1
-Simulando a consulta do backend diretamente no banco de dados.
-
-continue
-
-Thought for 1s
-
-
-
-Thought for 45s
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Investigating Missing Pre-Appointment
-Identifiquei que o App.jsx carregava pré-agendamentos separadamente, o que é redundante já que o backend agora unifica tudo. Estou removendo esse código antigo para garantir que a interface use apenas a fonte de dados unificada e correta. PT-BR mode.
-
-Files Edited
-App.jsx
-Progress Updates
-1
-Removendo lógica redundante de pré-agendamentos no frontend.
-
-2
-Updating App.jsx to remove redundant pre-appointments fetching logic.
+curl 'http://localhost:5000/api/import-from-agenda/sync-update' \
+  -H 'Accept: application/json, text/plain, */*' \
+  -H 'Accept-Language: pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7' \
+  -H 'Authorization: Bearer agenda_export_token_fono_inova_2025_secure_abc123' \
+  -H 'Connection: keep-alive' \
+  -H 'Content-Type: application/json' \
+  -H 'Origin: http://localhost:5174' \
+  -H 'Referer: http://localhost:5174/' \
+  -H 'Sec-Fetch-Dest: empty' \
+  -H 'Sec-Fetch-Mode: cors' \
+  -H 'Sec-Fetch-Site: same-site' \
+  -H 'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36' \
+  -H 'sec-ch-ua: "Not:A-Brand";v="99", "Google Chrome";v="145", "Chromium";v="145"' \
+  -H 'sec-ch-ua-mobile: ?0' \
+  -H 'sec-ch-ua-platform: "Windows"' \
+  --data-raw '{"_id":"6993310e03d5cc171cf08453","patientInfo":{"fullName":"Sexta feira\nJoao Lucas Ribeiro de Santana","phone":"556281631054","birthDate":"2021-12-01","email":""},"responsible":"","professionalName":"Lorrany Siqueira Marques","specialty":"fonoaudiologia","date":"2026-02-20","time":"10:00","operationalStatus":"scheduled","observations":"[AGENDADO AUTOMATICAMENTE VIA AMANDA/WHATSAPP]","crm":{"serviceType":"session","sessionType":"avaliacao","paymentMethod":"pix","paymentAmount":0,"usePackage":false}}'  {
+    "success": true,
+    "message": "Atualização sincronizada com sucesso",
+    "appointmentId": "6993310e03d5cc171cf08453",
+    "updatedFields": {
+        "date": "2026-02-20",
+        "time": "10:00",
+        "professionalName": "Lorrany Siqueira Marques",
+        "specialty": "fonoaudiologia"
+    }
+}  carrgea auto alsita de agendmaenot [
+    {
+        "id": "698ca9cd10fbb5ebee0a9198",
+        "title": "Consulta - Lorrany Siqueira Marques",
+        "start": "2026-02-20T11:00:00.000Z",
+        "end": "2026-02-20T11:40:00.000Z",
+        "date": "2026-02-20",
+        "time": "08:00",
+        "status": "Pendente",
+        "operationalStatus": "scheduled",
+        "specialty": "fonoaudiologia",
+        "professional": "Lorrany Siqueira Marques",
+        "patientName": "Issac Moreira Ribeiro",
+        "observations": "",
+        "responsible": "",
+        "phone": "62 9214-2716",
+        "paymentStatus": "paid",
+        "visualFlag": "ok",
+        "billingType": "particular",
+        "insuranceProvider": "",
+        "insuranceValue": 0,
+        "authorizationCode": "",
+        "package": {
+            "_id": "698ca9cb10fbb5ebee0a9183",
+            "sessionValue": 160,
+            "totalSessions": 5,
+            "balance": 0,
+            "financialStatus": "paid",
+            "totalPaid": 800
+        },
+        "patient": {
+            "_id": "6917116c5d4d8bdb65edd506",
+            "fullName": "Issac Moreira Ribeiro",
+            "dateOfBirth": "2021-09-28T03:00:00.000Z",
+            "gender": "masculino",
+            "address": {
+                "street": "Rua Gt20 quadra 30 lote11",
+                "number": "SN",
+                "district": "Condomínio Residencial Grand T",
+                "city": "Anápolis",
+                "state": "Goiás",
+                "zipCode": "75075665"
+            },
+            "phone": "62 9214-2716",
+            "email": "dyanna_st@yahoo",
+            "cpf": "11745693106",
+            "rg": null
+        },
+        "doctor": {
+            "_id": "684072213830f473da1b0b0b",
+            "fullName": "Lorrany Siqueira Marques",
+            "email": "clinicafonoinova@gmail.com",
+            "specialty": "fonoaudiologia",
+            "phoneNumber": "(61) 99240-0846",
+            "specialties": [
+                "teste_linguinha",
+                "caa",
+                "fono_prompt"
+            ]
+        },
+        "metadata": null
+    },
+    {
+        "id": "697ca2c841bea6644e5c378a",
+        "title": "Consulta - Lorrany Siqueira Marques",
+        "start": "2026-02-20T11:40:00.000Z",
+        "end": "2026-02-20T12:20:00.000Z",
+        "date": "2026-02-20",
+        "time": "08:40",
+        "status": "Pendente",
+        "operationalStatus": "scheduled",
+        "specialty": "fonoaudiologia",
+        "professional": "Lorrany Siqueira Marques",
+        "patientName": "Samuel roczniesk da Costa",
+        "observations": "",
+        "responsible": "",
+        "phone": "(62)9.9273-1969",
+        "paymentStatus": "paid",
+        "visualFlag": "ok",
+        "billingType": "particular",
+        "insuranceProvider": "",
+        "insuranceValue": 0,
+        "authorizationCode": "",
+        "package": {
+            "_id": "697ca2c641bea6644e5c3777",
+            "sessionValue": 160,
+            "totalSessions": 4,
+            "balance": 0,
+            "financialStatus": "paid",
+            "totalPaid": 640
+        },
+        "patient": {
+            "_id": "6972301eaeeb528b5b3c1140",
+            "fullName": "Samuel roczniesk da Costa",
+            "dateOfBirth": "2023-05-19T03:00:00.000Z",
+            "gender": "masculino",
+            "address": {
+                "street": null,
+                "number": null,
+                "district": null,
+                "city": null,
+                "state": null,
+                "zipCode": null
+            },
+            "phone": "(62)9.9273-1969",
+            "email": "",
+            "cpf": "119.732.391-08",
+            "rg": ""
+        },
+        "doctor": {
+            "_id": "684072213830f473da1b0b0b",
+            "fullName": "Lorrany Siqueira Marques",
+            "email": "clinicafonoinova@gmail.com",
+            "specialty": "fonoaudiologia",
+            "phoneNumber": "(61) 99240-0846",
+            "specialties": [
+                "teste_linguinha",
+                "caa",
+                "fono_prompt"
+            ]
+        },
+        "metadata": null
+    },
+    {
+        "id": "697ca8b141bea6644e5c3b12",
+        "title": "Consulta - Lorrany Siqueira Marques",
+        "start": "2026-02-20T12:20:00.000Z",
+        "end": "2026-02-20T13:00:00.000Z",
+        "date": "2026-02-20",
+        "time": "09:20",
+        "status": "Pendente",
+        "operationalStatus": "scheduled",
+        "specialty": "fonoaudiologia",
+        "professional": "Lorrany Siqueira Marques",
+        "patientName": "Rodrigo Antônio Silva de Carvalho",
+        "observations": "",
+        "responsible": "",
+        "phone": "62 9356-0797",
+        "paymentStatus": "paid",
+        "visualFlag": "ok",
+        "billingType": "particular",
+        "insuranceProvider": "",
+        "insuranceValue": 0,
+        "authorizationCode": "",
+        "package": {
+            "_id": "697ca8af41bea6644e5c3aff",
+            "sessionValue": 160,
+            "totalSessions": 4,
+            "balance": 0,
+            "financialStatus": "paid",
+            "totalPaid": 640
+        },
+        "patient": {
+            "_id": "69330a389798fcf7ad3bdca1",
+            "fullName": "Rodrigo Antônio Silva de Carvalho",
+            "dateOfBirth": "2021-02-22T03:00:00.000Z",
+            "gender": "masculino",
+            "address": {
+                "street": "Avenida Sebastião Pedro Junqueira Q2 Lt5",
+                "number": "SN",
+                "district": "Eldorado",
+                "city": "Anápolis",
+                "state": "Goiás",
+                "zipCode": null
+            },
+            "phone": "62 9356-0797",
+            "email": "",
+            "cpf": null,
+            "rg": null
+        },
+        "doctor": {
+            "_id": "684072213830f473da1b0b0b",
+            "fullName": "Lorrany Siqueira Marques",
+            "email": "clinicafonoinova@gmail.com",
+            "specialty": "fonoaudiologia",
+            "phoneNumber": "(61) 99240-0846",
+            "specialties": [
+                "teste_linguinha",
+                "caa",
+                "fono_prompt"
+            ]
+        },
+        "metadata": null
+    },
+    {
+        "id": "6993310e03d5cc171cf08453",
+        "title": "[AGENDADO AUTOMATICAMENTE VIA AMANDA/WHATSAPP] - Lorrany Siqueira Marques",
+        "start": "2026-02-20T13:00:00.000Z",
+        "end": "2026-02-20T13:40:00.000Z",
+        "date": "2026-02-20",
+        "time": "10:00",
+        "status": "Pendente",
+        "operationalStatus": "scheduled",
+        "specialty": "fonoaudiologia",
+        "professional": "Lorrany Siqueira Marques",
+        "patientName": "Sexta feira\nJoao Lucas Ribeiro de Santana",
+        "observations": "[AGENDADO AUTOMATICAMENTE VIA AMANDA/WHATSAPP]",
+        "responsible": "",
+        "phone": "556281631054",
+        "paymentStatus": "pending",
+        "visualFlag": "pending",
+        "billingType": "particular",
+        "insuranceProvider": "",
+        "insuranceValue": 0,
+        "authorizationCode": "",
+        "package": null,
+        "patient": {
+            "_id": "6993310d03d5cc171cf0844b",
+            "fullName": "Sexta feira\nJoao Lucas Ribeiro de Santana",
+            "dateOfBirth": "2021-12-02T00:00:00.000Z",
+            "phone": "556281631054",
+            "email": ""
+        },
+        "doctor": {
+            "_id": "684072213830f473da1b0b0b",
+            "fullName": "Lorrany Siqueira Marques",
+            "email": "clinicafonoinova@gmail.com",
+            "specialty": "fonoaudiologia",
+            "phoneNumber": "(61) 99240-0846",
+            "specialties": [
+                "teste_linguinha",
+                "caa",
+                "fono_prompt"
+            ]
+        },
+        "metadata": null
+    },
+    {
+        "id": "69864e7979bba4d65fae75d9",
+        "title": "Consulta - Lorrany Siqueira Marques",
+        "start": "2026-02-20T19:00:00.000Z",
+        "end": "2026-02-20T19:40:00.000Z",
+        "date": "2026-02-20",
+        "time": "16:00",
+        "status": "Pendente",
+        "operationalStatus": "scheduled",
+        "specialty": "fonoaudiologia",
+        "professional": "Lorrany Siqueira Marques",
+        "patientName": "Pedro Henrique Almeida Torres",
+        "observations": "",
+        "responsible": "",
+        "phone": "",
+        "paymentStatus": "paid",
+        "visualFlag": "ok",
+        "billingType": "particular",
+        "insuranceProvider": "",
+        "insuranceValue": 0,
+        "authorizationCode": "",
+        "package": {
+            "_id": "69864e7779bba4d65fae75c8",
+            "sessionValue": 160,
+            "totalSessions": 4,
+            "balance": 0,
+            "financialStatus": "paid",
+            "totalPaid": 640
+        },
+        "patient": {
+            "_id": "6984a2ab532493ec27b526c2",
+            "fullName": "Pedro Henrique Almeida Torres",
+            "dateOfBirth": "2018-04-13T03:00:00.000Z",
+            "gender": "masculino",
+            "address": {
+                "street": null,
+                "number": null,
+                "district": null,
+                "city": null,
+                "state": null,
+                "zipCode": null
+            },
+            "phone": "",
+            "email": "",
+            "cpf": null,
+            "rg": null
+        },
+        "doctor": {
+            "_id": "684072213830f473da1b0b0b",
+            "fullName": "Lorrany Siqueira Marques",
+            "email": "clinicafonoinova@gmail.com",
+            "specialty": "fonoaudiologia",
+            "phoneNumber": "(61) 99240-0846",
+            "specialties": [
+                "teste_linguinha",
+                "caa",
+                "fono_prompt"
+            ]
+        },
+        "metadata": null
+    },
+    {
+        "id": "69971098c13fa9c3fb5440b1",
+        "title": "Consulta - Lorrany Siqueira Marques",
+        "start": "2026-02-20T19:40:00.000Z",
+        "end": "2026-02-20T20:20:00.000Z",
+        "date": "2026-02-20",
+        "time": "16:40",
+        "status": "Pendente",
+        "operationalStatus": "scheduled",
+        "specialty": "fonoaudiologia",
+        "professional": "Lorrany Siqueira Marques",
+        "patientName": "Nicolas Lucca Santos Ferreira",
+        "observations": "",
+        "responsible": "",
+        "phone": "",
+        "paymentStatus": "pending_receipt",
+        "visualFlag": "partial",
+        "billingType": "particular",
+        "insuranceProvider": "unimed-anapolis",
+        "insuranceValue": 0,
+        "authorizationCode": "",
+        "package": {
+            "_id": "69971097c13fa9c3fb544095",
+            "sessionValue": 0,
+            "totalSessions": 20,
+            "balance": 0,
+            "financialStatus": "unpaid",
+            "totalPaid": 0
+        },
+        "patient": {
+            "_id": "69655746dcdf49e2c282800b",
+            "fullName": "Nicolas Lucca Santos Ferreira",
+            "dateOfBirth": "2017-03-23T03:00:00.000Z",
+            "gender": "masculino",
+            "address": {
+                "street": null,
+                "number": null,
+                "district": null,
+                "city": null,
+                "state": null,
+                "zipCode": null
+            },
+            "phone": "",
+            "email": "",
+            "cpf": null,
+            "rg": null
+        },
+        "doctor": {
+            "_id": "684072213830f473da1b0b0b",
+            "fullName": "Lorrany Siqueira Marques",
+            "email": "clinicafonoinova@gmail.com",
+            "specialty": "fonoaudiologia",
+            "phoneNumber": "(61) 99240-0846",
+            "specialties": [
+                "teste_linguinha",
+                "caa",
+                "fono_prompt"
+            ]
+        },
+        "metadata": {
+            "origin": {
+                "source": "outro"
+            }
+        }
+    }
+]           deiiii o reload eeeeeeeee [
+    {
+        "id": "698ca9cd10fbb5ebee0a9198",
+        "title": "Consulta - Lorrany Siqueira Marques",
+        "start": "2026-02-20T11:00:00.000Z",
+        "end": "2026-02-20T11:40:00.000Z",
+        "date": "2026-02-20",
+        "time": "08:00",
+        "status": "Pendente",
+        "operationalStatus": "scheduled",
+        "specialty": "fonoaudiologia",
+        "professional": "Lorrany Siqueira Marques",
+        "patientName": "Issac Moreira Ribeiro",
+        "observations": "",
+        "responsible": "",
+        "phone": "62 9214-2716",
+        "paymentStatus": "paid",
+        "visualFlag": "ok",
+        "billingType": "particular",
+        "insuranceProvider": "",
+        "insuranceValue": 0,
+        "authorizationCode": "",
+        "package": {
+            "_id": "698ca9cb10fbb5ebee0a9183",
+            "sessionValue": 160,
+            "totalSessions": 5,
+            "balance": 0,
+            "financialStatus": "paid",
+            "totalPaid": 800
+        },
+        "patient": {
+            "_id": "6917116c5d4d8bdb65edd506",
+            "fullName": "Issac Moreira Ribeiro",
+            "dateOfBirth": "2021-09-28T03:00:00.000Z",
+            "gender": "masculino",
+            "address": {
+                "street": "Rua Gt20 quadra 30 lote11",
+                "number": "SN",
+                "district": "Condomínio Residencial Grand T",
+                "city": "Anápolis",
+                "state": "Goiás",
+                "zipCode": "75075665"
+            },
+            "phone": "62 9214-2716",
+            "email": "dyanna_st@yahoo",
+            "cpf": "11745693106",
+            "rg": null
+        },
+        "doctor": {
+            "_id": "684072213830f473da1b0b0b",
+            "fullName": "Lorrany Siqueira Marques",
+            "email": "clinicafonoinova@gmail.com",
+            "specialty": "fonoaudiologia",
+            "phoneNumber": "(61) 99240-0846",
+            "specialties": [
+                "teste_linguinha",
+                "caa",
+                "fono_prompt"
+            ]
+        },
+        "metadata": null
+    },
+    {
+        "id": "697ca2c841bea6644e5c378a",
+        "title": "Consulta - Lorrany Siqueira Marques",
+        "start": "2026-02-20T11:40:00.000Z",
+        "end": "2026-02-20T12:20:00.000Z",
+        "date": "2026-02-20",
+        "time": "08:40",
+        "status": "Pendente",
+        "operationalStatus": "scheduled",
+        "specialty": "fonoaudiologia",
+        "professional": "Lorrany Siqueira Marques",
+        "patientName": "Samuel roczniesk da Costa",
+        "observations": "",
+        "responsible": "",
+        "phone": "(62)9.9273-1969",
+        "paymentStatus": "paid",
+        "visualFlag": "ok",
+        "billingType": "particular",
+        "insuranceProvider": "",
+        "insuranceValue": 0,
+        "authorizationCode": "",
+        "package": {
+            "_id": "697ca2c641bea6644e5c3777",
+            "sessionValue": 160,
+            "totalSessions": 4,
+            "balance": 0,
+            "financialStatus": "paid",
+            "totalPaid": 640
+        },
+        "patient": {
+            "_id": "6972301eaeeb528b5b3c1140",
+            "fullName": "Samuel roczniesk da Costa",
+            "dateOfBirth": "2023-05-19T03:00:00.000Z",
+            "gender": "masculino",
+            "address": {
+                "street": null,
+                "number": null,
+                "district": null,
+                "city": null,
+                "state": null,
+                "zipCode": null
+            },
+            "phone": "(62)9.9273-1969",
+            "email": "",
+            "cpf": "119.732.391-08",
+            "rg": ""
+        },
+        "doctor": {
+            "_id": "684072213830f473da1b0b0b",
+            "fullName": "Lorrany Siqueira Marques",
+            "email": "clinicafonoinova@gmail.com",
+            "specialty": "fonoaudiologia",
+            "phoneNumber": "(61) 99240-0846",
+            "specialties": [
+                "teste_linguinha",
+                "caa",
+                "fono_prompt"
+            ]
+        },
+        "metadata": null
+    },
+    {
+        "id": "697ca8b141bea6644e5c3b12",
+        "title": "Consulta - Lorrany Siqueira Marques",
+        "start": "2026-02-20T12:20:00.000Z",
+        "end": "2026-02-20T13:00:00.000Z",
+        "date": "2026-02-20",
+        "time": "09:20",
+        "status": "Pendente",
+        "operationalStatus": "scheduled",
+        "specialty": "fonoaudiologia",
+        "professional": "Lorrany Siqueira Marques",
+        "patientName": "Rodrigo Antônio Silva de Carvalho",
+        "observations": "",
+        "responsible": "",
+        "phone": "62 9356-0797",
+        "paymentStatus": "paid",
+        "visualFlag": "ok",
+        "billingType": "particular",
+        "insuranceProvider": "",
+        "insuranceValue": 0,
+        "authorizationCode": "",
+        "package": {
+            "_id": "697ca8af41bea6644e5c3aff",
+            "sessionValue": 160,
+            "totalSessions": 4,
+            "balance": 0,
+            "financialStatus": "paid",
+            "totalPaid": 640
+        },
+        "patient": {
+            "_id": "69330a389798fcf7ad3bdca1",
+            "fullName": "Rodrigo Antônio Silva de Carvalho",
+            "dateOfBirth": "2021-02-22T03:00:00.000Z",
+            "gender": "masculino",
+            "address": {
+                "street": "Avenida Sebastião Pedro Junqueira Q2 Lt5",
+                "number": "SN",
+                "district": "Eldorado",
+                "city": "Anápolis",
+                "state": "Goiás",
+                "zipCode": null
+            },
+            "phone": "62 9356-0797",
+            "email": "",
+            "cpf": null,
+            "rg": null
+        },
+        "doctor": {
+            "_id": "684072213830f473da1b0b0b",
+            "fullName": "Lorrany Siqueira Marques",
+            "email": "clinicafonoinova@gmail.com",
+            "specialty": "fonoaudiologia",
+            "phoneNumber": "(61) 99240-0846",
+            "specialties": [
+                "teste_linguinha",
+                "caa",
+                "fono_prompt"
+            ]
+        },
+        "metadata": null
+    },
+    {
+        "id": "6993310e03d5cc171cf08453",
+        "title": "[AGENDADO AUTOMATICAMENTE VIA AMANDA/WHATSAPP] - Lorrany Siqueira Marques",
+        "start": "2026-02-20T13:00:00.000Z",
+        "end": "2026-02-20T13:40:00.000Z",
+        "date": "2026-02-20",
+        "time": "10:00",
+        "status": "Pendente",
+        "operationalStatus": "scheduled",
+        "specialty": "fonoaudiologia",
+        "professional": "Lorrany Siqueira Marques",
+        "patientName": "Sexta feira\nJoao Lucas Ribeiro de Santana",
+        "observations": "[AGENDADO AUTOMATICAMENTE VIA AMANDA/WHATSAPP]",
+        "responsible": "",
+        "phone": "556281631054",
+        "paymentStatus": "pending",
+        "visualFlag": "pending",
+        "billingType": "particular",
+        "insuranceProvider": "",
+        "insuranceValue": 0,
+        "authorizationCode": "",
+        "package": null,
+        "patient": {
+            "_id": "6993310d03d5cc171cf0844b",
+            "fullName": "Sexta feira\nJoao Lucas Ribeiro de Santana",
+            "dateOfBirth": "2021-12-02T00:00:00.000Z",
+            "phone": "556281631054",
+            "email": ""
+        },
+        "doctor": {
+            "_id": "684072213830f473da1b0b0b",
+            "fullName": "Lorrany Siqueira Marques",
+            "email": "clinicafonoinova@gmail.com",
+            "specialty": "fonoaudiologia",
+            "phoneNumber": "(61) 99240-0846",
+            "specialties": [
+                "teste_linguinha",
+                "caa",
+                "fono_prompt"
+            ]
+        },
+        "metadata": null
+    },
+    {
+        "id": "69864e7979bba4d65fae75d9",
+        "title": "Consulta - Lorrany Siqueira Marques",
+        "start": "2026-02-20T19:00:00.000Z",
+        "end": "2026-02-20T19:40:00.000Z",
+        "date": "2026-02-20",
+        "time": "16:00",
+        "status": "Pendente",
+        "operationalStatus": "scheduled",
+        "specialty": "fonoaudiologia",
+        "professional": "Lorrany Siqueira Marques",
+        "patientName": "Pedro Henrique Almeida Torres",
+        "observations": "",
+        "responsible": "",
+        "phone": "",
+        "paymentStatus": "paid",
+        "visualFlag": "ok",
+        "billingType": "particular",
+        "insuranceProvider": "",
+        "insuranceValue": 0,
+        "authorizationCode": "",
+        "package": {
+            "_id": "69864e7779bba4d65fae75c8",
+            "sessionValue": 160,
+            "totalSessions": 4,
+            "balance": 0,
+            "financialStatus": "paid",
+            "totalPaid": 640
+        },
+        "patient": {
+            "_id": "6984a2ab532493ec27b526c2",
+            "fullName": "Pedro Henrique Almeida Torres",
+            "dateOfBirth": "2018-04-13T03:00:00.000Z",
+            "gender": "masculino",
+            "address": {
+                "street": null,
+                "number": null,
+                "district": null,
+                "city": null,
+                "state": null,
+                "zipCode": null
+            },
+            "phone": "",
+            "email": "",
+            "cpf": null,
+            "rg": null
+        },
+        "doctor": {
+            "_id": "684072213830f473da1b0b0b",
+            "fullName": "Lorrany Siqueira Marques",
+            "email": "clinicafonoinova@gmail.com",
+            "specialty": "fonoaudiologia",
+            "phoneNumber": "(61) 99240-0846",
+            "specialties": [
+                "teste_linguinha",
+                "caa",
+                "fono_prompt"
+            ]
+        },
+        "metadata": null
+    },
+    {
+        "id": "69971098c13fa9c3fb5440b1",
+        "title": "Consulta - Lorrany Siqueira Marques",
+        "start": "2026-02-20T19:40:00.000Z",
+        "end": "2026-02-20T20:20:00.000Z",
+        "date": "2026-02-20",
+        "time": "16:40",
+        "status": "Pendente",
+        "operationalStatus": "scheduled",
+        "specialty": "fonoaudiologia",
+        "professional": "Lorrany Siqueira Marques",
+        "patientName": "Nicolas Lucca Santos Ferreira",
+        "observations": "",
+        "responsible": "",
+        "phone": "",
+        "paymentStatus": "pending_receipt",
+        "visualFlag": "partial",
+        "billingType": "particular",
+        "insuranceProvider": "unimed-anapolis",
+        "insuranceValue": 0,
+        "authorizationCode": "",
+        "package": {
+            "_id": "69971097c13fa9c3fb544095",
+            "sessionValue": 0,
+            "totalSessions": 20,
+            "balance": 0,
+            "financialStatus": "unpaid",
+            "totalPaid": 0
+        },
+        "patient": {
+            "_id": "69655746dcdf49e2c282800b",
+            "fullName": "Nicolas Lucca Santos Ferreira",
+            "dateOfBirth": "2017-03-23T03:00:00.000Z",
+            "gender": "masculino",
+            "address": {
+                "street": null,
+                "number": null,
+                "district": null,
+                "city": null,
+                "state": null,
+                "zipCode": null
+            },
+            "phone": "",
+            "email": "",
+            "cpf": null,
+            "rg": null
+        },
+        "doctor": {
+            "_id": "684072213830f473da1b0b0b",
+            "fullName": "Lorrany Siqueira Marques",
+            "email": "clinicafonoinova@gmail.com",
+            "specialty": "fonoaudiologia",
+            "phoneNumber": "(61) 99240-0846",
+            "specialties": [
+                "teste_linguinha",
+                "caa",
+                "fono_prompt"
+            ]
+        },
+        "metadata": {
+            "origin": {
+                "source": "outro"
+            }
+        }
+    }
+] 

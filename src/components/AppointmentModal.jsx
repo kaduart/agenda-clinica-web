@@ -1,5 +1,5 @@
 import React from "react";
-import { formatDateLocal } from "../utils/date";
+import { formatDateLocal, extractDateForInput } from "../utils/date";
 import { resolveSpecialtyKey } from "../utils/specialty";
 
 export default function AppointmentModal({ appointment, professionals, patients, onSave, onClose }) {
@@ -9,14 +9,23 @@ export default function AppointmentModal({ appointment, professionals, patients,
         birthDate: "",
         email: "",
         responsible: "",
+        patientId: "",
         date: "",
         time: "",
         professional: "",
+        professionalId: "",
         specialty: appointment?.specialty || "Fonoaudiologia",
         specialtyKey: appointment?.specialtyKey || resolveSpecialtyKey(appointment?.specialty || "Fonoaudiologia"),
         operationalStatus: appointment?.operationalStatus || "scheduled",
+        status: "",
         observations: "",
         createdAt: appointment?.createdAt || null,
+        paymentStatus: "pending",
+        billingType: "particular",
+        insuranceProvider: "",
+        insuranceValue: 0,
+        authorizationCode: "",
+        package: null,
         crm: {
             serviceType: appointment?.crm?.serviceType || "individual_session",
             sessionType: appointment?.crm?.sessionType || "avaliacao",
@@ -24,39 +33,77 @@ export default function AppointmentModal({ appointment, professionals, patients,
             paymentAmount: Number(appointment?.crm?.paymentAmount || 0),
             usePackage: !!appointment?.crm?.usePackage,
         },
+        visualFlag: "",
+        metadata: null,
     });
 
     React.useEffect(() => {
         const today = formatDateLocal(new Date());
 
         if (appointment) {
-            // Extract patient data carefully
-            const pObj = typeof appointment.patient === 'object' ? appointment.patient : {};
-            const pName = pObj.fullName || appointment.patientName || appointment.patient;
+            // Extract patient data carefully - patient pode ser objeto ou ID string
+            const pObj = (typeof appointment.patient === 'object' && appointment.patient !== null) 
+                ? appointment.patient 
+                : {};
+            
+            // Tenta obter o nome de várias fontes possíveis
+            const pName = pObj.fullName || 
+                          appointment.patientName || 
+                          (typeof appointment.patient === 'string' ? appointment.patient : '') ||
+                          '';
+            
+            // Tenta obter o telefone de várias fontes possíveis
+            const pPhone = appointment.phone || 
+                           pObj.phone || 
+                           appointment.patientPhone ||
+                           '';
             
             // Para pré-agendamentos, os dados estão em originalData.patientInfo
             const prePatientInfo = appointment.originalData?.patientInfo || {};
 
             // Extract professional data
-            const dObj = typeof appointment.doctor === 'object' ? appointment.doctor : {};
+            const dObj = (typeof appointment.doctor === 'object' && appointment.doctor !== null) 
+                ? appointment.doctor 
+                : {};
             const profName = dObj.fullName || appointment.professional || appointment.professionalName;
 
-            setFormData({
+            const formDataToSet = {
+                // Dados do paciente
                 patient: pName || "",
-                phone: appointment.phone || pObj.phone || prePatientInfo.phone || "",
-                birthDate: appointment.birthDate || pObj.dateOfBirth || prePatientInfo.birthDate || "",
+                patientName: pName || "",  // alias para o backend
+                phone: pPhone || prePatientInfo.phone || "",
+                birthDate: extractDateForInput(appointment.birthDate) || 
+                           extractDateForInput(pObj.dateOfBirth) || 
+                           extractDateForInput(prePatientInfo.birthDate) || 
+                           "",
                 email: appointment.email || pObj.email || prePatientInfo.email || "",
                 responsible: appointment.responsible || "",
+                patientId: pObj._id || appointment.patientId || "",
+                
+                // Dados do agendamento
                 date: appointment.date || today,
                 time: appointment.time || "08:00",
                 professional: profName || (professionals?.[0] || ""),
+                professionalName: profName || (professionals?.[0]?.fullName || ""),  // alias para o backend
+                professionalId: dObj._id || appointment.professionalId || "",
                 specialty: appointment.specialty || "Fonoaudiologia",
                 specialtyKey:
                     appointment.specialtyKey ||
                     resolveSpecialtyKey(appointment.specialty || "Fonoaudiologia"),
                 operationalStatus: appointment.operationalStatus || "scheduled",
+                status: appointment.status || "",
                 observations: appointment.observations || "",
                 createdAt: appointment.createdAt || null,
+                
+                // Dados de pagamento/faturamento
+                paymentStatus: appointment.paymentStatus || "pending",
+                billingType: appointment.billingType || "particular",
+                insuranceProvider: appointment.insuranceProvider || "",
+                insuranceValue: appointment.insuranceValue || 0,
+                authorizationCode: appointment.authorizationCode || "",
+                package: appointment.package || null,
+                
+                // Dados do CRM
                 crm: {
                     serviceType: appointment.crm?.serviceType || "individual_session",
                     sessionType: appointment.crm?.sessionType || "avaliacao",
@@ -64,7 +111,12 @@ export default function AppointmentModal({ appointment, professionals, patients,
                     paymentAmount: Number(appointment.crm?.paymentAmount || 0),
                     usePackage: !!appointment.crm?.usePackage,
                 },
-            });
+                
+                // Metadados extras
+                visualFlag: appointment.visualFlag || "",
+                metadata: appointment.metadata || null,
+            };
+            setFormData(formDataToSet);
         } else {
             setFormData({
                 patient: "",
@@ -72,14 +124,23 @@ export default function AppointmentModal({ appointment, professionals, patients,
                 birthDate: "",
                 email: "",
                 responsible: "",
+                patientId: "",
                 date: today,
                 time: "08:00",
                 professional: professionals?.[0] || "",
+                professionalId: "",
                 specialty: "Fonoaudiologia",
                 specialtyKey: resolveSpecialtyKey("Fonoaudiologia"),
                 operationalStatus: "scheduled",
+                status: "",
                 observations: "",
                 createdAt: null,
+                paymentStatus: "pending",
+                billingType: "particular",
+                insuranceProvider: "",
+                insuranceValue: 0,
+                authorizationCode: "",
+                package: null,
                 crm: {
                     serviceType: "individual_session",
                     sessionType: "avaliacao",
@@ -87,6 +148,8 @@ export default function AppointmentModal({ appointment, professionals, patients,
                     paymentAmount: 0,
                     usePackage: false,
                 },
+                visualFlag: "",
+                metadata: null,
             });
         }
     }, [appointment, professionals]);
@@ -159,10 +222,33 @@ export default function AppointmentModal({ appointment, professionals, patients,
         setIsLoading(true);
 
         try {
-            const dataToSave = appointment?.id
-                ? { ...formData, id: appointment.id }
-                : formData;
-
+            // Montar payload completo com todos os campos
+            const dataToSave = {
+                // Dados do paciente
+                patient: formData.patient,
+                patientName: formData.patient,
+                phone: formData.phone,
+                birthDate: formData.birthDate,
+                email: formData.email,
+                responsible: formData.responsible,
+                
+                // Dados do agendamento
+                date: formData.date,
+                time: formData.time,
+                professional: formData.professional,
+                professionalName: formData.professional,
+                specialty: formData.specialty,
+                operationalStatus: formData.operationalStatus,
+                observations: formData.observations,
+                
+                // Dados CRM
+                crm: formData.crm,
+                
+                // ID se estiver editando
+                ...(appointment?.id ? { id: appointment.id } : {})
+            };
+            
+            console.log("[AppointmentModal] Enviando dados:", dataToSave);
             await onSave(dataToSave);
         } catch (error) {
             console.error("Erro ao salvar:", error);

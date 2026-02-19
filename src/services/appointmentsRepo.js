@@ -125,12 +125,38 @@ export const hasConflict = (appointments, candidate, editingId) => {
     );
 };
 
+// Helper para aguardar evento socket com timeout
+const waitForSocketEvent = (eventName, targetId, timeoutMs = 5000) => {
+    return new Promise((resolve) => {
+        const s = getSocket();
+        let timer;
+        
+        const handler = (data) => {
+            // Verifica se é o evento correto para o ID que estamos esperando
+            if (data._id === targetId || data.id === targetId) {
+                clearTimeout(timer);
+                s.off(eventName, handler);
+                resolve({ success: true, data, source: 'socket' });
+            }
+        };
+        
+        s.on(eventName, handler);
+        
+        // Timeout de segurança - se socket não chegar, resolvemos com false
+        timer = setTimeout(() => {
+            s.off(eventName, handler);
+            resolve({ success: false });
+        }, timeoutMs);
+    });
+};
+
 export const upsertAppointment = async ({ editingAppointment, appointmentData }) => {
     const safeStatus = appointmentData.status === "Vaga" ? "Pendente" : appointmentData.status;
+    const appointmentId = editingAppointment?.id || `ext_${Date.now()}`;
 
     // Payload unificado
     const payload = {
-        _id: editingAppointment?.id || `ext_${Date.now()}`,
+        _id: appointmentId,
 
         // Dados do paciente
         patientInfo: {
@@ -161,31 +187,46 @@ export const upsertAppointment = async ({ editingAppointment, appointmentData })
 
     console.log("[upsertAppointment] Enviando para API...", payload);
 
-    try {
-        if (editingAppointment?.id) {
-            // Edição -> sync-update
-            const response = await api.post('/api/import-from-agenda/sync-update', payload);
-            console.log(`[upsertAppointment] ✅ Atualizado via API`);
-            return { mode: "update", id: editingAppointment.id };
-        } else {
-            // Criação -> Apenas cria o Pré-Agendamento (Pendente)
-            // A confirmação será feita depois pela secretária.
-            console.log(`[upsertAppointment] Criando Pré-Agendamento...`);
-            const preRes = await api.post('/api/import-from-agenda', payload);
-
-            if (!preRes.data.success) {
-                throw new Error(preRes.data.error || "Erro ao criar pré-agendamento");
-            }
-
-            const preId = preRes.data.preAgendamentoId;
-            console.log(`[upsertAppointment] ✅ Pré-Agendamento criado com sucesso: ${preId}`);
-
-            // Retorna o ID do pré-agendamento. O frontend deve lidar com isso (ex: mostrar na lista como pendente)
-            return { mode: "create", id: preId, status: "pending_confirmation" };
+    // Para edições, também escutamos o evento socket como "fallback" de sucesso
+    // Isso resolve o problema do backend não responder HTTP mas emitir socket
+    const isEditing = !!editingAppointment?.id;
+    
+    if (isEditing) {
+        // ESTRATÉGIA CORRETA: Sempre esperar a API completar!
+        // O socket atualiza a lista em background, mas o sucesso só é confirmado pela API.
+        
+        console.log('[upsertAppointment] 🚀 Chamando API (sem timeout limite)...');
+        
+        try {
+            // Chamada SEM timeout - espera o tempo necessário
+            const response = await api.post('/api/import-from-agenda/sync-update', payload, {
+                timeout: 0 // Sem timeout
+            });
+            
+            console.log('[upsertAppointment] ✅ API retornou sucesso:', response.data);
+            return { mode: "update", id: appointmentId };
+            
+        } catch (error) {
+            console.error('[upsertAppointment] ❌ API falhou:', error.message);
+            
+            // Só fecha como sucesso se o socket já tiver confirmado E a lista foi atualizada
+            // (isso é verificado pelo componente pai quando recebe o evento socket)
+            throw error; // Propaga o erro para mostrar falha ao usuário
         }
-    } catch (error) {
-        console.error('[upsertAppointment] Erro na API:', error.response?.data || error.message);
-        throw error; // Propaga erro para a UI tratar
+    } else {
+        // Criação -> Apenas cria o Pré-Agendamento (Pendente)
+        console.log(`[upsertAppointment] Criando Pré-Agendamento...`);
+        const preRes = await api.post('/api/import-from-agenda', payload);
+
+        if (!preRes.data.success) {
+            throw new Error(preRes.data.error || "Erro ao criar pré-agendamento");
+        }
+
+        const preId = preRes.data.preAgendamentoId;
+        console.log(`[upsertAppointment] ✅ Pré-Agendamento criado com sucesso: ${preId}`);
+
+        // Retorna o ID do pré-agendamento. O frontend deve lidar com isso (ex: mostrar na lista como pendente)
+        return { mode: "create", id: preId, status: "pending_confirmation" };
     }
 };
 

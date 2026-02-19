@@ -24,6 +24,18 @@ export const formatDateDisplay = (dateString) => {
     return date.toLocaleDateString("pt-BR", options);
 };
 
+// Extrai yyyy-MM-dd de uma data ISO (ex: "2021-12-02T00:00:00.000Z" -> "2021-12-02")
+export const extractDateForInput = (isoDateString) => {
+    if (!isoDateString) return "";
+    // Pega os primeiros 10 caracteres (yyyy-MM-dd) ou tenta criar uma data
+    const date = new Date(isoDateString);
+    if (isNaN(date.getTime())) return "";
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, "0");
+    const d = String(date.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+};
+
 export const getDaysInMonth = (year, month) => new Date(year, month + 1, 0).getDate();
 
 export function getWeeksInMonth(year, month) {
