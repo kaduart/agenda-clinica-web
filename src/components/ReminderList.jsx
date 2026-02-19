@@ -1,9 +1,9 @@
-// components/ReminderList.jsx
+// components/ReminderList.jsx - VERSÃO API (sem Firebase)
 import { useState, useEffect } from 'react';
-import { collection, query, where, orderBy, getDocs, doc, updateDoc, Timestamp } from 'firebase/firestore';
-import { db } from '../firebase';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import api from '../services/api';
+import { toast } from 'react-toastify';
 
 export default function ReminderList() {
   const [lembretes, setLembretes] = useState([]);
@@ -11,29 +11,36 @@ export default function ReminderList() {
 
   useEffect(() => {
     carregarLembretes();
+    
+    // Atualizar a cada 5 minutos
+    const interval = setInterval(carregarLembretes, 5 * 60 * 1000);
+    return () => clearInterval(interval);
   }, []);
 
   const carregarLembretes = async () => {
     try {
-      const hoje = new Date();
-      hoje.setHours(23, 59, 59, 999);
-
-      const q = query(
-        collection(db, 'appointments'),
-        where('reminderDate', '<=', Timestamp.fromDate(hoje)),
-        where('reminderDone', '==', false),
-        orderBy('reminderDate', 'asc')
+      setLoading(true);
+      
+      // Buscar agendamentos com lembretes pendentes
+      const hoje = new Date().toISOString().split('T')[0];
+      const response = await api.get('/api/appointments', {
+        params: {
+          startDate: hoje,
+          endDate: hoje,
+          hasReminder: true,
+          reminderDone: false
+        }
+      });
+      
+      // Filtrar apenas os que têm lembretes
+      const comLembretes = response.data.filter(apt => 
+        apt.reminder && !apt.reminderDone
       );
-
-      const snapshot = await getDocs(q);
-      const lista = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-
-      setLembretes(lista);
+      
+      setLembretes(comLembretes);
     } catch (error) {
       console.error('[carregarLembretes]', error);
+      toast.error('Erro ao carregar lembretes');
     } finally {
       setLoading(false);
     }
@@ -41,15 +48,24 @@ export default function ReminderList() {
 
   const marcarFeito = async (id) => {
     try {
-      const ref = doc(db, 'appointments', id);
-      await updateDoc(ref, { reminderDone: true });
+      await api.patch(`/api/appointments/${id}/reminder`, {
+        reminderDone: true
+      });
+      
       setLembretes(prev => prev.filter(l => l.id !== id));
+      toast.success('Lembrete marcado como feito!');
     } catch (error) {
       console.error('[marcarFeito]', error);
+      toast.error('Erro ao marcar lembrete');
     }
   };
 
-  if (loading) return <p>Carregando...</p>;
+  if (loading) return (
+    <div className="p-4 text-center">
+      <i className="fas fa-spinner fa-spin text-gray-400"></i>
+      <p className="text-sm text-gray-500 mt-2">Carregando...</p>
+    </div>
+  );
 
   return (
     <div className="p-4">
@@ -65,9 +81,9 @@ export default function ReminderList() {
         <div key={l.id} className="border p-3 mb-2 rounded bg-yellow-50">
           <div className="flex justify-between items-start">
             <div>
-              <p className="font-semibold">{l.patientName}</p>
+              <p className="font-semibold">{l.patientName || l.patient?.fullName}</p>
               <p className="text-sm text-gray-600">
-                Consulta: {format(l.date.toDate(), 'dd/MM HH:mm', { locale: ptBR })}
+                Consulta: {l.date ? format(parseISO(l.date), 'dd/MM HH:mm', { locale: ptBR }) : 'N/A'}
               </p>
               <p className="mt-2 text-sm font-medium">{l.reminder}</p>
             </div>
@@ -80,6 +96,13 @@ export default function ReminderList() {
           </div>
         </div>
       ))}
+      
+      <button 
+        onClick={carregarLembretes}
+        className="mt-4 text-sm text-blue-600 hover:text-blue-800"
+      >
+        ↻ Atualizar
+      </button>
     </div>
   );
 }
