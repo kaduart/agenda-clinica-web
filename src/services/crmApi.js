@@ -8,8 +8,33 @@
 const EXPORT_TOKEN = "agenda_export_token_fono_inova_2025_secure_abc123";
 const BACKEND_URL = "https://fono-inova-crm-back.onrender.com";
 
-// Cache local simples (substitui o Firebase local)
-const localCache = new Map();
+// Cache local com localStorage (persiste entre reloads)
+const getCache = () => {
+    try {
+        return JSON.parse(localStorage.getItem('crmCache') || '{}');
+    } catch {
+        return {};
+    }
+};
+
+const setCache = (key, value) => {
+    const cache = getCache();
+    cache[key] = value;
+    localStorage.setItem('crmCache', JSON.stringify(cache));
+};
+
+const getCacheItem = (key) => getCache()[key];
+
+// Compatibilidade com código antigo
+const localCache = {
+    get: getCacheItem,
+    set: setCache,
+    delete: (key) => {
+        const cache = getCache();
+        delete cache[key];
+        localStorage.setItem('crmCache', JSON.stringify(cache));
+    }
+};
 
 const apiRequest = async (endpoint, options = {}) => {
     const url = `${BACKEND_URL}${endpoint}`;
@@ -23,6 +48,12 @@ const apiRequest = async (endpoint, options = {}) => {
     };
     
     if (config.body && typeof config.body === 'object') {
+        // Converter externalId/id para _id se necessário
+        if (config.body.externalId || config.body.id) {
+            config.body._id = config.body.externalId || config.body.id;
+            delete config.body.externalId;
+            delete config.body.id;
+        }
         config.body = JSON.stringify(config.body);
     }
     
@@ -66,9 +97,9 @@ export const exportToCRM = async (appointment) => {
             return { success: false, error: 'Campos faltando' };
         }
 
-        // Preparar payload
+        // Preparar payload (usando _id direto)
         const payload = {
-            externalId: appointment.id,
+            _id: appointment.id,
             professionalName: appointment.professional,
             date: appointment.date,
             time: appointment.time,
@@ -128,7 +159,7 @@ export const exportToCRM = async (appointment) => {
 export const autoSendPreAgendamento = async (appointment) => {
     try {
         const payload = {
-            externalId: appointment.id,
+            _id: appointment.id,
             professionalName: appointment.professional,
             date: appointment.date,
             time: appointment.time,
@@ -180,7 +211,7 @@ export const autoSendPreAgendamento = async (appointment) => {
 export const confirmarAgendamento = async (appointment, dadosConfirmacao) => {
     try {
         const body = {
-            externalId: appointment.id,
+            _id: appointment.id,
             doctorId: dadosConfirmacao.doctorId,
             date: dadosConfirmacao.date || appointment.date,
             time: dadosConfirmacao.time || appointment.time,
@@ -229,7 +260,7 @@ export const syncCancelToCRM = async (appointment, reason = "Cancelado via agend
         const data = await apiRequest('/api/import-from-agenda/sync-cancel', {
             method: 'POST',
             body: {
-                externalId: appointment.id,
+                _id: appointment.id,
                 reason,
                 confirmedAbsence: appointment.confirmedAbsence || false
             }
@@ -262,7 +293,7 @@ export const syncUpdateToCRM = async (appointment, updates) => {
 
     try {
         const payload = {
-            externalId: appointment.id,
+            _id: appointment.id,
             date: updates.date || appointment.date,
             time: updates.time || appointment.time,
             professionalName: updates.professional || appointment.professional,
@@ -301,7 +332,7 @@ export const syncDeleteToCRM = async (appointmentId, reason = "Excluído via age
     try {
         const data = await apiRequest('/api/import-from-agenda/sync-delete', {
             method: 'POST',
-            body: { externalId: appointmentId, reason }
+            body: { _id: appointmentId, reason }
         });
 
         // Limpar cache

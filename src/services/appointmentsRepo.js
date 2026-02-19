@@ -130,7 +130,7 @@ export const upsertAppointment = async ({ editingAppointment, appointmentData })
 
     // Payload unificado
     const payload = {
-        externalId: editingAppointment?.id || `ext_${Date.now()}`,
+        _id: editingAppointment?.id || `ext_${Date.now()}`,
 
         // Dados do paciente
         patientInfo: {
