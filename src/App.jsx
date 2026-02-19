@@ -218,7 +218,7 @@ export default function App() {
       ? "⚠ Tem certeza que deseja EXCLUIR PERMANENTEMENTE este interesse? (Não poderá ser desfeito)"
       : "⚠ Tem certeza que deseja EXCLUIR PERMANENTEMENTE este agendamento? (Histórico será perdido)";
 
-    const ok = await confirmToast(msg);
+    const ok = await confirmToast(msg, { confirmText: "Excluir", confirmColor: "red" });
     if (!ok) return;
 
     try {
@@ -255,7 +255,7 @@ export default function App() {
 
     if (isPre) {
       // Para pré, apenas confirmamos (ou usamos prompt se quiser motivo de descarte)
-      const ok = await confirmToast(`Deseja ${actionName}?`);
+      const ok = await confirmToast(`Deseja ${actionName}?`, { confirmText: "Confirmar", confirmColor: "red" });
       if (!ok) return;
       reason = "Descartado pela secretária";
     } else {
@@ -286,7 +286,7 @@ export default function App() {
       ? `Confirmar agendamento de ${appointment.patientName || "Paciente"}?`
       : `Confirmar presença/pagamento de ${appointment.patientName || "Paciente"}?`;
 
-    const ok = await confirmToast(msg);
+    const ok = await confirmToast(msg, { confirmText: "Confirmar", confirmColor: "green" });
     if (!ok) return;
 
     try {
@@ -555,7 +555,7 @@ export default function App() {
   };
 
   const handleDeleteProfessional = async (name) => {
-    const ok = await confirmToast(`Remover o profissional "${name}"?`);
+    const ok = await confirmToast(`Remover o profissional "${name}"?`, { confirmText: "Remover", confirmColor: "red" });
     if (!ok) return;
     try {
       await deleteProfessionalByName(name);

@@ -1,4 +1,5 @@
 import React from "react";
+import { toast } from "react-toastify";
 
 export default function ProfessionalsModal({ professionals, onAdd, onDelete, onClose }) {
     const [newName, setNewName] = React.useState("");
@@ -6,7 +7,10 @@ export default function ProfessionalsModal({ professionals, onAdd, onDelete, onC
     const handleAdd = async (e) => {
         e.preventDefault();
         const trimmed = newName.trim();
-        if (!trimmed) return await confirmToast("Digite um nome");
+        if (!trimmed) {
+            toast.error("Digite um nome");
+            return;
+        }
         onAdd(trimmed);
         setNewName("");
     };
