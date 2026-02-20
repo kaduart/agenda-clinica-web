@@ -103,7 +103,7 @@ export const exportToCRM = async (appointment) => {
             professionalName: appointment.professional,
             date: appointment.date,
             time: appointment.time,
-            specialty: appointment.specialty || "Fonoaudiologia",
+            specialty: appointment.specialtyKey || appointment.specialty || "fonoaudiologia",
             patientInfo: {
                 fullName: appointment.patient,
                 phone: (appointment.phone || "").replace(/\D/g, ""),
@@ -163,7 +163,7 @@ export const autoSendPreAgendamento = async (appointment) => {
             professionalName: appointment.professional,
             date: appointment.date,
             time: appointment.time,
-            specialty: appointment.specialty || "Fonoaudiologia",
+            specialty: appointment.specialtyKey || appointment.specialty || "fonoaudiologia",
             patientInfo: {
                 fullName: appointment.patient,
                 phone: (appointment.phone || "").replace(/\D/g, ""),
@@ -297,7 +297,7 @@ export const syncUpdateToCRM = async (appointment, updates) => {
             date: updates.date || appointment.date,
             time: updates.time || appointment.time,
             professionalName: updates.professional || appointment.professional,
-            specialty: updates.specialty || appointment.specialty,
+            specialty: updates.specialtyKey || updates.specialty || appointment.specialtyKey || appointment.specialty,
             observations: updates.observations || appointment.observations,
             patientInfo: updates.patientInfo || {
                 fullName: appointment.patient,

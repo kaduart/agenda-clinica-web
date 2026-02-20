@@ -182,7 +182,7 @@ export const upsertAppointment = async ({ editingAppointment, appointmentData })
         // Dados do agendamento
         professionalName: appointmentData.professional,
         doctorId: appointmentData.professionalId,  // ID do profissional se disponível
-        specialty: appointmentData.specialty,
+        specialty: appointmentData.specialtyKey || appointmentData.specialty,
         date: appointmentData.date,
         time: appointmentData.time,
         operationalStatus: appointmentData.operationalStatus || "scheduled",

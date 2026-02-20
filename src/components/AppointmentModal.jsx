@@ -317,6 +317,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                 professionalName: formData.professional,
                 professionalId: formData.professionalId,
                 specialty: formData.specialty,
+                specialtyKey: formData.specialtyKey,
                 operationalStatus: formData.operationalStatus,
                 observations: formData.observations,
                 
