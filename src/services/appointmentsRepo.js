@@ -103,6 +103,7 @@ export const listenAppointmentsForMonth = (year, month, onData, specificDate = n
 
     s.on('appointmentCreated', handleUpdate);
     s.on('appointmentUpdated', handleUpdate);
+    s.on('appointmentDeleted', handleUpdate);
     s.on('preagendamento:new', handleUpdate); // Se a agenda mostrar pré-agendamentos
     s.on('preagendamento:updated', handleUpdate);
     s.on('preagendamento:imported', handleUpdate);
@@ -112,6 +113,7 @@ export const listenAppointmentsForMonth = (year, month, onData, specificDate = n
     return () => {
         s.off('appointmentCreated', handleUpdate);
         s.off('appointmentUpdated', handleUpdate);
+        s.off('appointmentDeleted', handleUpdate);
         s.off('preagendamento:new', handleUpdate);
         s.off('preagendamento:updated', handleUpdate);
         s.off('preagendamento:imported', handleUpdate);
