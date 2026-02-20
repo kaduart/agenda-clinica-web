@@ -38,6 +38,8 @@ export default function AppointmentModal({ appointment, professionals, patients,
     });
 
     React.useEffect(() => {
+        console.log("📝 [AppointmentModal] useEffect - appointment:", JSON.stringify(appointment, null, 2));
+        console.log("📝 [AppointmentModal] useEffect - appointment?.id:", appointment?.id);
         const today = formatDateLocal(new Date());
 
         if (appointment) {
@@ -86,7 +88,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                 // Dados do agendamento
                 date: appointment.date || today,
                 time: appointment.time || "08:00",
-                professional: profName || (professionals?.[0] || ""),
+                professional: profName || (professionals?.[0]?.fullName || ""),
                 professionalName: profName || (professionals?.[0]?.fullName || ""),  // alias para o backend
                 professionalId: dObj._id || appointment.professionalId || "",
                 specialty: appointment.specialty || "Fonoaudiologia",
@@ -130,7 +132,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                 patientId: "",
                 date: today,
                 time: "08:00",
-                professional: professionals?.[0] || "",
+                professional: professionals?.[0]?.fullName || "",
                 professionalId: "",
                 specialty: "Fonoaudiologia",
                 specialtyKey: resolveSpecialtyKey("Fonoaudiologia"),
@@ -722,10 +724,15 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                     onChange={handleChange}
                                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                                 >
-                                    <option value="Fonoaudiologia">Fonoaudiologia</option>
-                                    <option value="Psicologia">Psicologia</option>
-                                    <option value="Terapia Ocupacional">Terapia Ocupacional</option>
-                                    <option value="Fisioterapia">Fisioterapia</option>
+                                      <option value="fonoaudiologia">Fonoaudiologia</option>
+                                    <option value="psicologia">Psicologia</option>
+                                    <option value="terapia_ocupacional">Terapia Ocupacional</option>
+                                    <option value="fisioterapia">Fisioterapia</option>
+                                    <option value="pediatria">Pediatria</option>
+                                    <option value="neuroped">Neuropediatria</option>
+                                    <option value="psicomotricidade">Psicomotricidade</option>
+                                    <option value="musicoterapia">Musicoterapia</option>
+                                    <option value="psicopedagogia">Psicopedagogia</option>
                                 </select>
                             </div>
                         </div>

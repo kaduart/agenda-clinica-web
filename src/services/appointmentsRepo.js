@@ -93,8 +93,11 @@ export const listenAppointmentsForMonth = (year, month, onData, specificDate = n
 
     const handleUpdate = (data) => {
         console.log('📡 Evento Socket recebido:', data);
+        console.log('📡 Tipo de evento:', data?.type || 'desconhecido');
+        console.log('📡 ID afetado:', data?._id || data?.id || 'não informado');
         // Estratégia simples: recarregar o mês inteiro em qualquer mudança
         // Isso garante consistência sem complexidade de merge no frontend
+        console.log('🔄 Recarregando dados devido a evento socket...');
         fetchData();
     };
 
@@ -103,6 +106,7 @@ export const listenAppointmentsForMonth = (year, month, onData, specificDate = n
     s.on('preagendamento:new', handleUpdate); // Se a agenda mostrar pré-agendamentos
     s.on('preagendamento:updated', handleUpdate);
     s.on('preagendamento:imported', handleUpdate);
+    s.on('preagendamento:discarded', handleUpdate); // Quando descarta um pré-agendamento
 
     // Retorna função de limpeza
     return () => {
@@ -111,6 +115,7 @@ export const listenAppointmentsForMonth = (year, month, onData, specificDate = n
         s.off('preagendamento:new', handleUpdate);
         s.off('preagendamento:updated', handleUpdate);
         s.off('preagendamento:imported', handleUpdate);
+        s.off('preagendamento:discarded', handleUpdate);
     };
 };
 
@@ -152,6 +157,8 @@ const waitForSocketEvent = (eventName, targetId, timeoutMs = 5000) => {
 
 export const upsertAppointment = async ({ editingAppointment, appointmentData }) => {
     console.log("📝 [appointmentsRepo] upsertAppointment chamado");
+    console.log("📝 [appointmentsRepo] editingAppointment:", JSON.stringify(editingAppointment, null, 2));
+    console.log("📝 [appointmentsRepo] appointmentData.id:", appointmentData.id);
     console.log("📝 [appointmentsRepo] appointmentData.patientId:", appointmentData.patientId);
     console.log("📝 [appointmentsRepo] appointmentData.isNewPatient:", appointmentData.isNewPatient);
     console.log("📝 [appointmentsRepo] appointmentData.patientName:", appointmentData.patientName);
@@ -165,6 +172,8 @@ export const upsertAppointment = async ({ editingAppointment, appointmentData })
     
     console.log("📝 [appointmentsRepo] isEditing:", isEditing);
     console.log("📝 [appointmentsRepo] appointmentId:", appointmentId);
+    console.log("📝 [appointmentsRepo] editingAppointment?.id:", editingAppointment?.id);
+    console.log("📝 [appointmentsRepo] editingAppointment?.id?.startsWith('ext_'):", editingAppointment?.id?.startsWith('ext_'));
 
     // Payload unificado - só envia _id se for edição (na criação o backend gera)
     const payload = {

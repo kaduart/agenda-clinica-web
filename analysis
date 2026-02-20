@@ -1,32 +1,7 @@
-curl 'http://localhost:5000/api/import-from-agenda/sync-update' \
-  -H 'Accept: application/json, text/plain, */*' \
-  -H 'Accept-Language: pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7' \
-  -H 'Authorization: Bearer agenda_export_token_fono_inova_2025_secure_abc123' \
-  -H 'Connection: keep-alive' \
-  -H 'Content-Type: application/json' \
-  -H 'Origin: http://localhost:5174' \
-  -H 'Referer: http://localhost:5174/' \
-  -H 'Sec-Fetch-Dest: empty' \
-  -H 'Sec-Fetch-Mode: cors' \
-  -H 'Sec-Fetch-Site: same-site' \
-  -H 'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36' \
-  -H 'sec-ch-ua: "Not:A-Brand";v="99", "Google Chrome";v="145", "Chromium";v="145"' \
-  -H 'sec-ch-ua-mobile: ?0' \
-  -H 'sec-ch-ua-platform: "Windows"' \
-  --data-raw '{"_id":"6993310e03d5cc171cf08453","patientInfo":{"fullName":"Sexta feira\nJoao Lucas Ribeiro de Santana","phone":"556281631054","birthDate":"2021-12-01","email":""},"responsible":"","professionalName":"Lorrany Siqueira Marques","specialty":"fonoaudiologia","date":"2026-02-20","time":"10:00","operationalStatus":"scheduled","observations":"[AGENDADO AUTOMATICAMENTE VIA AMANDA/WHATSAPP]","crm":{"serviceType":"session","sessionType":"avaliacao","paymentMethod":"pix","paymentAmount":0,"usePackage":false}}'  {
-    "success": true,
-    "message": "Atualização sincronizada com sucesso",
-    "appointmentId": "6993310e03d5cc171cf08453",
-    "updatedFields": {
-        "date": "2026-02-20",
-        "time": "10:00",
-        "professionalName": "Lorrany Siqueira Marques",
-        "specialty": "fonoaudiologia"
-    }
-}  carrgea auto alsita de agendmaenot [
+[
     {
         "id": "698ca9cd10fbb5ebee0a9198",
-        "title": "Consulta - Lorrany Siqueira Marques",
+        "title": "Pacote - Lorrany Siqueira Marques",
         "start": "2026-02-20T11:00:00.000Z",
         "end": "2026-02-20T11:40:00.000Z",
         "date": "2026-02-20",
@@ -36,7 +11,7 @@ curl 'http://localhost:5000/api/import-from-agenda/sync-update' \
         "specialty": "fonoaudiologia",
         "professional": "Lorrany Siqueira Marques",
         "patientName": "Issac Moreira Ribeiro",
-        "observations": "",
+        "observations": "Pacote",
         "responsible": "",
         "phone": "62 9214-2716",
         "paymentStatus": "paid",
@@ -56,7 +31,7 @@ curl 'http://localhost:5000/api/import-from-agenda/sync-update' \
         "patient": {
             "_id": "6917116c5d4d8bdb65edd506",
             "fullName": "Issac Moreira Ribeiro",
-            "dateOfBirth": "2021-09-28T03:00:00.000Z",
+            "dateOfBirth": "2021-09-28T00:00:00.000Z",
             "gender": "masculino",
             "address": {
                 "street": "Rua Gt20 quadra 30 lote11",
@@ -86,8 +61,61 @@ curl 'http://localhost:5000/api/import-from-agenda/sync-update' \
         "metadata": null
     },
     {
+        "id": "69984fd07c92d32c1fd3e35b",
+        "title": "[INTERESSE] ANA CLARA TESTE - Doutor Teste",
+        "start": "2026-02-20T11:00:00.000Z",
+        "end": "2026-02-20T11:40:00.000Z",
+        "date": "2026-02-20",
+        "time": "08:00",
+        "status": "Pendente",
+        "operationalStatus": "scheduled",
+        "specialty": "terapia_ocupacional",
+        "professional": "Doutor Teste",
+        "patientName": "ANA CLARA TESTE",
+        "observations": "[IMPORTADO DA AGENDA EXTERNA]",
+        "responsible": "",
+        "phone": "5561981694922",
+        "visualFlag": "pending",
+        "__isPreAgendamento": true,
+        "patient": {
+            "fullName": "ANA CLARA TESTE"
+        },
+        "doctor": {
+            "fullName": "Doutor Teste"
+        },
+        "originalData": {
+            "_id": "69984fd07c92d32c1fd3e35b",
+            "source": "agenda_externa",
+            "patientInfo": {
+                "fullName": "ANA CLARA TESTE",
+                "phone": "5561981694922",
+                "email": "",
+                "birthDate": "2012-02-05",
+                "ageUnit": "anos"
+            },
+            "patientId": "69406afd37ea03c055ca188b",
+            "specialty": "terapia_ocupacional",
+            "preferredDate": "2026-02-20",
+            "preferredTime": "08:00",
+            "preferredPeriod": null,
+            "professionalName": "Doutor Teste",
+            "professionalId": "689815f43e7468e2d7faa2ef",
+            "serviceType": "session",
+            "status": "novo",
+            "suggestedValue": 0,
+            "secretaryNotes": "[IMPORTADO DA AGENDA EXTERNA]",
+            "urgency": "critica",
+            "attemptCount": 0,
+            "contactAttempts": [],
+            "createdAt": "2026-02-20T12:13:04.579Z",
+            "updatedAt": "2026-02-20T12:13:04.579Z",
+            "expiresAt": "2026-03-22T12:13:04.579Z",
+            "__v": 0
+        }
+    },
+    {
         "id": "697ca2c841bea6644e5c378a",
-        "title": "Consulta - Lorrany Siqueira Marques",
+        "title": "Pacote - Lorrany Siqueira Marques",
         "start": "2026-02-20T11:40:00.000Z",
         "end": "2026-02-20T12:20:00.000Z",
         "date": "2026-02-20",
@@ -97,7 +125,7 @@ curl 'http://localhost:5000/api/import-from-agenda/sync-update' \
         "specialty": "fonoaudiologia",
         "professional": "Lorrany Siqueira Marques",
         "patientName": "Samuel roczniesk da Costa",
-        "observations": "",
+        "observations": "Pacote",
         "responsible": "",
         "phone": "(62)9.9273-1969",
         "paymentStatus": "paid",
@@ -117,7 +145,7 @@ curl 'http://localhost:5000/api/import-from-agenda/sync-update' \
         "patient": {
             "_id": "6972301eaeeb528b5b3c1140",
             "fullName": "Samuel roczniesk da Costa",
-            "dateOfBirth": "2023-05-19T03:00:00.000Z",
+            "dateOfBirth": "2023-05-18T00:00:00.000Z",
             "gender": "masculino",
             "address": {
                 "street": null,
@@ -148,7 +176,7 @@ curl 'http://localhost:5000/api/import-from-agenda/sync-update' \
     },
     {
         "id": "697ca8b141bea6644e5c3b12",
-        "title": "Consulta - Lorrany Siqueira Marques",
+        "title": "Pacote - Lorrany Siqueira Marques",
         "start": "2026-02-20T12:20:00.000Z",
         "end": "2026-02-20T13:00:00.000Z",
         "date": "2026-02-20",
@@ -158,7 +186,7 @@ curl 'http://localhost:5000/api/import-from-agenda/sync-update' \
         "specialty": "fonoaudiologia",
         "professional": "Lorrany Siqueira Marques",
         "patientName": "Rodrigo Antônio Silva de Carvalho",
-        "observations": "",
+        "observations": "Pacote",
         "responsible": "",
         "phone": "62 9356-0797",
         "paymentStatus": "paid",
@@ -178,7 +206,7 @@ curl 'http://localhost:5000/api/import-from-agenda/sync-update' \
         "patient": {
             "_id": "69330a389798fcf7ad3bdca1",
             "fullName": "Rodrigo Antônio Silva de Carvalho",
-            "dateOfBirth": "2021-02-22T03:00:00.000Z",
+            "dateOfBirth": "2021-02-22T00:00:00.000Z",
             "gender": "masculino",
             "address": {
                 "street": "Avenida Sebastião Pedro Junqueira Q2 Lt5",
@@ -208,8 +236,8 @@ curl 'http://localhost:5000/api/import-from-agenda/sync-update' \
         "metadata": null
     },
     {
-        "id": "6993310e03d5cc171cf08453",
-        "title": "[AGENDADO AUTOMATICAMENTE VIA AMANDA/WHATSAPP] - Lorrany Siqueira Marques",
+        "id": "699845497c92d32c1fd3bc9d",
+        "title": "[IMPORTADO DO PRE-AGENDAMENTO] Obs: Valor R$150,00\nResponsável: Luciana\nObs: Valor R$150,00\n[IMPORTADO DA AGENDA EXTERNA] - Lorrany Siqueira Marques",
         "start": "2026-02-20T13:00:00.000Z",
         "end": "2026-02-20T13:40:00.000Z",
         "date": "2026-02-20",
@@ -218,8 +246,130 @@ curl 'http://localhost:5000/api/import-from-agenda/sync-update' \
         "operationalStatus": "scheduled",
         "specialty": "fonoaudiologia",
         "professional": "Lorrany Siqueira Marques",
-        "patientName": "Sexta feira\nJoao Lucas Ribeiro de Santana",
-        "observations": "[AGENDADO AUTOMATICAMENTE VIA AMANDA/WHATSAPP]",
+        "patientName": "Ravi Francisco Moreira Andrade",
+        "observations": "[IMPORTADO DO PRE-AGENDAMENTO] Obs: Valor R$150,00\nResponsável: Luciana\nObs: Valor R$150,00\n[IMPORTADO DA AGENDA EXTERNA]",
+        "responsible": "",
+        "phone": "62 99293-3306",
+        "paymentStatus": "pending",
+        "visualFlag": "pending",
+        "billingType": "particular",
+        "insuranceProvider": "",
+        "insuranceValue": 0,
+        "authorizationCode": "",
+        "package": null,
+        "patient": {
+            "_id": "68f2454f5811d9c02f263fb3",
+            "fullName": "Ravi Francisco Moreira Andrade",
+            "dateOfBirth": "2021-09-29T03:00:00.000Z",
+            "gender": "masculino",
+            "address": {
+                "street": "3 QUADRA 10 LOTE 10",
+                "number": "sn",
+                "district": "Santo André",
+                "city": "Anápolis",
+                "state": null,
+                "zipCode": null
+            },
+            "phone": "62 99293-3306",
+            "email": "",
+            "cpf": "11321956169",
+            "rg": null
+        },
+        "doctor": {
+            "_id": "684072213830f473da1b0b0b",
+            "fullName": "Lorrany Siqueira Marques",
+            "email": "clinicafonoinova@gmail.com",
+            "specialty": "fonoaudiologia",
+            "phoneNumber": "(61) 99240-0846",
+            "specialties": [
+                "teste_linguinha",
+                "caa",
+                "fono_prompt"
+            ]
+        },
+        "metadata": {
+            "origin": {
+                "source": "agenda_externa",
+                "preAgendamentoId": "699845067c92d32c1fd3bbaf",
+                "convertedBy": null,
+                "convertedAt": "2026-02-20T11:28:09.582Z"
+            }
+        }
+    },
+    {
+        "id": "69976b97c4911e6700ccf096",
+        "title": "Valor R$170,00 - Lorrany Siqueira Marques",
+        "start": "2026-02-20T13:40:00.000Z",
+        "end": "2026-02-20T14:20:00.000Z",
+        "date": "2026-02-20",
+        "time": "10:40",
+        "status": "Pendente",
+        "operationalStatus": "scheduled",
+        "specialty": "fonoaudiologia",
+        "professional": "Lorrany Siqueira Marques",
+        "patientName": "Miguel afiouni Lemos obeid",
+        "observations": "Valor R$170,00",
+        "responsible": "",
+        "phone": "62 9303-1645",
+        "paymentStatus": "pending",
+        "visualFlag": "pending",
+        "billingType": "particular",
+        "insuranceProvider": "",
+        "insuranceValue": 0,
+        "authorizationCode": "",
+        "package": null,
+        "patient": {
+            "_id": "697903184b46e3fee85dc56b",
+            "fullName": "Miguel afiouni Lemos obeid",
+            "dateOfBirth": "2017-03-26T00:00:00.000Z",
+            "gender": "masculino",
+            "address": {
+                "street": null,
+                "number": null,
+                "district": null,
+                "city": null,
+                "state": null,
+                "zipCode": null
+            },
+            "phone": "62 9303-1645",
+            "email": "marianeafiounee@gmail.com",
+            "cpf": null,
+            "rg": null
+        },
+        "doctor": {
+            "_id": "684072213830f473da1b0b0b",
+            "fullName": "Lorrany Siqueira Marques",
+            "email": "clinicafonoinova@gmail.com",
+            "specialty": "fonoaudiologia",
+            "phoneNumber": "(61) 99240-0846",
+            "specialties": [
+                "teste_linguinha",
+                "caa",
+                "fono_prompt"
+            ]
+        },
+        "metadata": {
+            "origin": {
+                "source": "agenda_externa",
+                "preAgendamentoId": "69976b6dc4911e6700ccf07d",
+                "convertedBy": null,
+                "convertedAt": "2026-02-19T19:59:19.824Z"
+            }
+        }
+    },
+    {
+        "id": "6993310e03d5cc171cf08453",
+        "title": "Avaliação R$200,0,0 - Lorrany Siqueira Marques",
+        "start": "2026-02-20T14:20:00.000Z",
+        "end": "2026-02-20T15:00:00.000Z",
+        "date": "2026-02-20",
+        "time": "11:20",
+        "status": "Pendente",
+        "operationalStatus": "scheduled",
+        "specialty": "fonoaudiologia",
+        "professional": "Lorrany Siqueira Marques",
+        "patientName": "Joao Lucas Ribeiro de Santana",
+        "observations": "Avaliação R$200,0,0",
         "responsible": "",
         "phone": "556281631054",
         "paymentStatus": "pending",
@@ -231,8 +381,8 @@ curl 'http://localhost:5000/api/import-from-agenda/sync-update' \
         "package": null,
         "patient": {
             "_id": "6993310d03d5cc171cf0844b",
-            "fullName": "Sexta feira\nJoao Lucas Ribeiro de Santana",
-            "dateOfBirth": "2021-12-02T00:00:00.000Z",
+            "fullName": "Joao Lucas Ribeiro de Santana",
+            "dateOfBirth": "2021-11-24T00:00:00.000Z",
             "phone": "556281631054",
             "email": ""
         },
@@ -251,8 +401,423 @@ curl 'http://localhost:5000/api/import-from-agenda/sync-update' \
         "metadata": null
     },
     {
-        "id": "69864e7979bba4d65fae75d9",
+        "id": "699849a47c92d32c1fd3cd0b",
+        "title": "[INTERESSE] Davi Felipe Araújo - Bárbara Martins Rodrigues",
+        "start": "2026-02-20T16:20:00.000Z",
+        "end": "2026-02-20T17:00:00.000Z",
+        "date": "2026-02-20",
+        "time": "13:20",
+        "status": "Pendente",
+        "operationalStatus": "scheduled",
+        "specialty": "fisioterapia",
+        "professional": "Bárbara Martins Rodrigues",
+        "patientName": "Davi Felipe Araújo",
+        "observations": "Responsável: Ana Lídia\nObs: Unimed Campinas\n[IMPORTADO DA AGENDA EXTERNA]",
+        "responsible": "",
+        "phone": "6281915479",
+        "visualFlag": "pending",
+        "__isPreAgendamento": true,
+        "patient": {
+            "fullName": "Davi Felipe Araújo"
+        },
+        "doctor": {
+            "fullName": "Bárbara Martins Rodrigues"
+        },
+        "originalData": {
+            "_id": "699849a47c92d32c1fd3cd0b",
+            "source": "agenda_externa",
+            "patientInfo": {
+                "fullName": "Davi Felipe Araújo",
+                "phone": "6281915479",
+                "email": "",
+                "birthDate": "2024-12-12",
+                "ageUnit": "anos"
+            },
+            "patientId": "692da1e37a66901c8975db66",
+            "specialty": "fisioterapia",
+            "preferredDate": "2026-02-20",
+            "preferredTime": "13:20",
+            "preferredPeriod": null,
+            "professionalName": "Bárbara Martins Rodrigues",
+            "professionalId": "690a3f957fe419286acb0b0b",
+            "serviceType": "session",
+            "status": "novo",
+            "suggestedValue": 0,
+            "secretaryNotes": "Responsável: Ana Lídia\nObs: Unimed Campinas\n[IMPORTADO DA AGENDA EXTERNA]",
+            "urgency": "critica",
+            "attemptCount": 0,
+            "contactAttempts": [],
+            "createdAt": "2026-02-20T11:46:44.358Z",
+            "updatedAt": "2026-02-20T11:46:44.358Z",
+            "expiresAt": "2026-03-22T11:46:44.358Z",
+            "__v": 0
+        }
+    },
+    {
+        "id": "69984c127c92d32c1fd3d569",
+        "title": "[IMPORTADO DO PRE-AGENDAMENTO] Responsável: Ana Lídia\nObs: Unimed Campinas\n[IMPORTADO DA AGENDA EXTERNA]\nResponsável: Ana Lídia\nObs: Unimed Campinas\n[IMPORTADO DA AGENDA EXTERNA] - Lorrany Siqueira Marques",
+        "start": "2026-02-20T17:00:00.000Z",
+        "end": "2026-02-20T17:40:00.000Z",
+        "date": "2026-02-20",
+        "time": "14:00",
+        "status": "Pendente",
+        "operationalStatus": "scheduled",
+        "specialty": "fonoaudiologia",
+        "professional": "Lorrany Siqueira Marques",
+        "patientName": "Davi Felipe Araújo",
+        "observations": "[IMPORTADO DO PRE-AGENDAMENTO] Responsável: Ana Lídia\nObs: Unimed Campinas\n[IMPORTADO DA AGENDA EXTERNA]\nResponsável: Ana Lídia\nObs: Unimed Campinas\n[IMPORTADO DA AGENDA EXTERNA]",
+        "responsible": "",
+        "phone": "6281915479",
+        "paymentStatus": "pending",
+        "visualFlag": "pending",
+        "billingType": "particular",
+        "insuranceProvider": "",
+        "insuranceValue": 0,
+        "authorizationCode": "",
+        "package": null,
+        "patient": {
+            "_id": "69984ba67c92d32c1fd3d3e8",
+            "fullName": "Davi Felipe Araújo",
+            "dateOfBirth": "2024-12-12T00:00:00.000Z",
+            "phone": "6281915479",
+            "email": ""
+        },
+        "doctor": {
+            "_id": "684072213830f473da1b0b0b",
+            "fullName": "Lorrany Siqueira Marques",
+            "email": "clinicafonoinova@gmail.com",
+            "specialty": "fonoaudiologia",
+            "phoneNumber": "(61) 99240-0846",
+            "specialties": [
+                "teste_linguinha",
+                "caa",
+                "fono_prompt"
+            ]
+        },
+        "metadata": {
+            "origin": {
+                "source": "agenda_externa",
+                "preAgendamentoId": "69984b667c92d32c1fd3d2cb",
+                "convertedBy": null,
+                "convertedAt": "2026-02-20T11:57:06.106Z"
+            }
+        }
+    },
+    {
+        "id": "69986d567c92d32c1fd44f3b",
+        "title": "Consulta - Suzane de Morais Soares",
+        "start": "2026-02-20T17:00:00.000Z",
+        "end": "2026-02-20T17:40:00.000Z",
+        "date": "2026-02-20",
+        "time": "14:00",
+        "status": "Pendente",
+        "operationalStatus": "scheduled",
+        "specialty": "psicologia",
+        "professional": "Suzane de Morais Soares",
+        "patientName": "Kauana Queiroz Gomes Naves",
+        "observations": "",
+        "responsible": "",
+        "phone": "6195906565",
+        "paymentStatus": "pending_receipt",
+        "visualFlag": "partial",
+        "billingType": "particular",
+        "insuranceProvider": "unimed-anapolis",
+        "insuranceValue": 0,
+        "authorizationCode": "",
+        "package": {
+            "_id": "69986d557c92d32c1fd44f15",
+            "sessionValue": 0,
+            "totalSessions": 32,
+            "balance": 0,
+            "financialStatus": "unpaid",
+            "totalPaid": 0
+        },
+        "patient": {
+            "_id": "699869177c92d32c1fd43f86",
+            "fullName": "Kauana Queiroz Gomes Naves",
+            "dateOfBirth": "2022-05-11T03:00:00.000Z",
+            "gender": "feminino",
+            "address": {
+                "street": null,
+                "number": null,
+                "district": null,
+                "city": null,
+                "state": null,
+                "zipCode": null
+            },
+            "phone": "6195906565",
+            "email": "",
+            "cpf": "115.915.751-62"
+        },
+        "doctor": {
+            "_id": "68a8cf172132ca79b074d387",
+            "fullName": "Suzane de Morais Soares",
+            "email": "psicosuzane123@gmail.com",
+            "specialty": "psicologia",
+            "specialties": [],
+            "phoneNumber": "(62) 99189-2865"
+        },
+        "metadata": {
+            "origin": {
+                "source": "outro"
+            }
+        }
+    },
+    {
+        "id": "69986c7d7c92d32c1fd44c0f",
         "title": "Consulta - Lorrany Siqueira Marques",
+        "start": "2026-02-20T17:40:00.000Z",
+        "end": "2026-02-20T18:20:00.000Z",
+        "date": "2026-02-20",
+        "time": "14:40",
+        "status": "Pendente",
+        "operationalStatus": "scheduled",
+        "specialty": "fonoaudiologia",
+        "professional": "Lorrany Siqueira Marques",
+        "patientName": "Kauana Queiroz Gomes Naves",
+        "observations": "",
+        "responsible": "",
+        "phone": "6195906565",
+        "paymentStatus": "pending_receipt",
+        "visualFlag": "partial",
+        "billingType": "particular",
+        "insuranceProvider": "unimed-anapolis",
+        "insuranceValue": 0,
+        "authorizationCode": "",
+        "package": {
+            "_id": "69986c7c7c92d32c1fd44be9",
+            "sessionValue": 0,
+            "totalSessions": 32,
+            "balance": 0,
+            "financialStatus": "unpaid",
+            "totalPaid": 0
+        },
+        "patient": {
+            "_id": "699869177c92d32c1fd43f86",
+            "fullName": "Kauana Queiroz Gomes Naves",
+            "dateOfBirth": "2022-05-11T03:00:00.000Z",
+            "gender": "feminino",
+            "address": {
+                "street": null,
+                "number": null,
+                "district": null,
+                "city": null,
+                "state": null,
+                "zipCode": null
+            },
+            "phone": "6195906565",
+            "email": "",
+            "cpf": "115.915.751-62"
+        },
+        "doctor": {
+            "_id": "684072213830f473da1b0b0b",
+            "fullName": "Lorrany Siqueira Marques",
+            "email": "clinicafonoinova@gmail.com",
+            "specialty": "fonoaudiologia",
+            "phoneNumber": "(61) 99240-0846",
+            "specialties": [
+                "teste_linguinha",
+                "caa",
+                "fono_prompt"
+            ]
+        },
+        "metadata": {
+            "origin": {
+                "source": "outro"
+            }
+        }
+    },
+    {
+        "id": "69984c867c92d32c1fd3d7c1",
+        "title": "[IMPORTADO DO PRE-AGENDAMENTO] Responsável: lARISSA\nObs: Valor R$160,00\n[IMPORTADO DA AGENDA EXTERNA]\nResponsável: lARISSA\nObs: Valor R$160,00\n[IMPORTADO DA AGENDA EXTERNA] - Luis Henrique",
+        "start": "2026-02-20T17:40:00.000Z",
+        "end": "2026-02-20T18:20:00.000Z",
+        "date": "2026-02-20",
+        "time": "14:40",
+        "status": "Pendente",
+        "operationalStatus": "scheduled",
+        "specialty": "terapia_ocupacional",
+        "professional": "Luis Henrique",
+        "patientName": "Isis Caldas Rebelatto",
+        "observations": "[IMPORTADO DO PRE-AGENDAMENTO] Responsável: lARISSA\nObs: Valor R$160,00\n[IMPORTADO DA AGENDA EXTERNA]\nResponsável: lARISSA\nObs: Valor R$160,00\n[IMPORTADO DA AGENDA EXTERNA]",
+        "responsible": "",
+        "phone": "(66) 98444-9284",
+        "paymentStatus": "pending",
+        "visualFlag": "pending",
+        "billingType": "particular",
+        "insuranceProvider": "",
+        "insuranceValue": 0,
+        "authorizationCode": "",
+        "package": null,
+        "patient": {
+            "_id": "685b0cfaaec14c7163585b5b",
+            "fullName": "Isis Caldas Rebelatto",
+            "dateOfBirth": "2023-03-17T00:00:00.000Z",
+            "gender": "feminino",
+            "address": {
+                "street": "Rua PP17 QD43 LT34",
+                "number": "SN",
+                "district": "Patque dos Pirineus",
+                "city": "Anápolis",
+                "state": "GO",
+                "zipCode": "75.717-45"
+            },
+            "phone": "(66) 98444-9284",
+            "email": "522@gmai.com",
+            "cpf": null,
+            "rg": null
+        },
+        "doctor": {
+            "_id": "6840aa2f928a20e92ab13be8",
+            "fullName": "Luis Henrique",
+            "email": "luhenriqueto@gmail.com",
+            "specialty": "terapia_ocupacional",
+            "phoneNumber": "(61) 98642-5683",
+            "specialties": []
+        },
+        "metadata": {
+            "origin": {
+                "source": "agenda_externa",
+                "preAgendamentoId": "69984c627c92d32c1fd3d6c0",
+                "convertedBy": null,
+                "convertedAt": "2026-02-20T11:59:02.073Z"
+            }
+        },
+        "patientBalance": 160,
+        "patientHasDebt": true
+    },
+    {
+        "id": "699847fe7c92d32c1fd3c63a",
+        "title": "Avulsa 160,00 - Lorrany Siqueira Marques",
+        "start": "2026-02-20T18:20:00.000Z",
+        "end": "2026-02-20T19:00:00.000Z",
+        "date": "2026-02-20",
+        "time": "15:20",
+        "status": "Pendente",
+        "operationalStatus": "scheduled",
+        "specialty": "fonoaudiologia",
+        "professional": "Lorrany Siqueira Marques",
+        "patientName": "Isis Caldas Rebelatto",
+        "observations": "Avulsa 160,00",
+        "responsible": "",
+        "phone": "(66) 98444-9284",
+        "paymentStatus": "pending_receipt",
+        "visualFlag": "partial",
+        "billingType": "particular",
+        "insuranceProvider": "unimed-campinas",
+        "insuranceValue": 0,
+        "authorizationCode": "",
+        "package": {
+            "_id": "699847fe7c92d32c1fd3c62a",
+            "sessionValue": 0,
+            "totalSessions": 8,
+            "balance": 0,
+            "financialStatus": "unpaid",
+            "totalPaid": 0
+        },
+        "patient": {
+            "_id": "692da1e37a66901c8975db66",
+            "fullName": "Isis Caldas Rebelatto",
+            "dateOfBirth": "2023-03-17T00:00:00.000Z",
+            "gender": "masculino",
+            "address": {
+                "street": "Avenida Estados Unidos",
+                "number": "sn",
+                "district": "Jardim das Américas 1etapa quadra 6 ote10",
+                "city": "Anápolis",
+                "state": "Goiás",
+                "zipCode": null
+            },
+            "phone": "(66) 98444-9284",
+            "email": "522@gmai.com",
+            "cpf": "12374198162",
+            "rg": null
+        },
+        "doctor": {
+            "_id": "684072213830f473da1b0b0b",
+            "fullName": "Lorrany Siqueira Marques",
+            "email": "clinicafonoinova@gmail.com",
+            "specialty": "fonoaudiologia",
+            "phoneNumber": "(61) 99240-0846",
+            "specialties": [
+                "teste_linguinha",
+                "caa",
+                "fono_prompt"
+            ]
+        },
+        "metadata": {
+            "origin": {
+                "source": "outro"
+            }
+        }
+    },
+    {
+        "id": "69986c067c92d32c1fd44a48",
+        "title": "Consulta - Lorrany Siqueira Marques",
+        "start": "2026-02-20T18:20:00.000Z",
+        "end": "2026-02-20T19:00:00.000Z",
+        "date": "2026-02-20",
+        "time": "15:20",
+        "status": "Pendente",
+        "operationalStatus": "scheduled",
+        "specialty": "terapia_ocupacional",
+        "professional": "Lorrany Siqueira Marques",
+        "patientName": "Kauana Queiroz Gomes Naves",
+        "observations": "",
+        "responsible": "",
+        "phone": "6195906565",
+        "paymentStatus": "pending_receipt",
+        "visualFlag": "partial",
+        "billingType": "particular",
+        "insuranceProvider": "unimed-anapolis",
+        "insuranceValue": 0,
+        "authorizationCode": "",
+        "package": {
+            "_id": "69986c057c92d32c1fd44a1f",
+            "sessionValue": 0,
+            "totalSessions": 32,
+            "balance": 0,
+            "financialStatus": "unpaid",
+            "totalPaid": 0
+        },
+        "patient": {
+            "_id": "699869177c92d32c1fd43f86",
+            "fullName": "Kauana Queiroz Gomes Naves",
+            "dateOfBirth": "2022-05-11T03:00:00.000Z",
+            "gender": "feminino",
+            "address": {
+                "street": null,
+                "number": null,
+                "district": null,
+                "city": null,
+                "state": null,
+                "zipCode": null
+            },
+            "phone": "6195906565",
+            "email": "",
+            "cpf": "115.915.751-62"
+        },
+        "doctor": {
+            "_id": "684072213830f473da1b0b0b",
+            "fullName": "Lorrany Siqueira Marques",
+            "email": "clinicafonoinova@gmail.com",
+            "specialty": "fonoaudiologia",
+            "phoneNumber": "(61) 99240-0846",
+            "specialties": [
+                "teste_linguinha",
+                "caa",
+                "fono_prompt"
+            ]
+        },
+        "metadata": {
+            "origin": {
+                "source": "outro"
+            }
+        }
+    },
+    {
+        "id": "69864e7979bba4d65fae75d9",
+        "title": "Pacote - Lorrany Siqueira Marques",
         "start": "2026-02-20T19:00:00.000Z",
         "end": "2026-02-20T19:40:00.000Z",
         "date": "2026-02-20",
@@ -262,9 +827,9 @@ curl 'http://localhost:5000/api/import-from-agenda/sync-update' \
         "specialty": "fonoaudiologia",
         "professional": "Lorrany Siqueira Marques",
         "patientName": "Pedro Henrique Almeida Torres",
-        "observations": "",
+        "observations": "Pacote",
         "responsible": "",
-        "phone": "",
+        "phone": "5",
         "paymentStatus": "paid",
         "visualFlag": "ok",
         "billingType": "particular",
@@ -282,7 +847,7 @@ curl 'http://localhost:5000/api/import-from-agenda/sync-update' \
         "patient": {
             "_id": "6984a2ab532493ec27b526c2",
             "fullName": "Pedro Henrique Almeida Torres",
-            "dateOfBirth": "2018-04-13T03:00:00.000Z",
+            "dateOfBirth": "2018-04-13T00:00:00.000Z",
             "gender": "masculino",
             "address": {
                 "street": null,
@@ -292,7 +857,7 @@ curl 'http://localhost:5000/api/import-from-agenda/sync-update' \
                 "state": null,
                 "zipCode": null
             },
-            "phone": "",
+            "phone": "5",
             "email": "",
             "cpf": null,
             "rg": null
@@ -313,7 +878,7 @@ curl 'http://localhost:5000/api/import-from-agenda/sync-update' \
     },
     {
         "id": "69971098c13fa9c3fb5440b1",
-        "title": "Consulta - Lorrany Siqueira Marques",
+        "title": "Unimed Anápolis - Lorrany Siqueira Marques",
         "start": "2026-02-20T19:40:00.000Z",
         "end": "2026-02-20T20:20:00.000Z",
         "date": "2026-02-20",
@@ -323,9 +888,9 @@ curl 'http://localhost:5000/api/import-from-agenda/sync-update' \
         "specialty": "fonoaudiologia",
         "professional": "Lorrany Siqueira Marques",
         "patientName": "Nicolas Lucca Santos Ferreira",
-        "observations": "",
+        "observations": "Unimed Anápolis",
         "responsible": "",
-        "phone": "",
+        "phone": "2",
         "paymentStatus": "pending_receipt",
         "visualFlag": "partial",
         "billingType": "particular",
@@ -343,7 +908,7 @@ curl 'http://localhost:5000/api/import-from-agenda/sync-update' \
         "patient": {
             "_id": "69655746dcdf49e2c282800b",
             "fullName": "Nicolas Lucca Santos Ferreira",
-            "dateOfBirth": "2017-03-23T03:00:00.000Z",
+            "dateOfBirth": "2017-03-23T00:00:00.000Z",
             "gender": "masculino",
             "address": {
                 "street": null,
@@ -353,7 +918,7 @@ curl 'http://localhost:5000/api/import-from-agenda/sync-update' \
                 "state": null,
                 "zipCode": null
             },
-            "phone": "",
+            "phone": "2",
             "email": "",
             "cpf": null,
             "rg": null
@@ -375,310 +940,22 @@ curl 'http://localhost:5000/api/import-from-agenda/sync-update' \
                 "source": "outro"
             }
         }
-    }
-]           deiiii o reload eeeeeeeee [
-    {
-        "id": "698ca9cd10fbb5ebee0a9198",
-        "title": "Consulta - Lorrany Siqueira Marques",
-        "start": "2026-02-20T11:00:00.000Z",
-        "end": "2026-02-20T11:40:00.000Z",
-        "date": "2026-02-20",
-        "time": "08:00",
-        "status": "Pendente",
-        "operationalStatus": "scheduled",
-        "specialty": "fonoaudiologia",
-        "professional": "Lorrany Siqueira Marques",
-        "patientName": "Issac Moreira Ribeiro",
-        "observations": "",
-        "responsible": "",
-        "phone": "62 9214-2716",
-        "paymentStatus": "paid",
-        "visualFlag": "ok",
-        "billingType": "particular",
-        "insuranceProvider": "",
-        "insuranceValue": 0,
-        "authorizationCode": "",
-        "package": {
-            "_id": "698ca9cb10fbb5ebee0a9183",
-            "sessionValue": 160,
-            "totalSessions": 5,
-            "balance": 0,
-            "financialStatus": "paid",
-            "totalPaid": 800
-        },
-        "patient": {
-            "_id": "6917116c5d4d8bdb65edd506",
-            "fullName": "Issac Moreira Ribeiro",
-            "dateOfBirth": "2021-09-28T03:00:00.000Z",
-            "gender": "masculino",
-            "address": {
-                "street": "Rua Gt20 quadra 30 lote11",
-                "number": "SN",
-                "district": "Condomínio Residencial Grand T",
-                "city": "Anápolis",
-                "state": "Goiás",
-                "zipCode": "75075665"
-            },
-            "phone": "62 9214-2716",
-            "email": "dyanna_st@yahoo",
-            "cpf": "11745693106",
-            "rg": null
-        },
-        "doctor": {
-            "_id": "684072213830f473da1b0b0b",
-            "fullName": "Lorrany Siqueira Marques",
-            "email": "clinicafonoinova@gmail.com",
-            "specialty": "fonoaudiologia",
-            "phoneNumber": "(61) 99240-0846",
-            "specialties": [
-                "teste_linguinha",
-                "caa",
-                "fono_prompt"
-            ]
-        },
-        "metadata": null
     },
     {
-        "id": "697ca2c841bea6644e5c378a",
-        "title": "Consulta - Lorrany Siqueira Marques",
-        "start": "2026-02-20T11:40:00.000Z",
-        "end": "2026-02-20T12:20:00.000Z",
+        "id": "699866a87c92d32c1fd435bc",
+        "title": "Consulta - Thayna Miranda",
+        "start": "2026-02-20T20:20:00.000Z",
+        "end": "2026-02-20T21:00:00.000Z",
         "date": "2026-02-20",
-        "time": "08:40",
+        "time": "17:20",
         "status": "Pendente",
         "operationalStatus": "scheduled",
-        "specialty": "fonoaudiologia",
-        "professional": "Lorrany Siqueira Marques",
-        "patientName": "Samuel roczniesk da Costa",
+        "specialty": "terapia_ocupacional",
+        "professional": "Thayna Miranda",
+        "patientName": "Gabriel Alves Leite",
         "observations": "",
         "responsible": "",
-        "phone": "(62)9.9273-1969",
-        "paymentStatus": "paid",
-        "visualFlag": "ok",
-        "billingType": "particular",
-        "insuranceProvider": "",
-        "insuranceValue": 0,
-        "authorizationCode": "",
-        "package": {
-            "_id": "697ca2c641bea6644e5c3777",
-            "sessionValue": 160,
-            "totalSessions": 4,
-            "balance": 0,
-            "financialStatus": "paid",
-            "totalPaid": 640
-        },
-        "patient": {
-            "_id": "6972301eaeeb528b5b3c1140",
-            "fullName": "Samuel roczniesk da Costa",
-            "dateOfBirth": "2023-05-19T03:00:00.000Z",
-            "gender": "masculino",
-            "address": {
-                "street": null,
-                "number": null,
-                "district": null,
-                "city": null,
-                "state": null,
-                "zipCode": null
-            },
-            "phone": "(62)9.9273-1969",
-            "email": "",
-            "cpf": "119.732.391-08",
-            "rg": ""
-        },
-        "doctor": {
-            "_id": "684072213830f473da1b0b0b",
-            "fullName": "Lorrany Siqueira Marques",
-            "email": "clinicafonoinova@gmail.com",
-            "specialty": "fonoaudiologia",
-            "phoneNumber": "(61) 99240-0846",
-            "specialties": [
-                "teste_linguinha",
-                "caa",
-                "fono_prompt"
-            ]
-        },
-        "metadata": null
-    },
-    {
-        "id": "697ca8b141bea6644e5c3b12",
-        "title": "Consulta - Lorrany Siqueira Marques",
-        "start": "2026-02-20T12:20:00.000Z",
-        "end": "2026-02-20T13:00:00.000Z",
-        "date": "2026-02-20",
-        "time": "09:20",
-        "status": "Pendente",
-        "operationalStatus": "scheduled",
-        "specialty": "fonoaudiologia",
-        "professional": "Lorrany Siqueira Marques",
-        "patientName": "Rodrigo Antônio Silva de Carvalho",
-        "observations": "",
-        "responsible": "",
-        "phone": "62 9356-0797",
-        "paymentStatus": "paid",
-        "visualFlag": "ok",
-        "billingType": "particular",
-        "insuranceProvider": "",
-        "insuranceValue": 0,
-        "authorizationCode": "",
-        "package": {
-            "_id": "697ca8af41bea6644e5c3aff",
-            "sessionValue": 160,
-            "totalSessions": 4,
-            "balance": 0,
-            "financialStatus": "paid",
-            "totalPaid": 640
-        },
-        "patient": {
-            "_id": "69330a389798fcf7ad3bdca1",
-            "fullName": "Rodrigo Antônio Silva de Carvalho",
-            "dateOfBirth": "2021-02-22T03:00:00.000Z",
-            "gender": "masculino",
-            "address": {
-                "street": "Avenida Sebastião Pedro Junqueira Q2 Lt5",
-                "number": "SN",
-                "district": "Eldorado",
-                "city": "Anápolis",
-                "state": "Goiás",
-                "zipCode": null
-            },
-            "phone": "62 9356-0797",
-            "email": "",
-            "cpf": null,
-            "rg": null
-        },
-        "doctor": {
-            "_id": "684072213830f473da1b0b0b",
-            "fullName": "Lorrany Siqueira Marques",
-            "email": "clinicafonoinova@gmail.com",
-            "specialty": "fonoaudiologia",
-            "phoneNumber": "(61) 99240-0846",
-            "specialties": [
-                "teste_linguinha",
-                "caa",
-                "fono_prompt"
-            ]
-        },
-        "metadata": null
-    },
-    {
-        "id": "6993310e03d5cc171cf08453",
-        "title": "[AGENDADO AUTOMATICAMENTE VIA AMANDA/WHATSAPP] - Lorrany Siqueira Marques",
-        "start": "2026-02-20T13:00:00.000Z",
-        "end": "2026-02-20T13:40:00.000Z",
-        "date": "2026-02-20",
-        "time": "10:00",
-        "status": "Pendente",
-        "operationalStatus": "scheduled",
-        "specialty": "fonoaudiologia",
-        "professional": "Lorrany Siqueira Marques",
-        "patientName": "Sexta feira\nJoao Lucas Ribeiro de Santana",
-        "observations": "[AGENDADO AUTOMATICAMENTE VIA AMANDA/WHATSAPP]",
-        "responsible": "",
-        "phone": "556281631054",
-        "paymentStatus": "pending",
-        "visualFlag": "pending",
-        "billingType": "particular",
-        "insuranceProvider": "",
-        "insuranceValue": 0,
-        "authorizationCode": "",
-        "package": null,
-        "patient": {
-            "_id": "6993310d03d5cc171cf0844b",
-            "fullName": "Sexta feira\nJoao Lucas Ribeiro de Santana",
-            "dateOfBirth": "2021-12-02T00:00:00.000Z",
-            "phone": "556281631054",
-            "email": ""
-        },
-        "doctor": {
-            "_id": "684072213830f473da1b0b0b",
-            "fullName": "Lorrany Siqueira Marques",
-            "email": "clinicafonoinova@gmail.com",
-            "specialty": "fonoaudiologia",
-            "phoneNumber": "(61) 99240-0846",
-            "specialties": [
-                "teste_linguinha",
-                "caa",
-                "fono_prompt"
-            ]
-        },
-        "metadata": null
-    },
-    {
-        "id": "69864e7979bba4d65fae75d9",
-        "title": "Consulta - Lorrany Siqueira Marques",
-        "start": "2026-02-20T19:00:00.000Z",
-        "end": "2026-02-20T19:40:00.000Z",
-        "date": "2026-02-20",
-        "time": "16:00",
-        "status": "Pendente",
-        "operationalStatus": "scheduled",
-        "specialty": "fonoaudiologia",
-        "professional": "Lorrany Siqueira Marques",
-        "patientName": "Pedro Henrique Almeida Torres",
-        "observations": "",
-        "responsible": "",
-        "phone": "",
-        "paymentStatus": "paid",
-        "visualFlag": "ok",
-        "billingType": "particular",
-        "insuranceProvider": "",
-        "insuranceValue": 0,
-        "authorizationCode": "",
-        "package": {
-            "_id": "69864e7779bba4d65fae75c8",
-            "sessionValue": 160,
-            "totalSessions": 4,
-            "balance": 0,
-            "financialStatus": "paid",
-            "totalPaid": 640
-        },
-        "patient": {
-            "_id": "6984a2ab532493ec27b526c2",
-            "fullName": "Pedro Henrique Almeida Torres",
-            "dateOfBirth": "2018-04-13T03:00:00.000Z",
-            "gender": "masculino",
-            "address": {
-                "street": null,
-                "number": null,
-                "district": null,
-                "city": null,
-                "state": null,
-                "zipCode": null
-            },
-            "phone": "",
-            "email": "",
-            "cpf": null,
-            "rg": null
-        },
-        "doctor": {
-            "_id": "684072213830f473da1b0b0b",
-            "fullName": "Lorrany Siqueira Marques",
-            "email": "clinicafonoinova@gmail.com",
-            "specialty": "fonoaudiologia",
-            "phoneNumber": "(61) 99240-0846",
-            "specialties": [
-                "teste_linguinha",
-                "caa",
-                "fono_prompt"
-            ]
-        },
-        "metadata": null
-    },
-    {
-        "id": "69971098c13fa9c3fb5440b1",
-        "title": "Consulta - Lorrany Siqueira Marques",
-        "start": "2026-02-20T19:40:00.000Z",
-        "end": "2026-02-20T20:20:00.000Z",
-        "date": "2026-02-20",
-        "time": "16:40",
-        "status": "Pendente",
-        "operationalStatus": "scheduled",
-        "specialty": "fonoaudiologia",
-        "professional": "Lorrany Siqueira Marques",
-        "patientName": "Nicolas Lucca Santos Ferreira",
-        "observations": "",
-        "responsible": "",
-        "phone": "",
+        "phone": "(62)99455-2982",
         "paymentStatus": "pending_receipt",
         "visualFlag": "partial",
         "billingType": "particular",
@@ -686,17 +963,17 @@ curl 'http://localhost:5000/api/import-from-agenda/sync-update' \
         "insuranceValue": 0,
         "authorizationCode": "",
         "package": {
-            "_id": "69971097c13fa9c3fb544095",
+            "_id": "699866a77c92d32c1fd43595",
             "sessionValue": 0,
-            "totalSessions": 20,
+            "totalSessions": 32,
             "balance": 0,
             "financialStatus": "unpaid",
             "totalPaid": 0
         },
         "patient": {
-            "_id": "69655746dcdf49e2c282800b",
-            "fullName": "Nicolas Lucca Santos Ferreira",
-            "dateOfBirth": "2017-03-23T03:00:00.000Z",
+            "_id": "699865f57c92d32c1fd432bc",
+            "fullName": "Gabriel Alves Leite",
+            "dateOfBirth": "2018-04-14T00:00:00.000Z",
             "gender": "masculino",
             "address": {
                 "street": null,
@@ -706,10 +983,175 @@ curl 'http://localhost:5000/api/import-from-agenda/sync-update' \
                 "state": null,
                 "zipCode": null
             },
-            "phone": "",
-            "email": "",
+            "email": "teste@gmail.com",
             "cpf": null,
-            "rg": null
+            "phone": "(62)99455-2982"
+        },
+        "doctor": {
+            "_id": "698f09aa39d78a9c5746dc28",
+            "fullName": "Thayna Miranda",
+            "email": "contato@fonoinova.com.br",
+            "specialty": "terapia_ocupacional",
+            "specialties": [],
+            "phoneNumber": "(62) 99357-1166"
+        },
+        "metadata": {
+            "origin": {
+                "source": "outro"
+            }
+        }
+    },
+    {
+        "id": "69984e1f7c92d32c1fd3de62",
+        "title": "[INTERESSE] Emanuely Nascimento de Oliveira - Lorrany Siqueira Marques",
+        "start": "2026-02-20T20:20:00.000Z",
+        "end": "2026-02-20T21:00:00.000Z",
+        "date": "2026-02-20",
+        "time": "17:20",
+        "status": "Pendente",
+        "operationalStatus": "scheduled",
+        "specialty": "fonoaudiologia",
+        "professional": "Lorrany Siqueira Marques",
+        "patientName": "Emanuely Nascimento de Oliveira",
+        "observations": "Responsável: Samira\nObs: Pacote\n[IMPORTADO DA AGENDA EXTERNA]",
+        "responsible": "",
+        "phone": "62994769828",
+        "visualFlag": "pending",
+        "__isPreAgendamento": true,
+        "patient": {
+            "fullName": "Emanuely Nascimento de Oliveira"
+        },
+        "doctor": {
+            "fullName": "Lorrany Siqueira Marques"
+        },
+        "originalData": {
+            "_id": "69984e1f7c92d32c1fd3de62",
+            "source": "agenda_externa",
+            "patientInfo": {
+                "fullName": "Emanuely Nascimento de Oliveira",
+                "phone": "62994769828",
+                "email": "samiraee0129@gmail.com",
+                "birthDate": "2016-02-01",
+                "ageUnit": "anos"
+            },
+            "patientId": "695d18eae86808e0389b9da1",
+            "specialty": "fonoaudiologia",
+            "preferredDate": "2026-02-20",
+            "preferredTime": "17:20",
+            "preferredPeriod": null,
+            "professionalName": "Lorrany Siqueira Marques",
+            "professionalId": "684072213830f473da1b0b0b",
+            "serviceType": "session",
+            "status": "novo",
+            "suggestedValue": 0,
+            "secretaryNotes": "Responsável: Samira\nObs: Pacote\n[IMPORTADO DA AGENDA EXTERNA]",
+            "urgency": "critica",
+            "attemptCount": 0,
+            "contactAttempts": [],
+            "createdAt": "2026-02-20T12:05:51.016Z",
+            "updatedAt": "2026-02-20T12:05:51.016Z",
+            "expiresAt": "2026-03-22T12:05:51.016Z",
+            "__v": 0
+        }
+    },
+    {
+        "id": "699867517c92d32c1fd43975",
+        "title": "[INTERESSE] Gabriel Alves Leite - Thayna Miranda",
+        "start": "2026-02-20T20:20:00.000Z",
+        "end": "2026-02-20T21:00:00.000Z",
+        "date": "2026-02-20",
+        "time": "17:20",
+        "status": "Pendente",
+        "operationalStatus": "scheduled",
+        "specialty": "terapia_ocupacional",
+        "professional": "Thayna Miranda",
+        "patientName": "Gabriel Alves Leite",
+        "observations": "Responsável: Fernanda\nObs: Unimed Anápolis\n[IMPORTADO DA AGENDA EXTERNA]",
+        "responsible": "",
+        "phone": "62994552982",
+        "visualFlag": "pending",
+        "__isPreAgendamento": true,
+        "patient": {
+            "fullName": "Gabriel Alves Leite"
+        },
+        "doctor": {
+            "fullName": "Thayna Miranda"
+        },
+        "originalData": {
+            "_id": "699867517c92d32c1fd43975",
+            "source": "agenda_externa",
+            "patientInfo": {
+                "fullName": "Gabriel Alves Leite",
+                "phone": "62994552982",
+                "email": "",
+                "birthDate": "2018-04-16",
+                "ageUnit": "anos"
+            },
+            "patientId": "699865f57c92d32c1fd432bc",
+            "specialty": "terapia_ocupacional",
+            "preferredDate": "2026-02-20",
+            "preferredTime": "17:20",
+            "preferredPeriod": null,
+            "professionalName": "Thayna Miranda",
+            "professionalId": "698f09aa39d78a9c5746dc28",
+            "serviceType": "session",
+            "status": "novo",
+            "suggestedValue": 0,
+            "secretaryNotes": "Responsável: Fernanda\nObs: Unimed Anápolis\n[IMPORTADO DA AGENDA EXTERNA]",
+            "urgency": "critica",
+            "attemptCount": 0,
+            "contactAttempts": [],
+            "createdAt": "2026-02-20T13:53:21.608Z",
+            "updatedAt": "2026-02-20T13:53:21.608Z",
+            "expiresAt": "2026-03-22T13:53:21.608Z",
+            "__v": 0
+        }
+    },
+    {
+        "id": "699866e27c92d32c1fd4367a",
+        "title": "Unimed Anápolis - Lorrany Siqueira Marques",
+        "start": "2026-02-20T21:00:00.000Z",
+        "end": "2026-02-20T21:40:00.000Z",
+        "date": "2026-02-20",
+        "time": "18:00",
+        "status": "Pendente",
+        "operationalStatus": "scheduled",
+        "specialty": "fonoaudiologia",
+        "professional": "Lorrany Siqueira Marques",
+        "patientName": "Gabriel Alves Leite",
+        "observations": "Unimed Anápolis",
+        "responsible": "",
+        "phone": "(62)99455-2982",
+        "paymentStatus": "pending_receipt",
+        "visualFlag": "partial",
+        "billingType": "particular",
+        "insuranceProvider": "unimed-anapolis",
+        "insuranceValue": 0,
+        "authorizationCode": "",
+        "package": {
+            "_id": "699866e27c92d32c1fd43657",
+            "sessionValue": 0,
+            "totalSessions": 32,
+            "balance": 0,
+            "financialStatus": "unpaid",
+            "totalPaid": 0
+        },
+        "patient": {
+            "_id": "699865f57c92d32c1fd432bc",
+            "fullName": "Gabriel Alves Leite",
+            "dateOfBirth": "2018-04-14T00:00:00.000Z",
+            "gender": "masculino",
+            "address": {
+                "street": null,
+                "number": null,
+                "district": null,
+                "city": null,
+                "state": null,
+                "zipCode": null
+            },
+            "email": "teste@gmail.com",
+            "cpf": null,
+            "phone": "(62)99455-2982"
         },
         "doctor": {
             "_id": "684072213830f473da1b0b0b",
@@ -728,5 +1170,58 @@ curl 'http://localhost:5000/api/import-from-agenda/sync-update' \
                 "source": "outro"
             }
         }
+    },
+    {
+        "id": "69984ff57c92d32c1fd3e4ef",
+        "title": "[INTERESSE] Gabriel Alves - Lorrany Siqueira Marques",
+        "start": "2026-02-20T21:00:00.000Z",
+        "end": "2026-02-20T21:40:00.000Z",
+        "date": "2026-02-20",
+        "time": "18:00",
+        "status": "Pendente",
+        "operationalStatus": "scheduled",
+        "specialty": "fonoaudiologia",
+        "professional": "Lorrany Siqueira Marques",
+        "patientName": "Gabriel Alves",
+        "observations": "Responsável: Fernanda\nObs: Unimed Anápolis\n[IMPORTADO DA AGENDA EXTERNA]",
+        "responsible": "",
+        "phone": "6294552982",
+        "visualFlag": "pending",
+        "__isPreAgendamento": true,
+        "patient": {
+            "fullName": "Gabriel Alves"
+        },
+        "doctor": {
+            "fullName": "Lorrany Siqueira Marques"
+        },
+        "originalData": {
+            "_id": "69984ff57c92d32c1fd3e4ef",
+            "source": "agenda_externa",
+            "patientInfo": {
+                "fullName": "Gabriel Alves",
+                "phone": "6294552982",
+                "email": "",
+                "birthDate": "0006-06-25",
+                "ageUnit": "anos"
+            },
+            "patientId": null,
+            "specialty": "fonoaudiologia",
+            "preferredDate": "2026-02-20",
+            "preferredTime": "18:00",
+            "preferredPeriod": null,
+            "professionalName": "Lorrany Siqueira Marques",
+            "professionalId": "684072213830f473da1b0b0b",
+            "serviceType": "session",
+            "status": "novo",
+            "suggestedValue": 0,
+            "secretaryNotes": "Responsável: Fernanda\nObs: Unimed Anápolis\n[IMPORTADO DA AGENDA EXTERNA]",
+            "urgency": "critica",
+            "attemptCount": 0,
+            "contactAttempts": [],
+            "createdAt": "2026-02-20T12:13:41.821Z",
+            "updatedAt": "2026-02-20T12:13:41.821Z",
+            "expiresAt": "2026-03-22T12:13:41.821Z",
+            "__v": 0
+        }
     }
-] 
+]

@@ -79,6 +79,9 @@ export default function App() {
     filterDay: todayDayOfWeek,
     filterWeek: null,
   });
+  
+  // Estado para forçar refresh da lista após operações (criar, editar, cancelar, deletar)
+  const [refreshTrigger, setRefreshTrigger] = React.useState(0);
 
   const [isModalOpen, setIsModalOpen] = React.useState(false);
   const [editingAppointment, setEditingAppointment] = React.useState(null);
@@ -89,6 +92,12 @@ export default function App() {
   const [isRemindersListOpen, setIsRemindersListOpen] = React.useState(false);
 
   const [availableSlots, setAvailableSlots] = React.useState([]);
+  
+  // Função global para forçar refresh da lista de appointments
+  const forceRefreshAppointments = React.useCallback(() => {
+    console.log('🔄 [App.jsx] Forçando refresh da lista de appointments');
+    setRefreshTrigger(prev => prev + 1);
+  }, []);
 
   // ========== DISPONIBILIDADE REAL (Slots Virtuais) ==========
   useEffect(() => {
@@ -179,7 +188,7 @@ export default function App() {
       console.log("👂 [App.jsx] Listener de appointments desmontado");
       unsub();
     };
-  }, [currentYear, currentMonth, filters.filterDate]);
+  }, [currentYear, currentMonth, filters.filterDate, refreshTrigger]);
 
   useEffect(() => {
     const unsub = listenReminders((list) => setReminders(list));
@@ -239,16 +248,17 @@ export default function App() {
       // Para pré-agendamentos, a rota de delete também funciona se for pelo ID do banco
       // Se for um pré-agendamento apenas em memória (sem ID), não dá pra excluir do banco.
 
-      await hardDeleteAppointment(id);
-      toast.success("Registro excluído permanentemente!");
-
-      // Atualiza listas
       if (isPre) {
-        // fetchPreAppointments removido: lista principal atualiza via socket ou refresh manual se for crítico
+        // Para pré-agendamentos, usar a rota de descartar
+        await discardPreAppointment(id, "Excluído permanentemente via agenda");
+        toast.success("Interesse excluído permanentemente!");
       } else {
-        // Force refresh
-        setFilters(prev => ({ ...prev }));
+        // Para agendamentos normais, usar hard delete
+        await hardDeleteAppointment(id);
+        toast.success("Agendamento excluído permanentemente!");
       }
+      // Force refresh imediato para atualizar a lista
+      forceRefreshAppointments();
 
     } catch (e) {
       console.error("❌ ERRO:", e);
@@ -284,6 +294,8 @@ export default function App() {
         await cancelAppointment(appointment.id, reason);
         toast.success("Agendamento cancelado!");
       }
+      // Force refresh imediato para atualizar a lista
+      forceRefreshAppointments();
     } catch (e) {
       console.error("[onCancel]", e);
       toast.error("Erro ao cancelar: " + e.message);
@@ -332,9 +344,11 @@ export default function App() {
     const isEditing = !!appointmentId && !editingAppointment?.__isPreAgendamento;
     const isImportingPre = !!editingAppointment?.__isPreAgendamento;
     
+    console.log("🔥 [saveAppointment] editingAppointment:", JSON.stringify(editingAppointment, null, 2));
     console.log("🔥 [saveAppointment] isEditing:", isEditing);
     console.log("🔥 [saveAppointment] isImportingPre:", isImportingPre);
     console.log("🔥 [saveAppointment] appointmentId:", appointmentId);
+    console.log("🔥 [saveAppointment] editingAppointment?.__isPreAgendamento:", editingAppointment?.__isPreAgendamento);
 
     if (isImportingPre) {
       try {
@@ -403,6 +417,9 @@ export default function App() {
 
       setIsModalOpen(false);
       setEditingAppointment(null);
+      
+      // Force refresh imediato para atualizar a lista sem esperar o socket
+      forceRefreshAppointments();
 
     } catch (err) {
       console.error("[saveAppointment] Erro:", err);
@@ -515,8 +532,55 @@ export default function App() {
       return true;
     });
 
-    // 2. Pré-Agendamentos (Já vêm unificados do backend na lista 'appointments')
-    // Não precisamos mais do merge manual aqui.
+    // 2. Remover pré-agendamentos descartados/cancelados (não mostrar na agenda)
+    base = base.filter(appointment => {
+      if (!appointment.__isPreAgendamento) return true; // Mantém agendamentos reais
+      // Filtra pré-agendamentos descartados ou cancelados
+      // O status real está em originalData.status (não em appointment.status que é sempre "Pendente")
+      const realStatus = appointment.originalData?.status;
+      if (realStatus === 'desistiu' || realStatus === 'descartado' || realStatus === 'cancelado') {
+        console.log(`[filteredAppointments] Filtrando pré-agendamento descartado: ${appointment.id} (${appointment.patientName}, status: ${realStatus})`);
+        return false;
+      }
+      return true;
+    });
+
+    // 3. Remover pré-agendamentos duplicados (quando existe agendamento real para mesma data/hora/profissional)
+    // Isso acontece quando o backend não remove o pré-agendamento após criar o agendamento real
+    const realAppointments = base.filter(a => !a.__isPreAgendamento);
+    base = base.filter(appointment => {
+      if (!appointment.__isPreAgendamento) return true; // Mantém agendamentos reais
+      
+      // Para pré-agendamentos, verifica se existe um agendamento real para mesma data/hora/profissional
+      const patientName = (appointment.patientName || appointment.patient?.fullName || '').toLowerCase().trim();
+      const hasRealAppointment = realAppointments.some(real => {
+        const realPatientName = (real.patientName || real.patient?.fullName || '').toLowerCase().trim();
+        // Comparação flexível: verifica se um nome contém o outro ou se têm palavras em comum
+        let samePatient = false;
+        if (patientName && realPatientName) {
+          // Verifica se um contém o outro
+          samePatient = patientName.includes(realPatientName) || realPatientName.includes(patientName);
+          // Se não, verifica se têm pelo menos 2 palavras em comum (ex: "Gabriel Alves" e "Gabriel Alves Leite")
+          if (!samePatient) {
+            const preWords = patientName.split(/\s+/).filter(w => w.length > 2);
+            const realWords = realPatientName.split(/\s+/).filter(w => w.length > 2);
+            const commonWords = preWords.filter(w => realWords.includes(w));
+            samePatient = commonWords.length >= 2; // Pelo menos 2 palavras em comum
+          }
+        }
+        const sameDate = real.date === appointment.date;
+        const sameTime = real.time === appointment.time;
+        const sameProfessional = real.professional === appointment.professional;
+        return samePatient && sameDate && sameTime && sameProfessional;
+      });
+      
+      if (hasRealAppointment) {
+        console.log(`[filteredAppointments] Filtrando pré-agendamento duplicado: ${appointment.id} (${appointment.patientName})`);
+        return false; // Remove pré-agendamento duplicado
+      }
+      return true; // Mantém pré-agendamento único
+    });
+
     // 3. Filtros Secundários (Profissional e Status) aplicados na lista unificada
     base = base.filter(appointment => {
       if (filters.filterProfessional) {
@@ -556,6 +620,17 @@ export default function App() {
 
       base = [...base, ...uniqueVirtuals];
     }
+
+    // 5. Remover duplicados por ID (proteção extra contra bugs do backend)
+    const seenIds = new Set();
+    base = base.filter(appointment => {
+      if (seenIds.has(appointment.id)) {
+        console.log(`[filteredAppointments] Removendo duplicado por ID: ${appointment.id}`);
+        return false;
+      }
+      seenIds.add(appointment.id);
+      return true;
+    });
 
     base = sortAppointmentsByDateTimeAsc(base);
     console.log(`[filteredAppointments] Resultado final: ${base.length} agendamentos`);
