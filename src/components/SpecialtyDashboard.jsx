@@ -1,6 +1,7 @@
 import { SPECIALTIES } from "../config/specialties";
 import { resolveSpecialtyKey } from "../utils/specialty";
 import { formatDateLocal } from "../utils/date";
+import ProfessionalsAvailability from "./ProfessionalsAvailability";
 
 export default function SpecialtyDashboard({ appointments, activeSpecialty }) {
   const filtered =

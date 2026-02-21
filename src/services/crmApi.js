@@ -5,8 +5,8 @@
  * Agora usa API REST diretamente
  */
 
-const EXPORT_TOKEN = "agenda_export_token_fono_inova_2025_secure_abc123";
-const BACKEND_URL = "https://fono-inova-crm-back.onrender.com";
+const EXPORT_TOKEN = import.meta.env.VITE_API_TOKEN || "agenda_export_token_fono_inova_2025_secure_abc123";
+const BACKEND_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 // Cache local com localStorage (persiste entre reloads)
 const getCache = () => {
@@ -391,6 +391,26 @@ export const syncIfNeeded = async (oldAppointment, newAppointment) => {
     return syncUpdateToCRM(oldAppointment, changes);
 };
 
-// Exportar cache para debug
-export const getCache = () => Object.fromEntries(localCache);
-export const clearCache = () => localCache.clear();
+/**
+ * 🗓️ Busca disponibilidade semanal de horários livres
+ * 
+ * @param {string} startDate - Data de início (YYYY-MM-DD)
+ * @param {string} specialty - Especialidade (fonoaudiologia, psicologia, etc)
+ * @param {number} days - Quantidade de dias (default: 7)
+ * @returns {Promise<Object>} - Grade de disponibilidade
+ */
+export const fetchWeeklyAvailability = async (startDate, specialty, days = 7) => {
+    try {
+        const params = new URLSearchParams({
+            startDate,
+            specialty,
+            days: String(days)
+        });
+        
+        const data = await apiRequest(`/api/import-from-agenda/weekly-availability?${params}`);
+        return data;
+    } catch (err) {
+        console.error("[fetchWeeklyAvailability] Erro:", err);
+        throw err;
+    }
+};

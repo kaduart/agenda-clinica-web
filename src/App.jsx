@@ -11,6 +11,7 @@ import FiltersPanel from "./components/FiltersPanel";
 import Header from "./components/Header";
 import SpecialtyDashboard from "./components/SpecialtyDashboard";
 import SpecialtyTabs from "./components/SpecialtyTabs";
+import ProfessionalsAvailability from "./components/ProfessionalsAvailability";
 
 import CalendarView from "./components/CalendarView";
 import WeeklyView from "./components/WeeklyView";
@@ -715,6 +716,11 @@ export default function App() {
                 onTabChange={setActiveSpecialty}
               />
             </div>
+
+            {/* Disponibilidade dos Profissionais - aparece quando seleciona especialidade */}
+            {activeSpecialty !== 'todas' && (
+              <ProfessionalsAvailability activeSpecialty={activeSpecialty} />
+            )}
 
             <AppointmentTable
               activeSpecialty={activeSpecialty}
