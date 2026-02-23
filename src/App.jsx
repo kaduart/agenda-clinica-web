@@ -70,6 +70,7 @@ export default function App() {
   const todayDayOfWeek = (today.getDay() === 0 ? 7 : today.getDay()).toString();
 
   const [activeSpecialty, setActiveSpecialty] = React.useState("todas");
+  const [isAvailabilityExpanded, setIsAvailabilityExpanded] = React.useState(false);
   const [currentMonth, setCurrentMonth] = React.useState(new Date().getMonth());
   const [currentYear, setCurrentYear] = React.useState(new Date().getFullYear());
 
@@ -719,7 +720,11 @@ export default function App() {
 
             {/* Disponibilidade dos Profissionais - aparece quando seleciona especialidade */}
             {activeSpecialty !== 'todas' && (
-              <ProfessionalsAvailability activeSpecialty={activeSpecialty} />
+              <ProfessionalsAvailability 
+                activeSpecialty={activeSpecialty} 
+                isExpanded={isAvailabilityExpanded}
+                onToggle={() => setIsAvailabilityExpanded(prev => !prev)}
+              />
             )}
 
             <AppointmentTable

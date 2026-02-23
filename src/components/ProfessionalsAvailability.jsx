@@ -32,12 +32,11 @@ const DAY_LABELS = {
     thursday: 'Qui', friday: 'Sex', saturday: 'Sáb', sunday: 'Dom'
 };
 
-export default function ProfessionalsAvailability({ activeSpecialty }) {
+export default function ProfessionalsAvailability({ activeSpecialty, isExpanded, onToggle }) {
     const [startDate, setStartDate] = useState(formatDateISO(getMonday(new Date())));
     const [availability, setAvailability] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
-    const [isExpanded, setIsExpanded] = useState(false);
 
     const specialty = SPECIALTIES[activeSpecialty];
 
@@ -95,8 +94,9 @@ export default function ProfessionalsAvailability({ activeSpecialty }) {
         <div className="mt-4">
             {/* Header clicável */}
             <button
-                onClick={() => setIsExpanded(!isExpanded)}
-                className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all ${specialty?.bgColor || 'bg-gray-600'} text-white hover:opacity-90`}
+                type="button"
+                onClick={onToggle}
+                className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all ${specialty?.bgColor || 'bg-gray-600'} text-white hover:opacity-90 cursor-pointer`}
             >
                 <div className="flex items-center gap-3">
                     <i className="fas fa-calendar-check"></i>
