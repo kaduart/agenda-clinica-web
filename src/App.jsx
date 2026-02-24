@@ -235,7 +235,8 @@ export default function App() {
 
   // EXCLUIR (Hard Delete) - Remove do banco
   const onDelete = async (id) => {
-    const isPre = (filteredAppointments || []).find(a => a.id === id)?.__isPreAgendamento;
+    const appt = (filteredAppointments || []).find(a => a.id === id);
+    const isPre = appt?.__isPreAgendamento || appt?.operationalStatus === 'pre_agendado';
 
     // Se for pré, também podemos excluir permanentemente se o usuário quiser (limpar lixo)
     const msg = isPre
@@ -270,7 +271,7 @@ export default function App() {
 
   // CANCELAR específico (Unificado: Soft Delete para Regular e Discard para Pre)
   const onCancel = async (appointment) => {
-    const isPre = appointment.__isPreAgendamento;
+    const isPre = appointment.__isPreAgendamento || appointment.operationalStatus === 'pre_agendado';
     const actionName = isPre ? "descartar este interesse" : "cancelar este agendamento";
 
     // Confirmação rápida (opcional, mas bom para evitar cliques acidentais se não tiver prompt)
@@ -306,7 +307,7 @@ export default function App() {
 
   // CONFIRMAR (Amanda/Agenda Externa ou Presença Direta)
   const handleConfirmAppointment = async (appointment) => {
-    const isPre = appointment.__isPreAgendamento;
+    const isPre = appointment.__isPreAgendamento || appointment.operationalStatus === 'pre_agendado';
     const preAgendamentoId = appointment.metadata?.origin?.preAgendamentoId || (isPre ? appointment.id : null);
 
     const msg = isPre
@@ -343,14 +344,15 @@ export default function App() {
     console.log("🔥 [saveAppointment] appointmentData recebido:", JSON.stringify(appointmentData, null, 2));
     
     const appointmentId = editingAppointment?.id;
-    const isEditing = !!appointmentId && !editingAppointment?.__isPreAgendamento;
-    const isImportingPre = !!editingAppointment?.__isPreAgendamento;
+    const isPreEditing = editingAppointment?.__isPreAgendamento || editingAppointment?.operationalStatus === 'pre_agendado';
+    const isEditing = !!appointmentId && !isPreEditing;
+    const isImportingPre = isPreEditing;
     
     console.log("🔥 [saveAppointment] editingAppointment:", JSON.stringify(editingAppointment, null, 2));
     console.log("🔥 [saveAppointment] isEditing:", isEditing);
     console.log("🔥 [saveAppointment] isImportingPre:", isImportingPre);
     console.log("🔥 [saveAppointment] appointmentId:", appointmentId);
-    console.log("🔥 [saveAppointment] editingAppointment?.__isPreAgendamento:", editingAppointment?.__isPreAgendamento);
+    console.log("🔥 [saveAppointment] isPreEditing:", isPreEditing);
 
     if (isImportingPre) {
       try {
@@ -534,12 +536,15 @@ export default function App() {
       return true;
     });
 
+    // 🎯 Helper para identificar pré-agendamento (antigo ou novo formato)
+    const isPreAgendamento = (appt) => appt.__isPreAgendamento || appt.operationalStatus === 'pre_agendado';
+
     // 2. Remover pré-agendamentos descartados/cancelados (não mostrar na agenda)
     base = base.filter(appointment => {
-      if (!appointment.__isPreAgendamento) return true; // Mantém agendamentos reais
+      if (!isPreAgendamento(appointment)) return true; // Mantém agendamentos reais
       // Filtra pré-agendamentos descartados ou cancelados
-      // O status real está em originalData.status (não em appointment.status que é sempre "Pendente")
-      const realStatus = appointment.originalData?.status;
+      // O status real está em metadata.preAgendamentoStatus ou originalData.status
+      const realStatus = appointment.metadata?.preAgendamentoStatus || appointment.originalData?.status;
       if (realStatus === 'desistiu' || realStatus === 'descartado' || realStatus === 'cancelado') {
         console.log(`[filteredAppointments] Filtrando pré-agendamento descartado: ${appointment.id} (${appointment.patientName}, status: ${realStatus})`);
         return false;
@@ -549,9 +554,9 @@ export default function App() {
 
     // 3. Remover pré-agendamentos duplicados (quando existe agendamento real para mesma data/hora/profissional)
     // Isso acontece quando o backend não remove o pré-agendamento após criar o agendamento real
-    const realAppointments = base.filter(a => !a.__isPreAgendamento);
+    const realAppointments = base.filter(a => !isPreAgendamento(a));
     base = base.filter(appointment => {
-      if (!appointment.__isPreAgendamento) return true; // Mantém agendamentos reais
+      if (!isPreAgendamento(appointment)) return true; // Mantém agendamentos reais
       
       // Para pré-agendamentos, verifica se existe um agendamento real para mesma data/hora/profissional
       const patientName = (appointment.patientName || appointment.patient?.fullName || '').toLowerCase().trim();

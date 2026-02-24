@@ -345,8 +345,8 @@ export default function AppointmentModal({ appointment, professionals, patients,
     };
 
 
-    const isEdit = !!appointment?.id && !appointment?.__isPreAgendamento;
-    const isPre = !!appointment?.__isPreAgendamento;
+    const isPre = !!appointment?.__isPreAgendamento || appointment?.operationalStatus === 'pre_agendado';
+    const isEdit = !!appointment?.id && !isPre;
     const source = appointment?.source || appointment?.metadata?.origin?.source || appointment?.originalData?.source;
 
     // Se for pré-agendamento, mapeamos de preferredDate/Time
@@ -747,6 +747,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                             >
                                 <option value="confirmed">Confirmado</option>
                                 <option value="scheduled">Pendente / Agendado</option>
+                                <option value="pre_agendado">⭐ Pré-Agendado</option>
                                 <option value="canceled">Cancelado</option>
                                 <option value="missed">Faltou</option>
                             </select>

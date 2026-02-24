@@ -22,6 +22,9 @@ export default function AppointmentRow({ appointment, onEdit, onDelete, onRemind
         return "bg-red-100 text-red-800 border border-red-200";
       case "missed":
         return "bg-rose-100 text-rose-800 border border-rose-200";
+      case "pre_agendado":
+      case "Pré-Agendado":
+        return "bg-pink-100 text-pink-800 border border-pink-200"; // 🎯 NOVO: Status pré-agendado
       default:
         return "bg-gray-100 text-gray-800 border border-gray-200";
     }
@@ -53,8 +56,9 @@ export default function AppointmentRow({ appointment, onEdit, onDelete, onRemind
     }
   };
 
-  const isPre = !!appointment.__isPreAgendamento;
-  const preStatus = appointment.status; // novo, em_analise, contatado, etc.
+  // 🎯 Simplificação: Pré-agendamento agora é identificado por operationalStatus também
+  const isPre = !!appointment.__isPreAgendamento || appointment.operationalStatus === 'pre_agendado';
+  const preStatus = appointment.metadata?.preAgendamentoStatus || appointment.status; // novo, em_analise, contatado, etc.
   const source = appointment.source || appointment.metadata?.origin?.source;
 
   const getSourceIcon = (src) => {
@@ -165,12 +169,12 @@ export default function AppointmentRow({ appointment, onEdit, onDelete, onRemind
             type="button"
             className="p-2 text-gray-700 hover:text-gray-900 hover:bg-white/60 rounded-lg"
             onClick={() => onEdit(appointment)}
-            title={appointment.__isVirtual ? "Agendar" : appointment.__isPreAgendamento ? "Confirmar Agendamento" : "Editar"}
+            title={appointment.__isVirtual ? "Agendar" : isPre ? "Confirmar Agendamento" : "Editar"}
           >
             <i className={`fas ${appointment.__isVirtual
               ? 'fa-calendar-plus text-emerald-600'
-              : appointment.__isPreAgendamento
-                ? 'fa-check-circle text-indigo-600'
+              : isPre
+                ? 'fa-check-circle text-pink-600'
                 : 'fa-edit'
               }`}></i>
           </button>

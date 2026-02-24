@@ -184,6 +184,7 @@ export const autoSendPreAgendamento = async (appointment) => {
         const payload = {
             firebaseAppointmentId: appointment.id,
             professionalName: appointment.professional,
+            professionalId: appointment.professionalId,  // ← ID do médico no CRM (MongoDB _id)
             date: appointment.date,
             time: appointment.time,
             specialty: appointment.specialtyKey || appointment.specialty || "fonoaudiologia",
