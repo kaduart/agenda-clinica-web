@@ -164,15 +164,25 @@ export default function AppointmentModal({ appointment, professionals, patients,
     
     // Estado para controlar se é paciente novo ou existente
     const [isNewPatient, setIsNewPatient] = React.useState(() => {
+        // Detecta se é pré-agendamento
+        const isPre = !!appointment?.__isPreAgendamento || appointment?.operationalStatus === 'pre_agendado';
+        
         // Se já tem patientId (direto ou em originalData para pré-agendamentos), é existente
         const hasPatientId = appointment?.patientId || 
                             appointment?.originalData?.patientId ||
                             (typeof appointment?.patient === 'object' && appointment?.patient?._id);
         const hasPatientName = appointment?.patientName || (typeof appointment?.patient === 'string' ? appointment?.patient : '');
-        // Se tem ID ou está editando com nome preenchido, não é novo
+        
+        // Se tem ID, é paciente existente
         if (hasPatientId) return false;
+        
+        // Se é pré-agendamento e não tem patientId, força modo NOVO PACIENTE
+        // (pois pré-agendamentos geralmente são de novos pacientes)
+        if (isPre) return true;
+        
         // Se está criando novo e não tem nada, assume novo por padrão
         if (!appointment?.id && !hasPatientName) return true;
+        
         // Se tem nome mas não tem ID, pode ser novo
         return !hasPatientName;
     });
