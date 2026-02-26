@@ -40,7 +40,7 @@ export default function SpecialtyDashboard({ appointments, activeSpecialty }) {
       <div className="bg-emerald-50 rounded-xl p-4 border border-gray-200 shadow-sm">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-xs text-gray-600 font-medium uppercase tracking-wide">Confirmados</p>
+            <p className="text-xs text-gray-600 font-medium uppercase tracking-wide">Compareceram</p>
             <p className="text-xl font-bold text-emerald-700">{metrics.confirmados}</p>
           </div>
           <i className="fas fa-check-circle text-xl text-emerald-600 opacity-70"></i>
@@ -50,7 +50,7 @@ export default function SpecialtyDashboard({ appointments, activeSpecialty }) {
       <div className="bg-amber-50 rounded-xl p-4 border border-gray-200 shadow-sm">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-xs text-gray-600 font-medium uppercase tracking-wide">Pendentes</p>
+            <p className="text-xs text-gray-600 font-medium uppercase tracking-wide">Agendados</p>
             <p className="text-xl font-bold text-amber-700">{metrics.pendentes}</p>
           </div>
           <i className="fas fa-clock text-xl text-amber-600 opacity-70"></i>

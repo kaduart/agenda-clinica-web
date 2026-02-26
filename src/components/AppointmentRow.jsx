@@ -3,7 +3,7 @@ import { formatDateDisplay } from "../utils/date";
 import { resolveSpecialtyKey } from "../utils/specialty";
 import ExportButton from "./ExportButton";
 
-export default function AppointmentRow({ appointment, onEdit, onDelete, onReminder, onGenerateCycle, onConfirm, onCancel }) {
+export default function AppointmentRow({ appointment, onEdit, onDelete, onReminder, onGenerateCycle, onCancel }) {
 
   // ...
 
@@ -12,11 +12,13 @@ export default function AppointmentRow({ appointment, onEdit, onDelete, onRemind
       case "confirmed":
       case "paid":
       case "Confirmado":
+      case "Compareceu":
         return "bg-emerald-200 text-emerald-900 border border-emerald-300";
       case "scheduled":
       case "pending":
       case "Pendente":
-        return "bg-amber-100 text-amber-800 border border-amber-200";
+      case "Agendado":
+        return "bg-blue-100 text-blue-800 border border-blue-200";
       case "canceled":
       case "Cancelado":
         return "bg-red-100 text-red-800 border border-red-200";
@@ -98,8 +100,8 @@ export default function AppointmentRow({ appointment, onEdit, onDelete, onRemind
 
   return (
     <tr className={`border-b border-gray-200 transition-colors ${rowAccent}`}>
-      <td className="px- py-2">
-        <div className="font-medium text-gray-900 flex items-center gap-2">
+      <td className="px-4 py-3">
+        <div className="font-medium text-gray-900 flex items-center gap-2 break-words">
           <div className="flex items-center gap-1">
             {source && getSourceIcon(source)}
             <span>{patientName || "-"}</span>
@@ -124,47 +126,35 @@ export default function AppointmentRow({ appointment, onEdit, onDelete, onRemind
         )}
       </td>
 
-      <td className="px- py-2">
-        <div className="text-gray-900">{formatDateDisplay(appointment.date)}</div>
+      <td className="px-4 py-3">
+        <div className="text-gray-900 whitespace-nowrap">{formatDateDisplay(appointment.date)}</div>
         <div className="text-sm text-gray-700 mt-1 font-bold">{appointment.time || "-"}</div>
       </td>
 
-      <td className="px- py-2">
-        <div className="text-gray-900 font-medium">
+      <td className="px-4 py-3">
+        <div className="text-gray-900 font-medium break-words">
           {appointment.doctor?.fullName || appointment.professional || "-"}
         </div>
       </td>
 
-      <td className="px- py-2">
-        <div className="text-gray-900 font-semibold">{appointment.specialty || "-"}</div>
+      <td className="px-4 py-3">
+        <div className="text-gray-900 font-semibold break-words">{appointment.specialty || "-"}</div>
       </td>
 
-      <td className="px- py-2">
+      <td className="px-4 py-3">
         <span className={`px-3 py-1 inline-flex text-xs font-extrabold rounded-full ${getStatusColor(appointment.operationalStatus || appointment.status)}`}>
-          {isPre ? preStatus : (appointment.status || appointment.operationalStatus || "-")}
+          {isPre ? preStatus : (appointment.status === "Pendente" ? "Agendado" : appointment.status === "Confirmado" ? "Compareceu" : (appointment.status || appointment.operationalStatus || "-"))}
         </span>
       </td>
 
-      <td className="px- py-2">
-        <div className="text-sm text-gray-700 max-w-xs truncate" title={appointment.observations || ""}>
+      <td className="px-4 py-3">
+        <div className="text-sm text-gray-700 truncate" title={appointment.observations || ""}>
           {appointment.observations || "-"}
         </div>
       </td>
 
-      <td className="px- py-2">
-        <div className="flex gap-2 items-center">
-          {/* Botão de Confirmar para Agendamentos Pendentes (scheduled) */}
-          {(appointment.operationalStatus === 'scheduled' || appointment.status === 'Pendente') && !appointment.__isVirtual && !isPre && (
-            <button
-              type="button"
-              className="p-2 text-emerald-700 hover:text-emerald-900 hover:bg-emerald-100 rounded-lg"
-              onClick={() => onConfirm?.(appointment)}
-              title="Confirmar Presença/Pagamento"
-            >
-              <i className="fas fa-check-circle"></i>
-            </button>
-          )}
-
+      <td className="px-4 py-3">
+        <div className="flex gap-1 items-center flex-wrap justify-center">
           <button
             type="button"
             className="p-2 text-gray-700 hover:text-gray-900 hover:bg-white/60 rounded-lg"

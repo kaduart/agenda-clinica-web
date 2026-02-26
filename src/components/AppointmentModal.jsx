@@ -755,8 +755,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                 onChange={handleChange}
                                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                             >
-                                <option value="confirmed">Confirmado</option>
-                                <option value="scheduled">Pendente / Agendado</option>
+                                <option value="scheduled">Agendado</option>
                                 <option value="pre_agendado">⭐ Pré-Agendado</option>
                                 <option value="canceled">Cancelado</option>
                                 <option value="missed">Faltou</option>

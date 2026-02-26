@@ -24,8 +24,7 @@ import {
   listenAppointmentsForMonth,
   listenToNotifications,
   upsertAppointment,
-  confirmAppointment,
-  confirmPresence,
+
   cancelAppointment,
   hardDeleteAppointment,
   fetchAvailableSlots,
@@ -305,38 +304,6 @@ export default function App() {
     }
   };
 
-  // CONFIRMAR (Amanda/Agenda Externa ou Presença Direta)
-  const handleConfirmAppointment = async (appointment) => {
-    const isPre = appointment.__isPreAgendamento || appointment.operationalStatus === 'pre_agendado';
-    const preAgendamentoId = appointment.metadata?.origin?.preAgendamentoId || (isPre ? appointment.id : null);
-
-    const msg = isPre
-      ? `Confirmar agendamento de ${appointment.patientName || "Paciente"}?`
-      : `Confirmar presença/pagamento de ${appointment.patientName || "Paciente"}?`;
-
-    const ok = await confirmToast(msg, { confirmText: "Confirmar", confirmColor: "green" });
-    if (!ok) return;
-
-    try {
-      if (isPre || preAgendamentoId) {
-        // Se tem vínculo com pré, usa a rota de importação
-        await confirmAppointment(preAgendamentoId);
-        toast.success("Agendamento confirmado com sucesso!");
-      } else {
-        // Se é agendamento avulso direto, usa a nova rota de confirmação
-        await confirmPresence(appointment.id);
-        toast.success("Presença confirmada!");
-      }
-
-      // Refresh manual para garantir visibilidade imediata (socket deve cuidar, mas aqui forçamos)
-      if (isPre) {
-        // fetchPreAppointments removido.
-      }
-    } catch (error) {
-      console.error(error);
-      toast.error("Erro ao confirmar: " + (error.response?.data?.error || error.message));
-    }
-  };
 
   const saveAppointment = async (appointmentData) => {
     console.log("🔥🔥🔥 [saveAppointment] =========================================");
@@ -739,7 +706,6 @@ export default function App() {
               onDelete={onDelete}
               onCancel={onCancel}
               onReminder={openReminder}
-              onConfirm={handleConfirmAppointment}
               onConfirmCycle={async (payload, baseAppointment) => {
                 try {
                   const result = await generateCycleAppointments(baseAppointment, payload, {

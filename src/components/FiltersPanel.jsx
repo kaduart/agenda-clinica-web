@@ -207,7 +207,7 @@ export default function FiltersPanel({
                             }}
                         >
                             <option value="">Todos os status</option>
-                            <option value="Confirmado">✅ Confirmado</option>
+                            <option value="Confirmado">✅ Compareceu</option>
                             <option value="Pendente">⏳ Pendente</option>
                             <option value="Cancelado">❌ Cancelado</option>
                         </select>
