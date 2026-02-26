@@ -1,7 +1,6 @@
 import { SPECIALTIES } from "../config/specialties";
 import { formatDateDisplay } from "../utils/date";
 import { resolveSpecialtyKey } from "../utils/specialty";
-import ExportButton from "./ExportButton";
 
 export default function AppointmentRow({ appointment, onEdit, onDelete, onReminder, onGenerateCycle, onCancel }) {
 
@@ -201,8 +200,6 @@ export default function AppointmentRow({ appointment, onEdit, onDelete, onRemind
               >
                 <i className="fas fa-bell"></i>
               </button>
-
-              <ExportButton appointment={appointment} />
 
               {!isLivre && appointment.status !== "Cancelado" && (
                 <button
