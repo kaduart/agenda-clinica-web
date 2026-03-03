@@ -157,6 +157,71 @@ const waitForSocketEvent = (eventName, targetId, timeoutMs = 5000) => {
     });
 };
 
+// FUNÇÃO AUXILIAR: Mapeia campos do frontend para o backend
+// Frontend: serviceType='individual_session'/'package_session', sessionType='avaliacao'/'sessao'
+// Backend:  serviceType='evaluation'/'session', sessionType='avaliacao'/'sessao'
+const mapCrmToBackend = (crm) => {
+    const serviceTypeBackend = crm?.serviceType === "package_session" ? "session" : "evaluation";
+    const sessionTypeBackend = crm?.sessionType === "sessao" ? "sessao" : "avaliacao";
+    
+    console.log("📝 [mapCrmToBackend] Mapeando:");
+    console.log("  serviceType:", crm?.serviceType, "→", serviceTypeBackend);
+    console.log("  sessionType:", crm?.sessionType, "→", sessionTypeBackend);
+    
+    return {
+        serviceType: serviceTypeBackend,
+        sessionType: sessionTypeBackend,
+        paymentMethod: crm?.paymentMethod || "pix",
+        paymentAmount: Number(crm?.paymentAmount || 0),
+        usePackage: Boolean(crm?.usePackage),
+    };
+};
+
+// NOVA FUNÇÃO: Atualiza agendamento existente
+export const updateAppointmentDirect = async (appointmentId, appointmentData) => {
+    console.log("📝 [appointmentsRepo] updateAppointmentDirect - ID:", appointmentId);
+    
+    const crmBackend = mapCrmToBackend(appointmentData.crm);
+    
+    const payload = {
+        _id: appointmentId,
+        patientId: appointmentData.patientId,
+        patientInfo: {
+            fullName: appointmentData.patientName || appointmentData.patient,
+            phone: appointmentData.phone,
+            birthDate: appointmentData.birthDate,
+            email: appointmentData.email
+        },
+        responsible: appointmentData.responsible,
+        professionalName: appointmentData.professional,
+        doctorId: appointmentData.professionalId,
+        specialty: appointmentData.specialtyKey || appointmentData.specialty,
+        date: appointmentData.date,
+        time: appointmentData.time,
+        operationalStatus: appointmentData.operationalStatus || "scheduled",
+        observations: appointmentData.observations,
+        
+        // Dados de faturamento
+        billingType: appointmentData.billingType || "particular",
+        paymentStatus: appointmentData.paymentStatus || "pending",
+        insuranceProvider: appointmentData.insuranceProvider || "",
+        insuranceValue: Number(appointmentData.insuranceValue || 0),
+        authorizationCode: appointmentData.authorizationCode || "",
+        
+        // CRM mapeado
+        crm: crmBackend,
+    };
+    
+    console.log("📝 [updateAppointmentDirect] Enviando:", JSON.stringify(payload.crm, null, 2));
+    
+    const response = await api.post('/api/import-from-agenda/sync-update', payload, {
+        timeout: 30000
+    });
+    
+    console.log('[updateAppointmentDirect] ✅ Sucesso:', response.data);
+    return { mode: "update", id: appointmentId, data: response.data };
+};
+
 export const upsertAppointment = async ({ editingAppointment, appointmentData }) => {
     console.log("📝 [appointmentsRepo] upsertAppointment chamado");
     console.log("📝 [appointmentsRepo] editingAppointment:", JSON.stringify(editingAppointment, null, 2));
@@ -177,7 +242,13 @@ export const upsertAppointment = async ({ editingAppointment, appointmentData })
     console.log("📝 [appointmentsRepo] editingAppointment?.id:", editingAppointment?.id);
     console.log("📝 [appointmentsRepo] editingAppointment?.id?.startsWith('ext_'):", editingAppointment?.id?.startsWith('ext_'));
 
-    // Payload unificado - só envia _id se for edição (na criação o backend gera)
+    // NOVO: Se for edição, usa a função direta que evita problemas de conversão
+    if (isEditing) {
+        console.log("📝 [appointmentsRepo] Usando updateAppointmentDirect para edição");
+        return updateAppointmentDirect(appointmentId, appointmentData);
+    }
+
+    // Payload para CRIAÇÃO (pré-agendamento)
     const payload = {
         // Dados do paciente
         patientId: appointmentData.patientId,  // ID do paciente se já existir
@@ -199,59 +270,26 @@ export const upsertAppointment = async ({ editingAppointment, appointmentData })
         operationalStatus: appointmentData.operationalStatus || "scheduled",
         observations: appointmentData.observations,
 
-        // Dados CRM (financeiro/técnico)
-        crm: {
-            serviceType: appointmentData.crm?.serviceType === "individual_session" ? "session" : (appointmentData.crm?.serviceType || "evaluation"),
-            sessionType: appointmentData.crm?.sessionType || "avaliacao",
-            paymentMethod: appointmentData.crm?.paymentMethod || "pix",
-            paymentAmount: Number(appointmentData.crm?.paymentAmount || 0),
-            usePackage: Boolean(appointmentData.crm?.usePackage),
-        },
-        
-        // Só envia _id se for edição (na criação o backend gera automaticamente)
-        ...(isEditing && appointmentId ? { _id: appointmentId } : {})
+        // Dados CRM mapeados
+        crm: mapCrmToBackend(appointmentData.crm),
     };
 
     console.log("[upsertAppointment] Enviando para API...");
     console.log("[upsertAppointment] Payload completo:", JSON.stringify(payload, null, 2));
     
-    if (isEditing) {
-        // ESTRATÉGIA CORRETA: Sempre esperar a API completar!
-        // O socket atualiza a lista em background, mas o sucesso só é confirmado pela API.
-        
-        console.log('[upsertAppointment] 🚀 Chamando API (sem timeout limite)...');
-        
-        try {
-            // Chamada SEM timeout - espera o tempo necessário
-            const response = await api.post('/api/import-from-agenda/sync-update', payload, {
-                timeout: 0 // Sem timeout
-            });
-            
-            console.log('[upsertAppointment] ✅ API retornou sucesso:', response.data);
-            return { mode: "update", id: appointmentId };
-            
-        } catch (error) {
-            console.error('[upsertAppointment] ❌ API falhou:', error.message);
-            
-            // Só fecha como sucesso se o socket já tiver confirmado E a lista foi atualizada
-            // (isso é verificado pelo componente pai quando recebe o evento socket)
-            throw error; // Propaga o erro para mostrar falha ao usuário
-        }
-    } else {
-        // Criação -> Apenas cria o Pré-Agendamento (Pendente)
-        console.log(`[upsertAppointment] Criando Pré-Agendamento...`);
-        const preRes = await api.post('/api/import-from-agenda', payload);
+    // Criação -> Apenas cria o Pré-Agendamento (Pendente)
+    console.log(`[upsertAppointment] Criando Pré-Agendamento...`);
+    const preRes = await api.post('/api/import-from-agenda', payload);
 
-        if (!preRes.data.success) {
-            throw new Error(preRes.data.error || "Erro ao criar pré-agendamento");
-        }
-
-        const preId = preRes.data.preAgendamentoId;
-        console.log(`[upsertAppointment] ✅ Pré-Agendamento criado com sucesso: ${preId}`);
-
-        // Retorna o ID do pré-agendamento. O frontend deve lidar com isso (ex: mostrar na lista como pendente)
-        return { mode: "create", id: preId, status: "pending_confirmation" };
+    if (!preRes.data.success) {
+        throw new Error(preRes.data.error || "Erro ao criar pré-agendamento");
     }
+
+    const preId = preRes.data.preAgendamentoId;
+    console.log(`[upsertAppointment] ✅ Pré-Agendamento criado com sucesso: ${preId}`);
+
+    // Retorna o ID do pré-agendamento. O frontend deve lidar com isso (ex: mostrar na lista como pendente)
+    return { mode: "create", id: preId, status: "pending_confirmation" };
 };
 
 // Mantendo deleteAppointment como alias para compatibilidade, mas o nome correto agora é cancelAppointment

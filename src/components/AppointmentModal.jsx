@@ -1,6 +1,7 @@
 import React from "react";
 import { formatDateLocal, extractDateForInput } from "../utils/date";
 import { resolveSpecialtyKey } from "../utils/specialty";
+import api from "../services/api";
 
 export default function AppointmentModal({ appointment, professionals, patients, onSave, onClose, onReloadPatients, authError }) {
     const [formData, setFormData] = React.useState({
@@ -40,6 +41,10 @@ export default function AppointmentModal({ appointment, professionals, patients,
     React.useEffect(() => {
         console.log("📝 [AppointmentModal] useEffect - appointment:", JSON.stringify(appointment, null, 2));
         console.log("📝 [AppointmentModal] useEffect - appointment?.id:", appointment?.id);
+        console.log("📝 [AppointmentModal] useEffect - appointment?.serviceType:", appointment?.serviceType);
+        console.log("📝 [AppointmentModal] useEffect - appointment?.sessionValue:", appointment?.sessionValue);
+        console.log("📝 [AppointmentModal] useEffect - appointment?.paymentMethod:", appointment?.paymentMethod);
+        console.log("📝 [AppointmentModal] useEffect - appointment?.package:", appointment?.package);
         const today = formatDateLocal(new Date());
 
         if (appointment) {
@@ -108,13 +113,26 @@ export default function AppointmentModal({ appointment, professionals, patients,
                 authorizationCode: appointment.authorizationCode || "",
                 package: appointment.package || null,
                 
-                // Dados do CRM
+                // Dados do CRM - Backend retorna em campos DIRETOS (não dentro de objeto crm)
+                // Mapeia: serviceType → crm.serviceType, sessionValue → crm.paymentAmount, etc
                 crm: {
-                    serviceType: appointment.crm?.serviceType || "individual_session",
-                    sessionType: appointment.crm?.sessionType || "avaliacao",
-                    paymentMethod: appointment.crm?.paymentMethod || "pix",
-                    paymentAmount: Number(appointment.crm?.paymentAmount || 0),
-                    usePackage: !!appointment.crm?.usePackage,
+                    serviceType: appointment.crm?.serviceType || 
+                                 (appointment.serviceType === 'evaluation' ? 'individual_session' : 
+                                  appointment.serviceType === 'session' ? 'package_session' : 
+                                  appointment.package ? "package_session" : "individual_session"),
+                    sessionType: appointment.crm?.sessionType || 
+                                 (appointment.serviceType === 'evaluation' ? 'avaliacao' : 'sessao'),
+                    paymentMethod: appointment.crm?.paymentMethod || 
+                                   appointment.paymentMethod || "pix",
+                    paymentAmount: Number(
+                        appointment.crm?.paymentAmount || 
+                        appointment.sessionValue || 
+                        appointment.package?.sessionValue || 
+                        0
+                    ),
+                    usePackage: !!appointment.crm?.usePackage || 
+                                !!appointment.package ||
+                                appointment.serviceType === 'session',
                 },
                 
                 // Metadados extras
@@ -158,6 +176,67 @@ export default function AppointmentModal({ appointment, professionals, patients,
             });
         }
     }, [appointment, professionals]);
+
+    // Estado para loading de detalhes (busca da API se necessário)
+    const [isLoadingDetails, setIsLoadingDetails] = React.useState(false);
+    
+    // Busca detalhes completos quando abrir o modal (se não tiver os dados financeiros)
+    React.useEffect(() => {
+        const fetchDetailsIfNeeded = async () => {
+            // Só busca se tem ID válido e não tem os dados financeiros
+            if (appointment?.id && !appointment.id.startsWith('ext_')) {
+                const missingFinancialData = 
+                    !appointment.serviceType || 
+                    appointment.sessionValue === undefined || 
+                    appointment.sessionValue === null;
+                
+                if (missingFinancialData) {
+                    console.log("🔍 [AppointmentModal] Buscando detalhes financeiros do servidor...");
+                    setIsLoadingDetails(true);
+                    try {
+                        const response = await api.get(`/api/appointments/${appointment.id}`);
+                        const data = response.data.data || response.data;
+                        
+                        console.log("🔍 [AppointmentModal] Detalhes recebidos:", {
+                            serviceType: data.serviceType,
+                            sessionValue: data.sessionValue,
+                            paymentMethod: data.paymentMethod
+                        });
+                        
+                        // Só atualiza se o valor ainda estiver zerado no formData
+                        setFormData(prev => {
+                            const needsUpdate = prev.crm.paymentAmount === 0 && data.sessionValue > 0;
+                            if (!needsUpdate) return prev;
+                            
+                            console.log("🔍 [AppointmentModal] Atualizando valor do formulário:", data.sessionValue);
+                            return {
+                                ...prev,
+                                crm: {
+                                    ...prev.crm,
+                                    serviceType: data.serviceType === 'evaluation' ? 'individual_session' : 
+                                                 data.serviceType === 'session' ? 'package_session' : 
+                                                 prev.crm.serviceType,
+                                    sessionType: data.serviceType === 'evaluation' ? 'avaliacao' : 
+                                                 data.serviceType === 'session' ? 'sessao' : 
+                                                 prev.crm.sessionType,
+                                    paymentMethod: data.paymentMethod || prev.crm.paymentMethod,
+                                    paymentAmount: Number(data.sessionValue || prev.crm.paymentAmount),
+                                    usePackage: data.serviceType === 'session' || !!data.package,
+                                }
+                            };
+                        });
+                    } catch (error) {
+                        console.error("❌ [AppointmentModal] Erro ao buscar detalhes:", error);
+                    } finally {
+                        setIsLoadingDetails(false);
+                    }
+                }
+            }
+        };
+        
+        fetchDetailsIfNeeded();
+    }, [appointment?.id]);
+
     const [isLoading, setIsLoading] = React.useState(false);
     const [showSuggestions, setShowSuggestions] = React.useState(false);
     const [filteredPatients, setFilteredPatients] = React.useState([]);
@@ -286,7 +365,13 @@ export default function AppointmentModal({ appointment, professionals, patients,
             return;
         }
 
-        setFormData((prev) => ({ ...prev, [name]: value }));
+        // Campos numéricos que precisam ser convertidos
+        const numericFields = ["insuranceValue"];
+        
+        setFormData((prev) => ({ 
+            ...prev, 
+            [name]: numericFields.includes(name) ? Number(value || 0) : value 
+        }));
     };
 
     const handleSubmit = async (e) => {
@@ -301,6 +386,8 @@ export default function AppointmentModal({ appointment, professionals, patients,
             console.log("🚀 [AppointmentModal] isNewPatient:", isNewPatient);
             console.log("🚀 [AppointmentModal] formData.patientId:", formData.patientId);
             console.log("🚀 [AppointmentModal] formData.patient:", formData.patient);
+            console.log("🚀 [AppointmentModal] formData.crm:", formData.crm);
+            console.log("🚀 [AppointmentModal] appointment?.id:", appointment?.id);
 
             // Validação: se não é novo paciente, precisa ter selecionado um da lista
             if (!isNewPatient && !formData.patientId) {
@@ -308,6 +395,27 @@ export default function AppointmentModal({ appointment, professionals, patients,
                 alert("Por favor, selecione um paciente existente da lista ou marque 'Criando novo paciente'");
                 setIsLoading(false);
                 return;
+            }
+
+            // Alerta quando valor é 0 mas status indica pagamento (pode ser dados não carregados do backend)
+            const isEditing = !!appointment?.id;
+            const valorZerado = formData.crm.paymentAmount === 0 || formData.crm.paymentAmount === '';
+            const statusIndicaPagamento = ['paid', 'pending_receipt'].includes(formData.paymentStatus);
+            
+            if (isEditing && valorZerado && statusIndicaPagamento && !formData.package) {
+                const confirmar = confirm(
+                    "⚠️ ATENÇÃO!\n\n" +
+                    "O valor da sessão está zerado (R$ 0), mas o status de pagamento é '" + 
+                    (formData.paymentStatus === 'paid' ? 'Pago' : 'Aguardando Recibo') + 
+                    "'.\n\n" +
+                    "Isso pode significar que os dados não foram carregados corretamente do banco de dados.\n\n" +
+                    "Se você continuar, o valor no banco será sobrescrito para ZERO (R$ 0).\n\n" +
+                    "Deseja continuar mesmo assim?"
+                );
+                if (!confirmar) {
+                    setIsLoading(false);
+                    return;
+                }
             }
 
             // Montar payload completo com todos os campos
@@ -332,6 +440,14 @@ export default function AppointmentModal({ appointment, professionals, patients,
                 specialtyKey: formData.specialtyKey,
                 operationalStatus: formData.operationalStatus,
                 observations: formData.observations,
+                
+                // Dados de pagamento/faturamento
+                paymentStatus: formData.paymentStatus,
+                billingType: formData.billingType,
+                insuranceProvider: formData.insuranceProvider,
+                insuranceValue: Number(formData.insuranceValue || 0),
+                authorizationCode: formData.authorizationCode,
+                package: formData.package,
                 
                 // Dados CRM
                 crm: formData.crm,
@@ -380,51 +496,90 @@ export default function AppointmentModal({ appointment, professionals, patients,
                             <i className="fas fa-times text-xl"></i>
                         </button>
                     </div>
+                    
+                    {/* Loading indicator para busca de detalhes */}
+                    {isLoadingDetails && (
+                        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-center gap-3">
+                            <svg className="animate-spin h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                            </svg>
+                            <span className="text-sm text-blue-800">Carregando dados completos do agendamento...</span>
+                        </div>
+                    )}
+                    
+                    {/* Aviso se dados do CRM não foram carregados */}
+                    {isEdit && !isLoadingDetails && formData.crm.paymentAmount === 0 && (
+                        <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                            <p className="text-sm text-amber-800">
+                                <i className="fas fa-exclamation-triangle mr-2"></i>
+                                <strong>Atenção:</strong> Os dados financeiros (valor, tipo de sessão, forma de pagamento) 
+                                podem não ter sido carregados corretamente. Use "Recarregar do servidor" se necessário.
+                            </p>
+                        </div>
+                    )}
                 </div>
 
                 <form onSubmit={handleSubmit}>
                     <div className="px-6 py-4 space-y-4">
                         <div className="space-y-3">
-                            {/* Checkbox para definir se é novo paciente */}
-                            <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                                <input
-                                    id="isNewPatient"
-                                    type="checkbox"
-                                    checked={isNewPatient}
-                                    onChange={(e) => {
-                                        const checked = e.target.checked;
-                                        console.log("☑️ [AppointmentModal] Checkbox 'Novo Paciente' alterado:", checked);
-                                        setIsNewPatient(checked);
-                                        if (checked) {
-                                            // Limpa o patientId ao marcar como novo
-                                            console.log("☑️ [AppointmentModal] Modo NOVO PACIENTE - Limpando patientId");
-                                            setFormData(prev => ({ 
-                                                ...prev, 
-                                                patientId: "",
-                                                patient: "",
-                                                phone: "",
-                                                birthDate: "",
-                                                email: ""
-                                            }));
-                                        } else {
-                                            // Ao desmarcar, limpa para forçar seleção
-                                            console.log("☑️ [AppointmentModal] Modo PACIENTE EXISTENTE - Aguardando seleção");
-                                            setFormData(prev => ({ 
-                                                ...prev, 
-                                                patientId: "",
-                                                patient: ""
-                                            }));
-                                        }
-                                    }}
-                                    className="w-5 h-5 text-teal-600 rounded focus:ring-teal-500"
-                                />
-                                <label htmlFor="isNewPatient" className="text-sm font-semibold text-gray-700 cursor-pointer">
-                                    {isNewPatient ? "✨ Criando novo paciente" : "🔍 Selecionar paciente existente"}
-                                </label>
-                            </div>
+                            {/* Checkbox para definir se é novo paciente - SÓ MOSTRA SE NÃO FOR EDIÇÃO */}
+                            {!isEdit && (
+                                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                                    <input
+                                        id="isNewPatient"
+                                        type="checkbox"
+                                        checked={isNewPatient}
+                                        onChange={(e) => {
+                                            const checked = e.target.checked;
+                                            console.log("☑️ [AppointmentModal] Checkbox 'Novo Paciente' alterado:", checked);
+                                            setIsNewPatient(checked);
+                                            if (checked) {
+                                                // Limpa o patientId ao marcar como novo
+                                                console.log("☑️ [AppointmentModal] Modo NOVO PACIENTE - Limpando patientId");
+                                                setFormData(prev => ({ 
+                                                    ...prev, 
+                                                    patientId: "",
+                                                    patient: "",
+                                                    phone: "",
+                                                    birthDate: "",
+                                                    email: ""
+                                                }));
+                                            } else {
+                                                // Ao desmarcar, limpa para forçar seleção
+                                                console.log("☑️ [AppointmentModal] Modo PACIENTE EXISTENTE - Aguardando seleção");
+                                                setFormData(prev => ({ 
+                                                    ...prev, 
+                                                    patientId: "",
+                                                    patient: ""
+                                                }));
+                                            }
+                                        }}
+                                        className="w-5 h-5 text-teal-600 rounded focus:ring-teal-500"
+                                    />
+                                    <label htmlFor="isNewPatient" className="text-sm font-semibold text-gray-700 cursor-pointer">
+                                        {isNewPatient ? "✨ Criando novo paciente" : "🔍 Selecionar paciente existente"}
+                                    </label>
+                                </div>
+                            )}
 
-                            {/* Se for novo paciente: input livre */}
-                            {isNewPatient ? (
+                            {/* Se for EDIÇÃO: mostra paciente bloqueado (não permite alterar) */}
+                            {isEdit ? (
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-1">
+                                        Paciente <span className="text-red-500">(não pode ser alterado na edição)</span>
+                                    </label>
+                                    <div className="p-3 bg-gray-100 border border-gray-300 rounded-lg flex items-center gap-3">
+                                        <i className="fas fa-user-lock text-gray-500"></i>
+                                        <span className="font-medium text-gray-700">{formData.patient}</span>
+                                    </div>
+                                    <p className="text-xs text-amber-600 mt-1">
+                                        <i className="fas fa-exclamation-triangle mr-1"></i>
+                                        Para trocar de paciente, cancele este agendamento e crie um novo.
+                                    </p>
+                                </div>
+                            ) : isNewPatient ? (
+                                /* Se for novo paciente: input livre */
                                 <div>
                                     <label className="block text-sm font-bold text-gray-700 mb-1">
                                         Nome do novo paciente *
@@ -743,6 +898,8 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                     <option value="psicomotricidade">Psicomotricidade</option>
                                     <option value="musicoterapia">Musicoterapia</option>
                                     <option value="psicopedagogia">Psicopedagogia</option>
+                                    <option value="tongue_tie_test">Teste da Linguinha</option>
+                                    <option value="neuropsych_evaluation">Avaliação Neuropsicológica</option>
                                 </select>
                             </div>
                         </div>
@@ -790,9 +947,169 @@ export default function AppointmentModal({ appointment, professionals, patients,
                             </div>
                         </div>
 
+                        {/* Seção de Faturamento */}
+                        <div className="border-t border-gray-200 pt-4 mt-4">
+                            <div className="flex justify-between items-center mb-3">
+                                <h4 className="text-sm font-bold text-gray-800 flex items-center gap-2">
+                                    <i className="fas fa-dollar-sign text-teal-600"></i>
+                                    Dados de Faturamento
+                                </h4>
+                                {isEdit && (
+                                    <button
+                                        type="button"
+                                        onClick={async () => {
+                                            if (!appointment?.id) return;
+                                            setIsLoadingDetails(true);
+                                            try {
+                                                const response = await api.get(`/api/appointments/${appointment.id}`);
+                                                const data = response.data.data || response.data;
+                                                console.log("🔄 [AppointmentModal] Recarregando dados do servidor:", data);
+                                                
+                                                setFormData(prev => ({
+                                                    ...prev,
+                                                    paymentStatus: data.paymentStatus || prev.paymentStatus,
+                                                    billingType: data.billingType || prev.billingType,
+                                                    insuranceProvider: data.insuranceProvider || prev.insuranceProvider,
+                                                    insuranceValue: data.insuranceValue ?? prev.insuranceValue,
+                                                    authorizationCode: data.authorizationCode || prev.authorizationCode,
+                                                    crm: {
+                                                        serviceType: data.serviceType === 'evaluation' ? 'individual_session' : 
+                                                                     data.serviceType === 'session' ? 'package_session' : 
+                                                                     prev.crm.serviceType,
+                                                        sessionType: data.serviceType === 'evaluation' ? 'avaliacao' : 
+                                                                     data.serviceType === 'session' ? 'sessao' : 
+                                                                     prev.crm.sessionType,
+                                                        paymentMethod: data.paymentMethod || prev.crm.paymentMethod,
+                                                        paymentAmount: Number(data.sessionValue ?? prev.crm.paymentAmount),
+                                                        usePackage: data.serviceType === 'session' || !!data.package,
+                                                    }
+                                                }));
+                                                alert("Dados recarregados do servidor!");
+                                            } catch (error) {
+                                                console.error("❌ Erro ao recarregar:", error);
+                                                alert("Erro ao recarregar dados");
+                                            } finally {
+                                                setIsLoadingDetails(false);
+                                            }
+                                        }}
+                                        disabled={isLoadingDetails}
+                                        className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 px-2 py-1 rounded flex items-center gap-1"
+                                    >
+                                        {isLoadingDetails ? (
+                                            <><i className="fas fa-spinner fa-spin"></i> Carregando...</>
+                                        ) : (
+                                            <><i className="fas fa-sync-alt"></i> Recarregar do servidor</>
+                                        )}
+                                    </button>
+                                )}
+                            </div>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-1">Tipo de Faturamento *</label>
+                                    <select
+                                        name="billingType"
+                                        value={formData.billingType}
+                                        onChange={handleChange}
+                                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                        required
+                                    >
+                                        <option value="particular">Particular</option>
+                                        <option value="convenio">Convênio</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-1">Status do Pagamento *</label>
+                                    <select
+                                        name="paymentStatus"
+                                        value={formData.paymentStatus}
+                                        onChange={handleChange}
+                                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                        required
+                                    >
+                                        <option value="pending">Pendente</option>
+                                        <option value="paid">Pago</option>
+                                        <option value="pending_receipt">Aguardando Recibo</option>
+                                        <option value="canceled">Cancelado</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            {formData.billingType === 'convenio' && (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-1">Convênio</label>
+                                        <input
+                                            type="text"
+                                            name="insuranceProvider"
+                                            value={formData.insuranceProvider}
+                                            onChange={handleChange}
+                                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                            placeholder="Nome do convênio"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-1">Valor do Convênio (R$)</label>
+                                        <input
+                                            type="number"
+                                            name="insuranceValue"
+                                            value={formData.insuranceValue}
+                                            onChange={handleChange}
+                                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                            min="0"
+                                            step="0.01"
+                                            placeholder="0,00"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-1">Código de Autorização</label>
+                                        <input
+                                            type="text"
+                                            name="authorizationCode"
+                                            value={formData.authorizationCode}
+                                            onChange={handleChange}
+                                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                            placeholder="Código da autorização"
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Info do Pacote */}
+                            {formData.package && (
+                                <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                                    <h5 className="text-sm font-bold text-blue-800 mb-2">
+                                        <i className="fas fa-box mr-1"></i>
+                                        Pacote Ativo
+                                    </h5>
+                                    <div className="grid grid-cols-2 gap-2 text-sm">
+                                        <div>
+                                            <span className="text-blue-600">Valor da Sessão:</span>
+                                            <span className="ml-1 font-semibold">R$ {formData.package.sessionValue}</span>
+                                        </div>
+                                        <div>
+                                            <span className="text-blue-600">Total de Sessões:</span>
+                                            <span className="ml-1 font-semibold">{formData.package.totalSessions}</span>
+                                        </div>
+                                        <div>
+                                            <span className="text-blue-600">Status Financeiro:</span>
+                                            <span className="ml-1 font-semibold">{formData.package.financialStatus}</span>
+                                        </div>
+                                        <div>
+                                            <span className="text-blue-600">Total Pago:</span>
+                                            <span className="ml-1 font-semibold">R$ {formData.package.totalPaid}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-1">Pagamento</label>
+                                <label className="block text-sm font-bold text-gray-700 mb-1">Forma de Pagamento (CRM)</label>
                                 <select
                                     name="crm.paymentMethod"
                                     value={formData.crm.paymentMethod}
@@ -807,16 +1124,43 @@ export default function AppointmentModal({ appointment, professionals, patients,
                             </div>
 
                             <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-1">Valor</label>
+                                <label className="block text-sm font-bold text-gray-700 mb-1">
+                                    Valor da Sessão (R$)
+                                    {formData.paymentStatus === 'paid' && (
+                                        <span className="ml-2 text-xs font-normal text-green-600 bg-green-100 px-2 py-0.5 rounded">
+                                            Pago
+                                        </span>
+                                    )}
+                                </label>
                                 <input
-                                    type="text"
+                                    type="number"
                                     name="crm.paymentAmount"
                                     value={formData.crm.paymentAmount}
                                     onChange={handleChange}
-                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                    disabled={formData.paymentStatus === 'paid'}
+                                    className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 ${
+                                        formData.paymentStatus === 'paid' 
+                                            ? 'bg-gray-100 text-gray-500 cursor-not-allowed border-gray-300' 
+                                            : 'border-gray-300'
+                                    }`}
                                     min="0"
-                                    step="1"
+                                    step="0.01"
+                                    placeholder="0,00"
                                 />
+                                {formData.package?.sessionValue && formData.crm.paymentAmount != formData.package.sessionValue && (
+                                    <p className="text-xs text-amber-600 mt-1">
+                                        <i className="fas fa-exclamation-triangle mr-1"></i>
+                                        Valor diferente do pacote (R$ {formData.package.sessionValue})
+                                    </p>
+                                )}
+                                {/* Aviso quando valor é 0 mas status indica que deveria ter valor */}
+                                {formData.crm.paymentAmount === 0 && (formData.paymentStatus === 'paid' || formData.paymentStatus === 'pending_receipt') && !formData.package && (
+                                    <p className="text-xs text-red-500 mt-1 font-semibold">
+                                        <i className="fas fa-exclamation-circle mr-1"></i>
+                                        Atenção: Valor zerado mas status é '{formData.paymentStatus}'. 
+                                        Verifique se o valor foi carregado corretamente do banco.
+                                    </p>
+                                )}
                             </div>
                         </div>
 

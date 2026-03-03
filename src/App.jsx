@@ -68,18 +68,54 @@ export default function App() {
   const todayFormatted = formatDateLocal(today);
   const todayDayOfWeek = (today.getDay() === 0 ? 7 : today.getDay()).toString();
 
+  // Recupera data salva do localStorage ou usa hoje
+  const getSavedDate = () => {
+    try {
+      const saved = localStorage.getItem('agendaFilterDate');
+      const savedDay = localStorage.getItem('agendaFilterDay');
+      if (saved) {
+        // Verifica se a data salva é válida (não está muito no passado - mais de 30 dias)
+        const savedDate = new Date(saved);
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        
+        if (savedDate >= thirtyDaysAgo) {
+          return { date: saved, day: savedDay || todayDayOfWeek };
+        }
+      }
+    } catch (e) {
+      console.error("[App.jsx] Erro ao ler localStorage:", e);
+    }
+    return { date: todayFormatted, day: todayDayOfWeek };
+  };
+  
+  const savedFilters = getSavedDate();
+
   const [activeSpecialty, setActiveSpecialty] = React.useState("todas");
   const [isAvailabilityExpanded, setIsAvailabilityExpanded] = React.useState(false);
   const [currentMonth, setCurrentMonth] = React.useState(new Date().getMonth());
   const [currentYear, setCurrentYear] = React.useState(new Date().getFullYear());
 
   const [filters, setFilters] = React.useState({
-    filterDate: todayFormatted,
+    filterDate: savedFilters.date,
     filterProfessional: "",
     filterStatus: "",
-    filterDay: todayDayOfWeek,
+    filterDay: savedFilters.day,
     filterWeek: null,
   });
+  
+  // Salva a data no localStorage quando mudar
+  React.useEffect(() => {
+    try {
+      if (filters.filterDate) {
+        localStorage.setItem('agendaFilterDate', filters.filterDate);
+        localStorage.setItem('agendaFilterDay', filters.filterDay || todayDayOfWeek);
+        console.log("💾 [App.jsx] Data salva no localStorage:", filters.filterDate);
+      }
+    } catch (e) {
+      console.error("[App.jsx] Erro ao salvar localStorage:", e);
+    }
+  }, [filters.filterDate, filters.filterDay]);
   
   // Estado para forçar refresh da lista após operações (criar, editar, cancelar, deletar)
   const [refreshTrigger, setRefreshTrigger] = React.useState(0);
@@ -334,7 +370,10 @@ export default function App() {
           date: appointmentData.date,
           time: appointmentData.time,
           sessionValue: Number(appointmentData.crm?.paymentAmount || 0),
-          serviceType: appointmentData.crm?.sessionType === 'avaliacao' ? 'evaluation' : 'session',
+          // serviceType: 'evaluation' (avulsa) ou 'session' (pacote)
+          serviceType: appointmentData.crm?.serviceType === 'package_session' ? 'session' : 'evaluation',
+          // sessionType: 'avaliacao' ou 'sessao' (tipo da sessão)
+          sessionType: appointmentData.crm?.sessionType === 'sessao' ? 'sessao' : 'avaliacao',
           paymentMethod: appointmentData.crm?.paymentMethod || 'pix',
           notes: appointmentData.observations,
           // IMPORTANTE: Envia patientId se for paciente existente
@@ -521,7 +560,7 @@ export default function App() {
 
     // 3. Remover pré-agendamentos duplicados (quando existe agendamento real para mesma data/hora/profissional)
     // Isso acontece quando o backend não remove o pré-agendamento após criar o agendamento real
-    const realAppointments = base.filter(a => !isPreAgendamento(a));
+    const realAppointments = base.filter(a => !isPreAgendamento(a) && !["canceled", "missed", "Cancelado"].includes(a.operationalStatus || a.status));
     base = base.filter(appointment => {
       if (!isPreAgendamento(appointment)) return true; // Mantém agendamentos reais
       
