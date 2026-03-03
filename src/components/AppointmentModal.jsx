@@ -441,6 +441,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                 operationalStatus: formData.operationalStatus,
                 observations: formData.observations,
                 
+                
                 // Dados de pagamento/faturamento
                 paymentStatus: formData.paymentStatus,
                 billingType: formData.billingType,
