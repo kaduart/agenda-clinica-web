@@ -1,0 +1,13 @@
+--- src/components/AppointmentModal.jsx
++++ src/components/AppointmentModal.jsx
+@@ -473,7 +473,9 @@ export default function AppointmentModal({ appointment, professionals, patients,
+     };
+ 
+     const isPre = !!appointment?.__isPreAgendamento || appointment?.operationalStatus === 'pre_agendado';
+-    const isEdit = !!appointment?.id && !isPre;
++    // BLOQUEAR EDIÇÃO DE PACIENTE: Nunca permite alterar paciente em agendamento existente
++    // Só permite alterar paciente quando está CRIANDO novo (não tem ID)
++    const isEdit = !!appointment?.id; // Removido !isPre - agora bloqueia paciente em pré também
+ 
+     // Handler para atualizar dados do paciente quando selecionado
+     const handlePatientSelect = (selectedPatient) => {

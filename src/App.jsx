@@ -402,11 +402,16 @@ export default function App() {
       }
     }
 
+    console.log("🔍 [App.jsx saveAppointment] appointmentData.operationalStatus:", appointmentData.operationalStatus);
+    console.log("🔍 [App.jsx saveAppointment] editingAppointment?.operationalStatus:", editingAppointment?.operationalStatus);
+    
     const candidate = {
       ...(isEditing ? editingAppointment : {}),
       ...appointmentData,
-      operationalStatus: appointmentData.operationalStatus || "scheduled",
+      operationalStatus: appointmentData.operationalStatus || editingAppointment?.operationalStatus || "scheduled",
     };
+    
+    console.log("🔍 [App.jsx saveAppointment] candidate.operationalStatus final:", candidate.operationalStatus);
 
     if (appointmentId && isEditing) candidate.id = appointmentId;
 

@@ -180,6 +180,7 @@ const mapCrmToBackend = (crm) => {
 // NOVA FUNÇÃO: Atualiza agendamento existente
 export const updateAppointmentDirect = async (appointmentId, appointmentData) => {
     console.log("📝 [appointmentsRepo] updateAppointmentDirect - ID:", appointmentId);
+    console.log("📝 [appointmentsRepo] updateAppointmentDirect - appointmentData.operationalStatus recebido:", appointmentData.operationalStatus);
     
     const crmBackend = mapCrmToBackend(appointmentData.crm);
     
@@ -198,7 +199,7 @@ export const updateAppointmentDirect = async (appointmentId, appointmentData) =>
         specialty: appointmentData.specialtyKey || appointmentData.specialty,
         date: appointmentData.date,
         time: appointmentData.time,
-        operationalStatus: appointmentData.operationalStatus || "scheduled",
+        operationalStatus: appointmentData.operationalStatus || "scheduled", // Fallback apenas se não informado
         observations: appointmentData.observations,
         
         // Dados de faturamento
@@ -213,6 +214,7 @@ export const updateAppointmentDirect = async (appointmentId, appointmentData) =>
     };
     
     console.log("📝 [updateAppointmentDirect] Enviando:", JSON.stringify(payload.crm, null, 2));
+    console.log("📝 [updateAppointmentDirect] Payload operationalStatus:", payload.operationalStatus);
     
     const response = await api.post('/api/import-from-agenda/sync-update', payload, {
         timeout: 30000

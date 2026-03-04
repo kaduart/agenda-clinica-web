@@ -38,6 +38,11 @@ export default function AppointmentModal({ appointment, professionals, patients,
         metadata: null,
     });
 
+    // Monitora mudanças no operationalStatus
+    React.useEffect(() => {
+        console.log("👁️ [AppointmentModal] formData.operationalStatus AGORA É:", formData.operationalStatus);
+    }, [formData.operationalStatus]);
+
     React.useEffect(() => {
         console.log("📝 [AppointmentModal] useEffect - appointment:", JSON.stringify(appointment, null, 2));
         console.log("📝 [AppointmentModal] useEffect - appointment?.id:", appointment?.id);
@@ -49,31 +54,31 @@ export default function AppointmentModal({ appointment, professionals, patients,
 
         if (appointment) {
             // Extract patient data carefully - patient pode ser objeto ou ID string
-            const pObj = (typeof appointment.patient === 'object' && appointment.patient !== null) 
-                ? appointment.patient 
+            const pObj = (typeof appointment.patient === 'object' && appointment.patient !== null)
+                ? appointment.patient
                 : {};
-            
+
             // Tenta obter o nome de várias fontes possíveis
-            const pName = pObj.fullName || 
-                          appointment.patientName || 
-                          (typeof appointment.patient === 'string' ? appointment.patient : '') ||
-                          '';
-            
+            const pName = pObj.fullName ||
+                appointment.patientName ||
+                (typeof appointment.patient === 'string' ? appointment.patient : '') ||
+                '';
+
             // Tenta obter o telefone de várias fontes possíveis
-            const pPhone = appointment.phone || 
-                           pObj.phone || 
-                           appointment.patientPhone ||
-                           '';
-            
+            const pPhone = appointment.phone ||
+                pObj.phone ||
+                appointment.patientPhone ||
+                '';
+
             // Para pré-agendamentos, os dados estão em originalData.patientInfo
             const prePatientInfo = appointment.originalData?.patientInfo || {};
-            
+
             // Para pré-agendamentos, o patientId pode estar em originalData.patientId
             const prePatientId = appointment.originalData?.patientId || "";
 
             // Extract professional data
-            const dObj = (typeof appointment.doctor === 'object' && appointment.doctor !== null) 
-                ? appointment.doctor 
+            const dObj = (typeof appointment.doctor === 'object' && appointment.doctor !== null)
+                ? appointment.doctor
                 : {};
             const profName = dObj.fullName || appointment.professional || appointment.professionalName;
 
@@ -82,14 +87,14 @@ export default function AppointmentModal({ appointment, professionals, patients,
                 patient: pName || "",
                 patientName: pName || "",  // alias para o backend
                 phone: pPhone || prePatientInfo.phone || "",
-                birthDate: extractDateForInput(appointment.birthDate) || 
-                           extractDateForInput(pObj.dateOfBirth) || 
-                           extractDateForInput(prePatientInfo.birthDate) || 
-                           "",
+                birthDate: extractDateForInput(appointment.birthDate) ||
+                    extractDateForInput(pObj.dateOfBirth) ||
+                    extractDateForInput(prePatientInfo.birthDate) ||
+                    "",
                 email: appointment.email || pObj.email || prePatientInfo.email || "",
                 responsible: appointment.responsible || "",
                 patientId: pObj._id || appointment.patientId || prePatientId || "",
-                
+
                 // Dados do agendamento
                 date: appointment.date || today,
                 time: appointment.time || "08:00",
@@ -104,7 +109,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                 status: appointment.status || "",
                 observations: appointment.observations || "",
                 createdAt: appointment.createdAt || null,
-                
+
                 // Dados de pagamento/faturamento
                 paymentStatus: appointment.paymentStatus || "pending",
                 billingType: appointment.billingType || "particular",
@@ -112,29 +117,29 @@ export default function AppointmentModal({ appointment, professionals, patients,
                 insuranceValue: appointment.insuranceValue || 0,
                 authorizationCode: appointment.authorizationCode || "",
                 package: appointment.package || null,
-                
+
                 // Dados do CRM - Backend retorna em campos DIRETOS (não dentro de objeto crm)
                 // Mapeia: serviceType → crm.serviceType, sessionValue → crm.paymentAmount, etc
                 crm: {
-                    serviceType: appointment.crm?.serviceType || 
-                                 (appointment.serviceType === 'evaluation' ? 'individual_session' : 
-                                  appointment.serviceType === 'session' ? 'package_session' : 
-                                  appointment.package ? "package_session" : "individual_session"),
-                    sessionType: appointment.crm?.sessionType || 
-                                 (appointment.serviceType === 'evaluation' ? 'avaliacao' : 'sessao'),
-                    paymentMethod: appointment.crm?.paymentMethod || 
-                                   appointment.paymentMethod || "pix",
+                    serviceType: appointment.crm?.serviceType ||
+                        (appointment.serviceType === 'evaluation' ? 'individual_session' :
+                            appointment.serviceType === 'session' ? 'package_session' :
+                                appointment.package ? "package_session" : "individual_session"),
+                    sessionType: appointment.crm?.sessionType ||
+                        (appointment.serviceType === 'evaluation' ? 'avaliacao' : 'sessao'),
+                    paymentMethod: appointment.crm?.paymentMethod ||
+                        appointment.paymentMethod || "pix",
                     paymentAmount: Number(
-                        appointment.crm?.paymentAmount || 
-                        appointment.sessionValue || 
-                        appointment.package?.sessionValue || 
+                        appointment.crm?.paymentAmount ||
+                        appointment.sessionValue ||
+                        appointment.package?.sessionValue ||
                         0
                     ),
-                    usePackage: !!appointment.crm?.usePackage || 
-                                !!appointment.package ||
-                                appointment.serviceType === 'session',
+                    usePackage: !!appointment.crm?.usePackage ||
+                        !!appointment.package ||
+                        appointment.serviceType === 'session',
                 },
-                
+
                 // Metadados extras
                 visualFlag: appointment.visualFlag || "",
                 metadata: appointment.metadata || null,
@@ -179,46 +184,46 @@ export default function AppointmentModal({ appointment, professionals, patients,
 
     // Estado para loading de detalhes (busca da API se necessário)
     const [isLoadingDetails, setIsLoadingDetails] = React.useState(false);
-    
+
     // Busca detalhes completos quando abrir o modal (se não tiver os dados financeiros)
     React.useEffect(() => {
         const fetchDetailsIfNeeded = async () => {
             // Só busca se tem ID válido e não tem os dados financeiros
             if (appointment?.id && !appointment.id.startsWith('ext_')) {
-                const missingFinancialData = 
-                    !appointment.serviceType || 
-                    appointment.sessionValue === undefined || 
+                const missingFinancialData =
+                    !appointment.serviceType ||
+                    appointment.sessionValue === undefined ||
                     appointment.sessionValue === null;
-                
+
                 if (missingFinancialData) {
                     console.log("🔍 [AppointmentModal] Buscando detalhes financeiros do servidor...");
                     setIsLoadingDetails(true);
                     try {
                         const response = await api.get(`/api/appointments/${appointment.id}`);
                         const data = response.data.data || response.data;
-                        
+
                         console.log("🔍 [AppointmentModal] Detalhes recebidos:", {
                             serviceType: data.serviceType,
                             sessionValue: data.sessionValue,
                             paymentMethod: data.paymentMethod
                         });
-                        
+
                         // Só atualiza se o valor ainda estiver zerado no formData
                         setFormData(prev => {
                             const needsUpdate = prev.crm.paymentAmount === 0 && data.sessionValue > 0;
                             if (!needsUpdate) return prev;
-                            
+
                             console.log("🔍 [AppointmentModal] Atualizando valor do formulário:", data.sessionValue);
                             return {
                                 ...prev,
                                 crm: {
                                     ...prev.crm,
-                                    serviceType: data.serviceType === 'evaluation' ? 'individual_session' : 
-                                                 data.serviceType === 'session' ? 'package_session' : 
-                                                 prev.crm.serviceType,
-                                    sessionType: data.serviceType === 'evaluation' ? 'avaliacao' : 
-                                                 data.serviceType === 'session' ? 'sessao' : 
-                                                 prev.crm.sessionType,
+                                    serviceType: data.serviceType === 'evaluation' ? 'individual_session' :
+                                        data.serviceType === 'session' ? 'package_session' :
+                                            prev.crm.serviceType,
+                                    sessionType: data.serviceType === 'evaluation' ? 'avaliacao' :
+                                        data.serviceType === 'session' ? 'sessao' :
+                                            prev.crm.sessionType,
                                     paymentMethod: data.paymentMethod || prev.crm.paymentMethod,
                                     paymentAmount: Number(data.sessionValue || prev.crm.paymentAmount),
                                     usePackage: data.serviceType === 'session' || !!data.package,
@@ -233,35 +238,35 @@ export default function AppointmentModal({ appointment, professionals, patients,
                 }
             }
         };
-        
+
         fetchDetailsIfNeeded();
     }, [appointment?.id]);
 
     const [isLoading, setIsLoading] = React.useState(false);
     const [showSuggestions, setShowSuggestions] = React.useState(false);
     const [filteredPatients, setFilteredPatients] = React.useState([]);
-    
+
     // Estado para controlar se é paciente novo ou existente
     const [isNewPatient, setIsNewPatient] = React.useState(() => {
         // Detecta se é pré-agendamento
         const isPre = !!appointment?.__isPreAgendamento || appointment?.operationalStatus === 'pre_agendado';
-        
+
         // Se já tem patientId (direto ou em originalData para pré-agendamentos), é existente
-        const hasPatientId = appointment?.patientId || 
-                            appointment?.originalData?.patientId ||
-                            (typeof appointment?.patient === 'object' && appointment?.patient?._id);
+        const hasPatientId = appointment?.patientId ||
+            appointment?.originalData?.patientId ||
+            (typeof appointment?.patient === 'object' && appointment?.patient?._id);
         const hasPatientName = appointment?.patientName || (typeof appointment?.patient === 'string' ? appointment?.patient : '');
-        
+
         // Se tem ID, é paciente existente
         if (hasPatientId) return false;
-        
+
         // Se é pré-agendamento e não tem patientId, força modo NOVO PACIENTE
         // (pois pré-agendamentos geralmente são de novos pacientes)
         if (isPre) return true;
-        
+
         // Se está criando novo e não tem nada, assume novo por padrão
         if (!appointment?.id && !hasPatientName) return true;
-        
+
         // Se tem nome mas não tem ID, pode ser novo
         return !hasPatientName;
     });
@@ -275,11 +280,11 @@ export default function AppointmentModal({ appointment, professionals, patients,
     }, [formData.patientId]);
 
     const handlePatientChange = (value) => {
-        setFormData(prev => ({ 
-            ...prev, 
+        setFormData(prev => ({
+            ...prev,
             patient: value,
             // Limpa o patientId quando o usuário está digitando manualmente
-            patientId: "" 
+            patientId: ""
         }));
 
         if (value.length > 2) {
@@ -316,9 +321,9 @@ export default function AppointmentModal({ appointment, professionals, patients,
         // Pequeno delay para permitir que o clique na sugestão seja processado primeiro
         setTimeout(() => {
             setShowSuggestions(false);
-            
+
             if (formData.patient && !formData.patientId) {
-                const exactMatch = (patients || []).find(p => 
+                const exactMatch = (patients || []).find(p =>
                     p.fullName.toLowerCase().trim() === formData.patient.toLowerCase().trim()
                 );
                 if (exactMatch) {
@@ -338,6 +343,11 @@ export default function AppointmentModal({ appointment, professionals, patients,
 
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
+        console.log("📝 [AppointmentModal] handleChange - name:", name, "value:", value, "type:", type);
+
+        if (name === "operationalStatus") {
+            console.log("🚨 [AppointmentModal] STATUS OPERACIONAL MUDANDO PARA:", value);
+        }
 
         if (name === "specialty") {
             setFormData((prev) => ({
@@ -367,11 +377,12 @@ export default function AppointmentModal({ appointment, professionals, patients,
 
         // Campos numéricos que precisam ser convertidos
         const numericFields = ["insuranceValue"];
-        
-        setFormData((prev) => ({ 
-            ...prev, 
-            [name]: numericFields.includes(name) ? Number(value || 0) : value 
-        }));
+
+        setFormData((prev) => {
+            const newValue = numericFields.includes(name) ? Number(value || 0) : value;
+            console.log("📝 [AppointmentModal] handleChange - atualizando:", name, "=", newValue);
+            return { ...prev, [name]: newValue };
+        });
     };
 
     const handleSubmit = async (e) => {
@@ -383,6 +394,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
 
         try {
             console.log("🚀 [AppointmentModal] SUBMIT iniciado");
+            console.log("🚀 [AppointmentModal] formData.operationalStatus no SUBMIT:", formData.operationalStatus);
             console.log("🚀 [AppointmentModal] isNewPatient:", isNewPatient);
             console.log("🚀 [AppointmentModal] formData.patientId:", formData.patientId);
             console.log("🚀 [AppointmentModal] formData.patient:", formData.patient);
@@ -401,12 +413,12 @@ export default function AppointmentModal({ appointment, professionals, patients,
             const isEditing = !!appointment?.id;
             const valorZerado = formData.crm.paymentAmount === 0 || formData.crm.paymentAmount === '';
             const statusIndicaPagamento = ['paid', 'pending_receipt'].includes(formData.paymentStatus);
-            
+
             if (isEditing && valorZerado && statusIndicaPagamento && !formData.package) {
                 const confirmar = confirm(
                     "⚠️ ATENÇÃO!\n\n" +
-                    "O valor da sessão está zerado (R$ 0), mas o status de pagamento é '" + 
-                    (formData.paymentStatus === 'paid' ? 'Pago' : 'Aguardando Recibo') + 
+                    "O valor da sessão está zerado (R$ 0), mas o status de pagamento é '" +
+                    (formData.paymentStatus === 'paid' ? 'Pago' : 'Aguardando Recibo') +
                     "'.\n\n" +
                     "Isso pode significar que os dados não foram carregados corretamente do banco de dados.\n\n" +
                     "Se você continuar, o valor no banco será sobrescrito para ZERO (R$ 0).\n\n" +
@@ -429,7 +441,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                 birthDate: formData.birthDate,
                 email: formData.email,
                 responsible: formData.responsible,
-                
+
                 // Dados do agendamento
                 date: formData.date,
                 time: formData.time,
@@ -440,8 +452,8 @@ export default function AppointmentModal({ appointment, professionals, patients,
                 specialtyKey: formData.specialtyKey,
                 operationalStatus: formData.operationalStatus,
                 observations: formData.observations,
-                
-                
+
+
                 // Dados de pagamento/faturamento
                 paymentStatus: formData.paymentStatus,
                 billingType: formData.billingType,
@@ -449,14 +461,14 @@ export default function AppointmentModal({ appointment, professionals, patients,
                 insuranceValue: Number(formData.insuranceValue || 0),
                 authorizationCode: formData.authorizationCode,
                 package: formData.package,
-                
+
                 // Dados CRM
                 crm: formData.crm,
-                
+
                 // ID se estiver editando
                 ...(appointment?.id ? { id: appointment.id } : {})
             };
-            
+
             console.log("✅ [AppointmentModal] =========================================");
             console.log("✅ [AppointmentModal] ENVIANDO PARA onSave:");
             console.log("✅ [AppointmentModal] patientId:", dataToSave.patientId);
@@ -473,102 +485,90 @@ export default function AppointmentModal({ appointment, professionals, patients,
 
 
     const isPre = !!appointment?.__isPreAgendamento || appointment?.operationalStatus === 'pre_agendado';
-    const isEdit = !!appointment?.id && !isPre;
+    const isEdit = !!appointment?.id; // BLOQUEIA SEMPRE (só novo pode editar) // BLOQUEIA SÓ EM APPOINTMENT (não em pré-agendamento)
     const source = appointment?.source || appointment?.metadata?.origin?.source || appointment?.originalData?.source;
 
     // Se for pré-agendamento, mapeamos de preferredDate/Time
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-            <div className={`bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto relative ${isLoading ? "opacity-80 pointer-events-none" : ""}`}>
-
-                <div className="p-6">
-                    <div className="flex justify-between items-start mb-4">
-                        <div>
-                            <h3 className="text-lg font-semibold text-gray-800">
-                                {isPre ? "Confirmar Pré-Agendamento" : isEdit ? "Editar Agendamento" : "Novo Agendamento"}
-                            </h3>
-                            {source && (
-                                <p className="text-xs text-indigo-600 font-medium">
-                                    Origem: <span className="uppercase">{source}</span>
-                                </p>
-                            )}
-                        </div>
-                        <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
-                            <i className="fas fa-times text-xl"></i>
-                        </button>
-                    </div>
-                    
-                    {/* Loading indicator para busca de detalhes */}
-                    {isLoadingDetails && (
-                        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-center gap-3">
-                            <svg className="animate-spin h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
-                            </svg>
-                            <span className="text-sm text-blue-800">Carregando dados completos do agendamento...</span>
-                        </div>
-                    )}
-                    
-                    {/* Aviso se dados do CRM não foram carregados */}
-                    {isEdit && !isLoadingDetails && formData.crm.paymentAmount === 0 && (
-                        <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                            <p className="text-sm text-amber-800">
-                                <i className="fas fa-exclamation-triangle mr-2"></i>
-                                <strong>Atenção:</strong> Os dados financeiros (valor, tipo de sessão, forma de pagamento) 
-                                podem não ter sido carregados corretamente. Use "Recarregar do servidor" se necessário.
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+            <div className={`bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto relative ${isLoading ? "opacity-80 pointer-events-none" : ""}`}>
+                {/* Header */}
+                <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 z-10 flex justify-between items-center">
+                    <div>
+                        <h3 className="text-lg font-semibold text-gray-900">
+                            {isPre ? "Confirmar Pré-Agendamento" : isEdit ? "Editar Agendamento" : "Novo Agendamento"}
+                        </h3>
+                        {source && (
+                            <p className="text-xs text-indigo-600 font-medium mt-0.5">
+                                Origem: <span className="uppercase">{source}</span>
                             </p>
-                        </div>
-                    )}
+                        )}
+                    </div>
+                    <button onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
+                        <i className="fas fa-times text-xl"></i>
+                    </button>
                 </div>
 
-                <form onSubmit={handleSubmit}>
-                    <div className="px-6 py-4 space-y-4">
-                        <div className="space-y-3">
-                            {/* Checkbox para definir se é novo paciente - SÓ MOSTRA SE NÃO FOR EDIÇÃO */}
+                {/* Loading details */}
+                {isLoadingDetails && (
+                    <div className="mx-6 mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-center gap-3">
+                        <svg className="animate-spin h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                        </svg>
+                        <span className="text-sm text-blue-800">Carregando dados completos do agendamento...</span>
+                    </div>
+                )}
+
+                {/* Aviso de dados zerados */}
+                {isEdit && !isLoadingDetails && formData.crm.paymentAmount === 0 && (
+                    <div className="mx-6 mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                        <p className="text-sm text-amber-800 flex items-start gap-2">
+                            <i className="fas fa-exclamation-triangle mt-0.5"></i>
+                            <span>
+                                <strong>Atenção:</strong> Os dados financeiros (valor, tipo de sessão, forma de pagamento)
+                                podem não ter sido carregados corretamente. Use "Recarregar do servidor" se necessário.
+                            </span>
+                        </p>
+                    </div>
+                )}
+
+                <form onSubmit={handleSubmit} className="px-6 py-4">
+                    {/* Bloco: Dados do Paciente */}
+                    <div className="bg-blue-50/30 rounded-lg p-4 border border-blue-100">
+                        <h4 className="text-sm font-semibold text-blue-800 mb-3 flex items-center gap-2">
+                            <i className="fas fa-user text-blue-600"></i> Identificação do Paciente
+                        </h4>
+                        <div className="space-y-4">
+                            {/* Checkbox novo paciente (se não for edição) */}
                             {!isEdit && (
-                                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                                <div className="flex items-center gap-3 p-3 bg-white rounded-lg border border-blue-200">
                                     <input
                                         id="isNewPatient"
                                         type="checkbox"
                                         checked={isNewPatient}
                                         onChange={(e) => {
                                             const checked = e.target.checked;
-                                            console.log("☑️ [AppointmentModal] Checkbox 'Novo Paciente' alterado:", checked);
                                             setIsNewPatient(checked);
                                             if (checked) {
-                                                // Limpa o patientId ao marcar como novo
-                                                console.log("☑️ [AppointmentModal] Modo NOVO PACIENTE - Limpando patientId");
-                                                setFormData(prev => ({ 
-                                                    ...prev, 
-                                                    patientId: "",
-                                                    patient: "",
-                                                    phone: "",
-                                                    birthDate: "",
-                                                    email: ""
-                                                }));
+                                                setFormData(prev => ({ ...prev, patientId: "", patient: "", phone: "", birthDate: "", email: "" }));
                                             } else {
-                                                // Ao desmarcar, limpa para forçar seleção
-                                                console.log("☑️ [AppointmentModal] Modo PACIENTE EXISTENTE - Aguardando seleção");
-                                                setFormData(prev => ({ 
-                                                    ...prev, 
-                                                    patientId: "",
-                                                    patient: ""
-                                                }));
+                                                setFormData(prev => ({ ...prev, patientId: "", patient: "" }));
                                             }
                                         }}
                                         className="w-5 h-5 text-teal-600 rounded focus:ring-teal-500"
                                     />
-                                    <label htmlFor="isNewPatient" className="text-sm font-semibold text-gray-700 cursor-pointer">
+                                    <label htmlFor="isNewPatient" className="text-sm font-medium text-gray-700 cursor-pointer">
                                         {isNewPatient ? "✨ Criando novo paciente" : "🔍 Selecionar paciente existente"}
                                     </label>
                                 </div>
                             )}
 
-                            {/* Se for EDIÇÃO: mostra paciente bloqueado (não permite alterar) */}
+                            {/* Bloco de paciente: conforme lógica existente */}
                             {isEdit ? (
                                 <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-1">
-                                        Paciente <span className="text-red-500">(não pode ser alterado na edição)</span>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Paciente <span className="text-red-500">(não alterável)</span>
                                     </label>
                                     <div className="p-3 bg-gray-100 border border-gray-300 rounded-lg flex items-center gap-3">
                                         <i className="fas fa-user-lock text-gray-500"></i>
@@ -576,13 +576,12 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                     </div>
                                     <p className="text-xs text-amber-600 mt-1">
                                         <i className="fas fa-exclamation-triangle mr-1"></i>
-                                        Para trocar de paciente, cancele este agendamento e crie um novo.
+                                        Para trocar, cancele este agendamento e crie um novo.
                                     </p>
                                 </div>
                             ) : isNewPatient ? (
-                                /* Se for novo paciente: input livre */
                                 <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-1">
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
                                         Nome do novo paciente *
                                     </label>
                                     <input
@@ -597,9 +596,8 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                     />
                                 </div>
                             ) : (
-                                /* Se for existente: select com busca */
                                 <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-1">
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
                                         Selecione o paciente *
                                         {formData.patientId && (
                                             <span className="ml-2 text-xs font-normal text-green-600 bg-green-100 px-2 py-0.5 rounded-full">
@@ -607,187 +605,74 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                             </span>
                                         )}
                                     </label>
-                                    
-                                    {/* Verifica se tem erro de autenticação */}
-                                    {authError ? (
-                                        <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-center">
-                                            <p className="text-red-600 text-sm font-medium">
-                                                <i className="fas fa-lock mr-2"></i>
-                                                Erro de autenticação
-                                            </p>
-                                            <p className="text-red-500 text-xs mt-1">
-                                                Token inválido. Verifique o VITE_API_TOKEN no arquivo .env
-                                            </p>
-                                            <button
-                                                type="button"
-                                                onClick={() => onReloadPatients && onReloadPatients()}
-                                                className="mt-2 text-xs bg-red-100 hover:bg-red-200 text-red-700 px-3 py-1.5 rounded font-medium"
-                                            >
-                                                <i className="fas fa-sync-alt mr-1"></i>
-                                                Tentar novamente
-                                            </button>
-                                        </div>
-                                    ) : /* Verifica se tem pacientes carregados */
-                                    (!patients || patients.length === 0) ? (
-                                        <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
-                                            <p className="text-amber-800 text-sm font-medium text-center">
-                                                <i className="fas fa-exclamation-triangle mr-2"></i>
-                                                Lista de pacientes não carregou (Erro de autenticação)
-                                            </p>
-                                            <p className="text-amber-600 text-xs mt-1 text-center">
-                                                A rota /api/patients retornou 401. Use uma das opções:
-                                            </p>
-                                            
-                                            {/* Opção 1: Criar novo paciente */}
-                                            <div className="mt-3 p-3 bg-white rounded border border-amber-200">
-                                                <label className="flex items-center gap-2 cursor-pointer">
-                                                    <input
-                                                        type="radio"
-                                                        name="patientMode"
-                                                        checked={isNewPatient}
-                                                        onChange={() => {
-                                                            console.log("☑️ [AppointmentModal] Modo NOVO PACIENTE selecionado (lista vazia)");
-                                                            setIsNewPatient(true);
-                                                            setFormData(prev => ({ 
-                                                                ...prev, 
-                                                                patientId: "",
-                                                                patient: "",
-                                                                phone: "",
-                                                                birthDate: "",
-                                                                email: ""
-                                                            }));
-                                                        }}
-                                                        className="text-teal-600"
-                                                    />
-                                                    <span className="text-sm font-medium text-gray-700">🆕 Criar novo paciente</span>
-                                                </label>
-                                            </div>
-
-                                            {/* Opção 2: Usar ID existente */}
-                                            <div className="mt-2 p-3 bg-white rounded border border-amber-200">
-                                                <label className="flex items-center gap-2 cursor-pointer">
-                                                    <input
-                                                        type="radio"
-                                                        name="patientMode"
-                                                        checked={!isNewPatient}
-                                                        onChange={() => {
-                                                            console.log("☑️ [AppointmentModal] Modo PACIENTE EXISTENTE selecionado (vai digitar ID)");
-                                                            setIsNewPatient(false);
-                                                            setFormData(prev => ({ 
-                                                                ...prev, 
-                                                                patientId: "",
-                                                                patient: ""
-                                                            }));
-                                                        }}
-                                                        className="text-teal-600"
-                                                    />
-                                                    <span className="text-sm font-medium text-gray-700">📝 Usar paciente existente (digite o ID)</span>
-                                                </label>
-                                            </div>
-
-                                            {/* Campos baseado na seleção */}
-                                            {isNewPatient ? (
-                                                <div className="mt-3">
-                                                    <input
-                                                        type="text"
-                                                        value={formData.patient}
-                                                        onChange={(e) => setFormData(prev => ({ ...prev, patient: e.target.value }))}
-                                                        placeholder="Nome completo do novo paciente"
-                                                        className="w-full p-2 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-teal-500"
-                                                        required
-                                                    />
+                                    {/* Input de busca */}
+                                    <div className="relative mb-2">
+                                        <input
+                                            type="text"
+                                            placeholder="Buscar paciente..."
+                                            value={showSuggestions ? undefined : (formData.patient || "")}
+                                            onChange={(e) => handlePatientChange(e.target.value)}
+                                            onFocus={() => {
+                                                setShowSuggestions(true);
+                                                setFilteredPatients(patients.slice(0, 10));
+                                            }}
+                                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                        />
+                                        <i className="fas fa-search absolute right-3 top-3.5 text-gray-400"></i>
+                                    </div>
+                                    {/* Lista de sugestões */}
+                                    {showSuggestions && (
+                                        <div className="border border-gray-200 rounded-lg max-h-48 overflow-y-auto bg-white mb-2">
+                                            {filteredPatients.length === 0 ? (
+                                                <div className="p-3 text-gray-500 text-sm text-center">
+                                                    Nenhum paciente encontrado
                                                 </div>
                                             ) : (
-                                                <div className="mt-3 space-y-2">
-                                                    <input
-                                                        type="text"
-                                                        value={formData.patientId}
-                                                        onChange={(e) => setFormData(prev => ({ ...prev, patientId: e.target.value }))}
-                                                        placeholder="Cole o ID do paciente (MongoDB ObjectId)"
-                                                        className="w-full p-2 text-sm border border-gray-300 rounded font-mono text-xs focus:ring-2 focus:ring-teal-500"
-                                                    />
-                                                    <input
-                                                        type="text"
-                                                        value={formData.patient}
-                                                        onChange={(e) => setFormData(prev => ({ ...prev, patient: e.target.value }))}
-                                                        placeholder="Nome do paciente (para exibição)"
-                                                        className="w-full p-2 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-teal-500"
-                                                    />
-                                                    <p className="text-xs text-gray-500">
-                                                        💡 O ID pode ser encontrado no CRM ou na URL do perfil do paciente
-                                                    </p>
-                                                </div>
+                                                filteredPatients.map((p) => (
+                                                    <div
+                                                        key={p._id}
+                                                        className={`p-3 cursor-pointer border-b border-gray-100 last:border-0 hover:bg-teal-50 ${formData.patientId === p._id ? 'bg-teal-50 border-l-4 border-l-teal-500' : ''
+                                                            }`}
+                                                        onClick={() => selectPatient(p)}
+                                                    >
+                                                        <div className="font-semibold text-gray-800">{p.fullName}</div>
+                                                        <div className="text-xs text-gray-500 flex justify-between mt-1">
+                                                            <span>{p.phone || "Sem telefone"}</span>
+                                                            {p.dateOfBirth && (
+                                                                <span>{new Date(p.dateOfBirth).toLocaleDateString()}</span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                ))
                                             )}
                                         </div>
-                                    ) : (
-                                        <>
-                                            {/* Input de busca para filtrar */}
-                                            <div className="relative mb-2">
-                                                <input
-                                                    type="text"
-                                                    placeholder="Buscar paciente..."
-                                                    value={showSuggestions ? undefined : (formData.patient || "")}
-                                                    onChange={(e) => handlePatientChange(e.target.value)}
-                                                    onFocus={() => {
-                                                        setShowSuggestions(true);
-                                                        setFilteredPatients(patients.slice(0, 10));
-                                                    }}
-                                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
-                                                />
-                                                <i className="fas fa-search absolute right-3 top-3.5 text-gray-400"></i>
-                                            </div>
-
-                                            {/* Lista de pacientes */}
-                                            {showSuggestions && (
-                                                <div className="border border-gray-200 rounded-lg max-h-48 overflow-y-auto bg-white">
-                                                    {filteredPatients.length === 0 ? (
-                                                        <div className="p-3 text-gray-500 text-sm text-center">
-                                                            Nenhum paciente encontrado
-                                                        </div>
-                                                    ) : (
-                                                        filteredPatients.map((p) => (
-                                                            <div
-                                                                key={p._id}
-                                                                className={`p-3 cursor-pointer border-b border-gray-100 last:border-0 hover:bg-teal-50 ${
-                                                                    formData.patientId === p._id ? 'bg-teal-50 border-l-4 border-l-teal-500' : ''
-                                                                }`}
-                                                                onClick={() => selectPatient(p)}
-                                                            >
-                                                                <div className="font-semibold text-gray-800">{p.fullName}</div>
-                                                                <div className="text-xs text-gray-500 flex justify-between mt-1">
-                                                                    <span>{p.phone || "Sem telefone"}</span>
-                                                                    {p.dateOfBirth && (
-                                                                        <span>{new Date(p.dateOfBirth).toLocaleDateString()}</span>
-                                                                    )}
-                                                                </div>
-                                                            </div>
-                                                        ))
-                                                    )}
-                                                </div>
-                                            )}
-
-                                            {/* Resumo do paciente selecionado */}
-                                            {formData.patientId && (
-                                                <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded-lg">
-                                                    <p className="text-sm font-medium text-green-800">
-                                                        <i className="fas fa-user-check mr-2"></i>
-                                                        {formData.patient}
-                                                    </p>
-                                                    <p className="text-xs text-green-600 mt-1">
-                                                        Telefone: {formData.phone || "-"} | 
-                                                        Nasc: {formData.birthDate ? new Date(formData.birthDate).toLocaleDateString() : "-"}
-                                                    </p>
-                                                </div>
-                                            )}
-                                        </>
+                                    )}
+                                    {/* Resumo do paciente selecionado */}
+                                    {formData.patientId && (
+                                        <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+                                            <p className="text-sm font-medium text-green-800">
+                                                <i className="fas fa-user-check mr-2"></i>
+                                                {formData.patient}
+                                            </p>
+                                            <p className="text-xs text-green-600 mt-1">
+                                                Telefone: {formData.phone || "-"} |
+                                                Nasc: {formData.birthDate ? new Date(formData.birthDate).toLocaleDateString() : "-"}
+                                            </p>
+                                        </div>
                                     )}
                                 </div>
                             )}
                         </div>
+                    </div>
 
+                    {/* Seção: Contato e Responsável */}
+                    <div className="bg-purple-50/30 rounded-lg p-4 border border-purple-100">
+                        <h4 className="text-sm font-semibold text-purple-800 mb-3 flex items-center gap-2">
+                            <i className="fas fa-phone-alt text-purple-600"></i> Contato
+                        </h4>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-1">Telefone *</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Telefone *</label>
                                 <input
                                     type="text"
                                     name="phone"
@@ -797,23 +682,8 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                     required
                                 />
                             </div>
-
                             <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-1">Data de nascimento *</label>
-                                <input
-                                    type="date"
-                                    name="birthDate"
-                                    value={formData.birthDate}
-                                    onChange={handleChange}
-                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
-                                    required
-                                />
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-1">Email</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
                                 <input
                                     type="text"
                                     name="email"
@@ -822,22 +692,27 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                                 />
                             </div>
-
-                            <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-1">Responsável</label>
-                                <input
-                                    type="text"
-                                    name="responsible"
-                                    value={formData.responsible}
-                                    onChange={handleChange}
-                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
-                                />
-                            </div>
                         </div>
+                        <div className="mt-4">
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Responsável</label>
+                            <input
+                                type="text"
+                                name="responsible"
+                                value={formData.responsible}
+                                onChange={handleChange}
+                                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                            />
+                        </div>
+                    </div>
 
+                    {/* Seção: Dados do Agendamento */}
+                    <div className="bg-amber-50/30 rounded-lg p-4 border border-amber-100">
+                        <h4 className="text-sm font-semibold text-amber-800 mb-3 flex items-center gap-2">
+                            <i className="fas fa-calendar-alt text-amber-600"></i> Data e Hora
+                        </h4>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-1">Data *</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Data *</label>
                                 <input
                                     type="date"
                                     name="date"
@@ -847,9 +722,8 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                     required
                                 />
                             </div>
-
                             <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-1">Horário *</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Horário *</label>
                                 <input
                                     type="time"
                                     name="time"
@@ -863,10 +737,16 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                 </p>
                             </div>
                         </div>
+                    </div>
 
+                    {/* Seção: Profissional e Especialidade */}
+                    <div className="bg-emerald-50/30 rounded-lg p-4 border border-emerald-100">
+                        <h4 className="text-sm font-semibold text-emerald-800 mb-3 flex items-center gap-2">
+                            <i className="fas fa-user-md text-emerald-600"></i> Profissional
+                        </h4>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-1">Profissional *</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Profissional *</label>
                                 <select
                                     name="professional"
                                     value={formData.professional}
@@ -881,16 +761,15 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                     ))}
                                 </select>
                             </div>
-
                             <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-1">Especialidade *</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Especialidade *</label>
                                 <select
                                     name="specialty"
                                     value={formData.specialty}
                                     onChange={handleChange}
                                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                                 >
-                                      <option value="fonoaudiologia">Fonoaudiologia</option>
+                                    <option value="fonoaudiologia">Fonoaudiologia</option>
                                     <option value="psicologia">Psicologia</option>
                                     <option value="terapia_ocupacional">Terapia Ocupacional</option>
                                     <option value="fisioterapia">Fisioterapia</option>
@@ -904,25 +783,30 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                 </select>
                             </div>
                         </div>
+                    </div>
 
-                        <div>
-                            <label className="block text-sm font-bold text-gray-700 mb-1">Status Operacional *</label>
-                            <select
-                                name="operationalStatus"
-                                value={formData.operationalStatus}
-                                onChange={handleChange}
-                                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
-                            >
-                                <option value="scheduled">Agendado</option>
-                                <option value="pre_agendado">⭐ Pré-Agendado</option>
-                                <option value="canceled">Cancelado</option>
-                                <option value="missed">Faltou</option>
-                            </select>
-                        </div>
-
+                    {/* Seção: Status */}
+                    <div className="bg-rose-50/30 rounded-lg p-4 border border-rose-100">
+                        <h4 className="text-sm font-semibold text-rose-800 mb-3 flex items-center gap-2">
+                            <i className="fas fa-flag text-rose-600"></i> Status
+                        </h4>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-1">Tipo (CRM)</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Status Operacional *</label>
+                                <select
+                                    name="operationalStatus"
+                                    value={formData.operationalStatus}
+                                    onChange={(e) => { console.log("🚨 SELECT OPERACIONAL onChange:", e.target.value); handleChange(e); }}
+                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                >
+                                    <option value="scheduled">Agendado</option>
+                                    <option value="pre_agendado">⭐ Pré-Agendado</option>
+                                    <option value="canceled">Cancelado</option>
+                                    <option value="missed">Faltou</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Tipo (CRM)</label>
                                 <select
                                     name="crm.serviceType"
                                     value={formData.crm.serviceType}
@@ -933,184 +817,150 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                     <option value="package_session">Sessão de pacote</option>
                                 </select>
                             </div>
+                        </div>
+                    </div>
 
+                    {/* Seção: Faturamento */}
+                    <div className="bg-indigo-50/30 rounded-lg p-4 border border-indigo-100">
+                        <div className="flex justify-between items-center mb-3">
+                            <h4 className="text-sm font-semibold text-indigo-800 flex items-center gap-2">
+                                <i className="fas fa-dollar-sign text-indigo-600"></i> Faturamento
+                            </h4>
+                            {isEdit && (
+                                <button
+                                    type="button"
+                                    onClick={async () => {
+                                        if (!appointment?.id) return;
+                                        setIsLoadingDetails(true);
+                                        try {
+                                            const response = await api.get(`/api/appointments/${appointment.id}`);
+                                            const data = response.data.data || response.data;
+                                            setFormData(prev => ({
+                                                ...prev,
+                                                paymentStatus: data.paymentStatus || prev.paymentStatus,
+                                                billingType: data.billingType || prev.billingType,
+                                                insuranceProvider: data.insuranceProvider || prev.insuranceProvider,
+                                                insuranceValue: data.insuranceValue ?? prev.insuranceValue,
+                                                authorizationCode: data.authorizationCode || prev.authorizationCode,
+                                                crm: {
+                                                    serviceType: data.serviceType === 'evaluation' ? 'individual_session' :
+                                                        data.serviceType === 'session' ? 'package_session' : prev.crm.serviceType,
+                                                    sessionType: data.serviceType === 'evaluation' ? 'avaliacao' :
+                                                        data.serviceType === 'session' ? 'sessao' : prev.crm.sessionType,
+                                                    paymentMethod: data.paymentMethod || prev.crm.paymentMethod,
+                                                    paymentAmount: Number(data.sessionValue ?? prev.crm.paymentAmount),
+                                                    usePackage: data.serviceType === 'session' || !!data.package,
+                                                }
+                                            }));
+                                            alert("Dados recarregados do servidor!");
+                                        } catch (error) {
+                                            console.error("❌ Erro ao recarregar:", error);
+                                            alert("Erro ao recarregar dados");
+                                        } finally {
+                                            setIsLoadingDetails(false);
+                                        }
+                                    }}
+                                    disabled={isLoadingDetails}
+                                    className="text-xs bg-indigo-100 hover:bg-indigo-200 text-indigo-600 px-2 py-1 rounded flex items-center gap-1"
+                                >
+                                    {isLoadingDetails ? (
+                                        <><i className="fas fa-spinner fa-spin"></i> Carregando...</>
+                                    ) : (
+                                        <><i className="fas fa-sync-alt"></i> Recarregar do servidor</>
+                                    )}
+                                </button>
+                            )}
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                             <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-1">Tipo de sessão</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Faturamento *</label>
                                 <select
-                                    name="crm.sessionType"
-                                    value={formData.crm.sessionType}
+                                    name="billingType"
+                                    value={formData.billingType}
                                     onChange={handleChange}
                                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                    required
                                 >
-                                    <option value="avaliacao">Avaliação</option>
-                                    <option value="sessao">Sessão</option>
+                                    <option value="particular">Particular</option>
+                                    <option value="convenio">Convênio</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Status do Pagamento *</label>
+                                <select
+                                    name="paymentStatus"
+                                    value={formData.paymentStatus}
+                                    onChange={handleChange}
+                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                    required
+                                >
+                                    <option value="pending">Pendente</option>
+                                    <option value="paid">Pago</option>
+                                    <option value="pending_receipt">Aguardando Recibo</option>
+                                    <option value="canceled">Cancelado</option>
                                 </select>
                             </div>
                         </div>
 
-                        {/* Seção de Faturamento */}
-                        <div className="border-t border-gray-200 pt-4 mt-4">
-                            <div className="flex justify-between items-center mb-3">
-                                <h4 className="text-sm font-bold text-gray-800 flex items-center gap-2">
-                                    <i className="fas fa-dollar-sign text-teal-600"></i>
-                                    Dados de Faturamento
-                                </h4>
-                                {isEdit && (
-                                    <button
-                                        type="button"
-                                        onClick={async () => {
-                                            if (!appointment?.id) return;
-                                            setIsLoadingDetails(true);
-                                            try {
-                                                const response = await api.get(`/api/appointments/${appointment.id}`);
-                                                const data = response.data.data || response.data;
-                                                console.log("🔄 [AppointmentModal] Recarregando dados do servidor:", data);
-                                                
-                                                setFormData(prev => ({
-                                                    ...prev,
-                                                    paymentStatus: data.paymentStatus || prev.paymentStatus,
-                                                    billingType: data.billingType || prev.billingType,
-                                                    insuranceProvider: data.insuranceProvider || prev.insuranceProvider,
-                                                    insuranceValue: data.insuranceValue ?? prev.insuranceValue,
-                                                    authorizationCode: data.authorizationCode || prev.authorizationCode,
-                                                    crm: {
-                                                        serviceType: data.serviceType === 'evaluation' ? 'individual_session' : 
-                                                                     data.serviceType === 'session' ? 'package_session' : 
-                                                                     prev.crm.serviceType,
-                                                        sessionType: data.serviceType === 'evaluation' ? 'avaliacao' : 
-                                                                     data.serviceType === 'session' ? 'sessao' : 
-                                                                     prev.crm.sessionType,
-                                                        paymentMethod: data.paymentMethod || prev.crm.paymentMethod,
-                                                        paymentAmount: Number(data.sessionValue ?? prev.crm.paymentAmount),
-                                                        usePackage: data.serviceType === 'session' || !!data.package,
-                                                    }
-                                                }));
-                                                alert("Dados recarregados do servidor!");
-                                            } catch (error) {
-                                                console.error("❌ Erro ao recarregar:", error);
-                                                alert("Erro ao recarregar dados");
-                                            } finally {
-                                                setIsLoadingDetails(false);
-                                            }
-                                        }}
-                                        disabled={isLoadingDetails}
-                                        className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 px-2 py-1 rounded flex items-center gap-1"
-                                    >
-                                        {isLoadingDetails ? (
-                                            <><i className="fas fa-spinner fa-spin"></i> Carregando...</>
-                                        ) : (
-                                            <><i className="fas fa-sync-alt"></i> Recarregar do servidor</>
-                                        )}
-                                    </button>
-                                )}
-                            </div>
-                            
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        {formData.billingType === 'convenio' && (
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                                 <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-1">Tipo de Faturamento *</label>
-                                    <select
-                                        name="billingType"
-                                        value={formData.billingType}
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Convênio</label>
+                                    <input
+                                        type="text"
+                                        name="insuranceProvider"
+                                        value={formData.insuranceProvider}
                                         onChange={handleChange}
                                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
-                                        required
-                                    >
-                                        <option value="particular">Particular</option>
-                                        <option value="convenio">Convênio</option>
-                                    </select>
+                                        placeholder="Nome do convênio"
+                                    />
                                 </div>
-
                                 <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-1">Status do Pagamento *</label>
-                                    <select
-                                        name="paymentStatus"
-                                        value={formData.paymentStatus}
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Valor (R$)</label>
+                                    <input
+                                        type="number"
+                                        name="insuranceValue"
+                                        value={formData.insuranceValue}
                                         onChange={handleChange}
                                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
-                                        required
-                                    >
-                                        <option value="pending">Pendente</option>
-                                        <option value="paid">Pago</option>
-                                        <option value="pending_receipt">Aguardando Recibo</option>
-                                        <option value="canceled">Cancelado</option>
-                                    </select>
+                                        min="0"
+                                        step="0.01"
+                                        placeholder="0,00"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Cód. Autorização</label>
+                                    <input
+                                        type="text"
+                                        name="authorizationCode"
+                                        value={formData.authorizationCode}
+                                        onChange={handleChange}
+                                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                        placeholder="Código da autorização"
+                                    />
                                 </div>
                             </div>
+                        )}
 
-                            {formData.billingType === 'convenio' && (
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                                    <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-1">Convênio</label>
-                                        <input
-                                            type="text"
-                                            name="insuranceProvider"
-                                            value={formData.insuranceProvider}
-                                            onChange={handleChange}
-                                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
-                                            placeholder="Nome do convênio"
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-1">Valor do Convênio (R$)</label>
-                                        <input
-                                            type="number"
-                                            name="insuranceValue"
-                                            value={formData.insuranceValue}
-                                            onChange={handleChange}
-                                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
-                                            min="0"
-                                            step="0.01"
-                                            placeholder="0,00"
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-1">Código de Autorização</label>
-                                        <input
-                                            type="text"
-                                            name="authorizationCode"
-                                            value={formData.authorizationCode}
-                                            onChange={handleChange}
-                                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
-                                            placeholder="Código da autorização"
-                                        />
-                                    </div>
+                        {/* Info do Pacote */}
+                        {formData.package && (
+                            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                                <h5 className="text-sm font-bold text-blue-800 mb-2 flex items-center">
+                                    <i className="fas fa-box mr-1"></i> Pacote Ativo
+                                </h5>
+                                <div className="grid grid-cols-2 gap-2 text-sm">
+                                    <div><span className="text-blue-600">Valor da Sessão:</span> R$ {formData.package.sessionValue}</div>
+                                    <div><span className="text-blue-600">Total de Sessões:</span> {formData.package.totalSessions}</div>
+                                    <div><span className="text-blue-600">Status:</span> {formData.package.financialStatus}</div>
+                                    <div><span className="text-blue-600">Total Pago:</span> R$ {formData.package.totalPaid}</div>
                                 </div>
-                            )}
-
-                            {/* Info do Pacote */}
-                            {formData.package && (
-                                <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                                    <h5 className="text-sm font-bold text-blue-800 mb-2">
-                                        <i className="fas fa-box mr-1"></i>
-                                        Pacote Ativo
-                                    </h5>
-                                    <div className="grid grid-cols-2 gap-2 text-sm">
-                                        <div>
-                                            <span className="text-blue-600">Valor da Sessão:</span>
-                                            <span className="ml-1 font-semibold">R$ {formData.package.sessionValue}</span>
-                                        </div>
-                                        <div>
-                                            <span className="text-blue-600">Total de Sessões:</span>
-                                            <span className="ml-1 font-semibold">{formData.package.totalSessions}</span>
-                                        </div>
-                                        <div>
-                                            <span className="text-blue-600">Status Financeiro:</span>
-                                            <span className="ml-1 font-semibold">{formData.package.financialStatus}</span>
-                                        </div>
-                                        <div>
-                                            <span className="text-blue-600">Total Pago:</span>
-                                            <span className="ml-1 font-semibold">R$ {formData.package.totalPaid}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
+                            </div>
+                        )}
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-1">Forma de Pagamento (CRM)</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Forma de Pagamento (CRM)</label>
                                 <select
                                     name="crm.paymentMethod"
                                     value={formData.crm.paymentMethod}
@@ -1123,9 +973,8 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                     <option value="debit_card">Cartão Débito</option>
                                 </select>
                             </div>
-
                             <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-1">
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
                                     Valor da Sessão (R$)
                                     {formData.paymentStatus === 'paid' && (
                                         <span className="ml-2 text-xs font-normal text-green-600 bg-green-100 px-2 py-0.5 rounded">
@@ -1139,11 +988,10 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                     value={formData.crm.paymentAmount}
                                     onChange={handleChange}
                                     disabled={formData.paymentStatus === 'paid'}
-                                    className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 ${
-                                        formData.paymentStatus === 'paid' 
-                                            ? 'bg-gray-100 text-gray-500 cursor-not-allowed border-gray-300' 
+                                    className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 ${formData.paymentStatus === 'paid'
+                                            ? 'bg-gray-100 text-gray-500 cursor-not-allowed border-gray-300'
                                             : 'border-gray-300'
-                                    }`}
+                                        }`}
                                     min="0"
                                     step="0.01"
                                     placeholder="0,00"
@@ -1154,77 +1002,68 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                         Valor diferente do pacote (R$ {formData.package.sessionValue})
                                     </p>
                                 )}
-                                {/* Aviso quando valor é 0 mas status indica que deveria ter valor */}
                                 {formData.crm.paymentAmount === 0 && (formData.paymentStatus === 'paid' || formData.paymentStatus === 'pending_receipt') && !formData.package && (
                                     <p className="text-xs text-red-500 mt-1 font-semibold">
                                         <i className="fas fa-exclamation-circle mr-1"></i>
-                                        Atenção: Valor zerado mas status é '{formData.paymentStatus}'. 
-                                        Verifique se o valor foi carregado corretamente do banco.
+                                        Atenção: Valor zerado mas status é '{formData.paymentStatus}'. Verifique se o valor foi carregado corretamente do banco.
                                     </p>
                                 )}
                             </div>
                         </div>
 
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 mt-4">
                             <input
                                 id="usePackage"
                                 type="checkbox"
                                 name="crm.usePackage"
                                 checked={!!formData.crm.usePackage}
                                 onChange={handleChange}
+                                className="w-4 h-4 text-teal-600 rounded focus:ring-teal-500"
                             />
-                            <label htmlFor="usePackage" className="text-sm text-gray-700 font-semibold">
+                            <label htmlFor="usePackage" className="text-sm text-gray-700 font-medium">
                                 Usar pacote (se houver)
                             </label>
                         </div>
-
-                        <div>
-                            <label className="block text-sm font-bold text-gray-700 mb-1">Observações</label>
-                            <textarea
-                                name="observations"
-                                value={formData.observations}
-                                onChange={handleChange}
-                                rows="3"
-                                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
-                            />
-                        </div>
-
-                        {/* debug opcional */}
-                        <div className="text-xs text-gray-400">
-                            specialtyKey: <span className="font-mono">{formData.specialtyKey}</span>
-                        </div>
                     </div>
 
+                    {/* Seção: Observações */}
+                    <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Observações</label>
+                        <textarea
+                            name="observations"
+                            value={formData.observations}
+                            onChange={handleChange}
+                            rows="3"
+                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                        />
+                    </div>
+
+                    {/* debug opcional */}
+                    <div className="text-xs text-gray-400">
+                        specialtyKey: <span className="font-mono">{formData.specialtyKey}</span>
+                    </div>
+
+                    {/* Botões de ação */}
                     <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3 bg-gray-50 sticky bottom-0">
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="px-5 py-2 rounded-lg border border-gray-300 text-gray-700 font-medium hover:bg-gray-100 transition-colors"
+                        >
+                            Cancelar
+                        </button>
                         <button
                             type="submit"
                             disabled={isLoading}
-                            className={`px-4 py-2 rounded-lg font-semibold flex items-center justify-center gap-2
-        ${isLoading
+                            className={`px-5 py-2 rounded-lg font-semibold flex items-center justify-center gap-2 ${isLoading
                                     ? "bg-gray-400 cursor-not-allowed text-white"
-                                    : "bg-teal-600 hover:bg-teal-700 text-white"
+                                    : "bg-teal-600 hover:bg-teal-700 text-white shadow-sm"
                                 }`}
                         >
                             {isLoading && (
-                                <svg
-                                    className="animate-spin h-4 w-4 text-white"
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <circle
-                                        className="opacity-25"
-                                        cx="12"
-                                        cy="12"
-                                        r="10"
-                                        stroke="currentColor"
-                                        strokeWidth="4"
-                                    />
-                                    <path
-                                        className="opacity-75"
-                                        fill="currentColor"
-                                        d="M4 12a8 8 0 018-8v8H4z"
-                                    />
+                                <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
                                 </svg>
                             )}
                             {isLoading
@@ -1235,10 +1074,10 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                         ? "Atualizar Agendamento"
                                         : "Criar Agendamento"}
                         </button>
-
                     </div>
                 </form>
             </div>
         </div>
     );
+
 }
