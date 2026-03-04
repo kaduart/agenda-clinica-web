@@ -31,7 +31,7 @@ import {
   generateCycleAppointments,
 } from "./services/appointmentsRepo";
 
-import { approvePreAppointment, discardPreAppointment } from "./services/preAppointmentsRepo";
+import { approvePreAppointment, discardPreAppointment, updatePreAppointment } from "./services/preAppointmentsRepo";
 
 import {
   addProfessional,
@@ -304,6 +304,39 @@ export default function App() {
     }
   };
 
+  // CONFIRMAR pré-agendamento (converter em agendamento real)
+  const onConfirmPreAppointment = async (appointmentData) => {
+    const appointmentId = editingAppointment?.id;
+    if (!appointmentId) return;
+    
+    try {
+      console.log("🔥 [onConfirmPreAppointment] Confirmando Pré-Agendamento...");
+      
+      const doc = (professionals || []).find(p => p.fullName === appointmentData.professional);
+
+      // Envia apenas os campos que o backend espera
+      const importData = {
+        doctorId: doc?.id || appointmentData.professionalId,
+        date: appointmentData.date,
+        time: appointmentData.time,
+        sessionValue: Number(appointmentData.crm?.paymentAmount || 0),
+        serviceType: appointmentData.crm?.serviceType === 'package_session' ? 'session' : 'evaluation',
+        paymentMethod: appointmentData.crm?.paymentMethod || 'pix',
+        notes: appointmentData.observations
+      };
+
+      console.log("📤 [onConfirmPreAppointment] Enviando:", importData);
+      await approvePreAppointment(appointmentId, importData);
+      toast.success("Agendamento confirmado com sucesso!");
+      setIsModalOpen(false);
+      setEditingAppointment(null);
+      forceRefreshAppointments();
+    } catch (err) {
+      console.error("❌ Erro ao confirmar pré-agendamento:", err);
+      toast.error("Erro ao confirmar: " + (err.response?.data?.error || err.message));
+    }
+  };
+
   // CANCELAR específico (Unificado: Soft Delete para Regular e Discard para Pre)
   const onCancel = async (appointment) => {
     const isPre = appointment.__isPreAgendamento || appointment.operationalStatus === 'pre_agendado';
@@ -357,47 +390,43 @@ export default function App() {
     console.log("🔥 [saveAppointment] appointmentId:", appointmentId);
     console.log("🔥 [saveAppointment] isPreEditing:", isPreEditing);
 
-    if (isImportingPre) {
+    // Se for pré-agendamento, atualiza os dados (não importa/confirma ainda)
+    if (isPreEditing) {
       try {
-        console.log("🔥 [saveAppointment] Confirmando Pré-Agendamento...");
-        console.log("📋 [saveAppointment] patientId recebido:", appointmentData.patientId);
-        console.log("📋 [saveAppointment] isNewPatient recebido:", appointmentData.isNewPatient);
+        console.log("🔥 [saveAppointment] Atualizando Pré-Agendamento...");
         
         const doc = (professionals || []).find(p => p.fullName === appointmentData.professional);
 
-        const importData = {
-          doctorId: doc?.id,
-          date: appointmentData.date,
-          time: appointmentData.time,
-          sessionValue: Number(appointmentData.crm?.paymentAmount || 0),
-          // serviceType: 'evaluation' (avulsa) ou 'session' (pacote)
-          serviceType: appointmentData.crm?.serviceType === 'package_session' ? 'session' : 'evaluation',
-          // sessionType: 'avaliacao' ou 'sessao' (tipo da sessão)
-          sessionType: appointmentData.crm?.sessionType === 'sessao' ? 'sessao' : 'avaliacao',
-          paymentMethod: appointmentData.crm?.paymentMethod || 'pix',
-          notes: appointmentData.observations,
-          // IMPORTANTE: Envia patientId se for paciente existente
-          patientId: appointmentData.patientId || null,
-          isNewPatient: appointmentData.isNewPatient || false,
-          // Também envia os dados do paciente para o caso de ser novo
+        // Campos conforme modelo PreAgendamento do backend
+        const updateData = {
           patientInfo: {
             fullName: appointmentData.patientName || appointmentData.patient,
             phone: appointmentData.phone,
             birthDate: appointmentData.birthDate,
             email: appointmentData.email
-          }
+          },
+          professionalName: appointmentData.professional,
+          professionalId: doc?.id || appointmentData.professionalId,
+          specialty: (appointmentData.specialtyKey || appointmentData.specialty || 'fonoaudiologia').toLowerCase(),
+          preferredDate: appointmentData.date,
+          preferredTime: appointmentData.time,
+          secretaryNotes: [
+            appointmentData.responsible && `Responsável: ${appointmentData.responsible}`,
+            appointmentData.observations && `Obs: ${appointmentData.observations}`
+          ].filter(Boolean).join('\n')
         };
 
-        console.log("📤 [saveAppointment] Enviando para /api/pre-agendamento/${id}/importar:");
-        console.log("📤 [saveAppointment] Payload:", JSON.stringify(importData, null, 2));
-        await approvePreAppointment(appointmentId, importData);
-        toast.success("Agendamento confirmado com sucesso!");
+        console.log("📤 [saveAppointment] Atualizando pré-agendamento:", appointmentId);
+        console.log("📤 [saveAppointment] Payload:", JSON.stringify(updateData, null, 2));
+        await updatePreAppointment(appointmentId, updateData);
+        toast.success("Pré-agendamento atualizado!");
         setIsModalOpen(false);
         setEditingAppointment(null);
+        forceRefreshAppointments();
         return;
       } catch (err) {
-        console.error("❌ Erro ao confirmar pré-agendamento:", err);
-        toast.error("Erro ao confirmar: " + (err.response?.data?.error || err.message));
+        console.error("❌ Erro ao atualizar pré-agendamento:", err);
+        toast.error("Erro ao salvar: " + (err.response?.data?.error || err.message));
         return;
       }
     }
@@ -808,6 +837,7 @@ export default function App() {
             professionals={professionals}
             patients={patients}
             onSave={saveAppointment}
+            onConfirmPre={onConfirmPreAppointment}
             onClose={() => {
               setIsModalOpen(false);
               setEditingAppointment(null);

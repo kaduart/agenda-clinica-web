@@ -47,6 +47,27 @@ export const approvePreAppointment = async (id, data) => {
 };
 
 /**
+ * Atualiza um pré-agendamento existente (sem importar/confirmar)
+ * @param {string} id 
+ * @param {Object} data 
+ * @returns {Promise<Object>}
+ */
+export const updatePreAppointment = async (id, data) => {
+    console.log("📝 [preAppointmentsRepo] updatePreAppointment chamado");
+    console.log("📝 [preAppointmentsRepo] ID:", id);
+    
+    try {
+        // Usar PATCH conforme definido na rota do backend
+        const response = await api.patch(`/api/pre-agendamento/${id}`, data);
+        console.log("✅ [preAppointmentsRepo] Atualizado:", response.data);
+        return response.data;
+    } catch (error) {
+        console.error('❌ [preAppointmentsRepo] Erro ao atualizar pré-agendamento:', error.response?.data || error.message);
+        throw error;
+    }
+};
+
+/**
  * Descarta um pré-agendamento
  * @param {string} id 
  * @param {string} reason 

@@ -3,7 +3,7 @@ import { formatDateLocal, extractDateForInput } from "../utils/date";
 import { resolveSpecialtyKey } from "../utils/specialty";
 import api from "../services/api";
 
-export default function AppointmentModal({ appointment, professionals, patients, onSave, onClose, onReloadPatients, authError }) {
+export default function AppointmentModal({ appointment, professionals, patients, onSave, onConfirmPre, onClose, onReloadPatients, authError }) {
     const [formData, setFormData] = React.useState({
         patient: "",
         phone: "",
@@ -14,6 +14,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
         date: "",
         time: "",
         professional: "",
+        professionalName: "",
         professionalId: "",
         specialty: appointment?.specialty || "Fonoaudiologia",
         specialtyKey: appointment?.specialtyKey || resolveSpecialtyKey(appointment?.specialty || "Fonoaudiologia"),
@@ -98,8 +99,8 @@ export default function AppointmentModal({ appointment, professionals, patients,
                 // Dados do agendamento
                 date: appointment.date || today,
                 time: appointment.time || "08:00",
-                professional: profName || (professionals?.[0]?.fullName || ""),
-                professionalName: profName || (professionals?.[0]?.fullName || ""),  // alias para o backend
+                professional: profName || "",
+                professionalName: profName || "",  // alias para o backend
                 professionalId: dObj._id || appointment.professionalId || "",
                 specialty: appointment.specialty || "Fonoaudiologia",
                 specialtyKey:
@@ -155,7 +156,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                 patientId: "",
                 date: today,
                 time: "08:00",
-                professional: professionals?.[0]?.fullName || "",
+                professional: "",
                 professionalId: "",
                 specialty: "Fonoaudiologia",
                 specialtyKey: resolveSpecialtyKey("Fonoaudiologia"),
@@ -188,8 +189,11 @@ export default function AppointmentModal({ appointment, professionals, patients,
     // Busca detalhes completos quando abrir o modal (se não tiver os dados financeiros)
     React.useEffect(() => {
         const fetchDetailsIfNeeded = async () => {
-            // Só busca se tem ID válido e não tem os dados financeiros
-            if (appointment?.id && !appointment.id.startsWith('ext_')) {
+            // NÃO busca se for pré-agendamento (ainda não existe como agendamento real)
+            const isPreAgendamento = appointment?.__isPreAgendamento || appointment?.operationalStatus === 'pre_agendado';
+            
+            // Só busca se tem ID válido, não é pré-agendamento e não tem os dados financeiros
+            if (appointment?.id && !appointment.id.startsWith('ext_') && !isPreAgendamento) {
                 const missingFinancialData =
                     !appointment.serviceType ||
                     appointment.sessionValue === undefined ||
@@ -754,6 +758,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                                     required
                                 >
+                                    <option value="">Selecione um profissional</option>
                                     {(professionals || []).map((p, idx) => (
                                         <option key={idx} value={p.fullName}>
                                             {p.fullName}
@@ -1052,28 +1057,55 @@ export default function AppointmentModal({ appointment, professionals, patients,
                         >
                             Cancelar
                         </button>
-                        <button
-                            type="submit"
-                            disabled={isLoading}
-                            className={`px-5 py-2 rounded-lg font-semibold flex items-center justify-center gap-2 ${isLoading
-                                    ? "bg-gray-400 cursor-not-allowed text-white"
-                                    : "bg-teal-600 hover:bg-teal-700 text-white shadow-sm"
-                                }`}
-                        >
-                            {isLoading && (
-                                <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                                </svg>
-                            )}
-                            {isLoading
-                                ? "Processando..."
-                                : isPre
-                                    ? "Confirmar e Agendar"
+                        
+                        {isPre ? (
+                            // Botões para pré-agendamento: Salvar e Confirmar
+                            <>
+                                <button
+                                    type="submit"
+                                    disabled={isLoading}
+                                    className={`px-5 py-2 rounded-lg font-semibold flex items-center justify-center gap-2 ${isLoading
+                                            ? "bg-gray-400 cursor-not-allowed text-white"
+                                            : "bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
+                                        }`}
+                                >
+                                    {isLoading ? "Salvando..." : "💾 Salvar Alterações"}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => onConfirmPre && onConfirmPre(formData)}
+                                    disabled={isLoading}
+                                    className={`px-5 py-2 rounded-lg font-semibold flex items-center justify-center gap-2 ${isLoading
+                                            ? "bg-gray-400 cursor-not-allowed text-white"
+                                            : "bg-teal-600 hover:bg-teal-700 text-white shadow-sm"
+                                        }`}
+                                >
+                                    {isLoading ? "Processando..." : "✅ Confirmar Agendamento"}
+                                </button>
+                            </>
+                        ) : (
+                            // Botão normal para agendamentos
+                            <button
+                                type="submit"
+                                disabled={isLoading}
+                                className={`px-5 py-2 rounded-lg font-semibold flex items-center justify-center gap-2 ${isLoading
+                                        ? "bg-gray-400 cursor-not-allowed text-white"
+                                        : "bg-teal-600 hover:bg-teal-700 text-white shadow-sm"
+                                    }`}
+                            >
+                                {isLoading && (
+                                    <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                                    </svg>
+                                )}
+                                {isLoading
+                                    ? "Processando..."
                                     : isEdit
                                         ? "Atualizar Agendamento"
                                         : "Criar Agendamento"}
-                        </button>
+                            </button>
+                        )}
                     </div>
                 </form>
             </div>
