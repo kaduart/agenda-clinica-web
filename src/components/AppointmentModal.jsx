@@ -2,6 +2,7 @@ import React from "react";
 import { formatDateLocal, extractDateForInput } from "../utils/date";
 import { resolveSpecialtyKey } from "../utils/specialty";
 import api from "../services/api";
+import { sendWhatsAppMessage, generateConfirmationMessage, generateReminderMessage } from "../services/baileysApi";
 
 export default function AppointmentModal({ appointment, professionals, patients, onSave, onConfirmPre, onClose, onReloadPatients, authError }) {
     const [formData, setFormData] = React.useState({
@@ -708,6 +709,88 @@ export default function AppointmentModal({ appointment, professionals, patients,
                             />
                         </div>
                     </div>
+
+                    {/* 🆕 Seção: Confirmação WhatsApp (Baileys - envio direto) */}
+                    {formData.phone && formData.patient && (
+                        <div className="bg-emerald-50/50 rounded-lg p-4 border border-emerald-200">
+                            <h4 className="text-sm font-semibold text-emerald-800 mb-3 flex items-center gap-2">
+                                <i className="fab fa-whatsapp text-emerald-600"></i> Confirmação WhatsApp
+                            </h4>
+                            
+                            <div className="space-y-3">
+                                <p className="text-xs text-emerald-700">
+                                    ⚡ Envia mensagem direto pelo WhatsApp (sem abrir navegador)
+                                </p>
+                                
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    <button
+                                        type="button"
+                                        onClick={async () => {
+                                            try {
+                                                const message = generateConfirmationMessage({
+                                                    ...formData,
+                                                    fullName: formData.patient,
+                                                    professional: formData.professional
+                                                });
+                                                await sendWhatsAppMessage(formData.phone, message);
+                                                // Toast sucesso
+                                                const toast = document.createElement('div');
+                                                toast.className = 'fixed bottom-4 right-4 bg-emerald-500 text-white px-4 py-3 rounded-lg text-sm z-50 shadow-lg flex items-center gap-2';
+                                                toast.innerHTML = '<i class="fab fa-whatsapp text-lg"></i> <div><strong>✅ Enviado com sucesso!</strong><br>Confirmação enviada ao paciente</div>';
+                                                document.body.appendChild(toast);
+                                                setTimeout(() => toast.remove(), 3000);
+                                            } catch (err) {
+                                                // Toast erro
+                                                const toast = document.createElement('div');
+                                                toast.className = 'fixed bottom-4 right-4 bg-red-500 text-white px-4 py-3 rounded-lg text-sm z-50 shadow-lg flex items-center gap-2';
+                                                toast.innerHTML = `<i class="fas fa-exclamation-circle text-lg"></i> <div><strong>Erro ao enviar</strong><br>${err.error || 'WhatsApp não conectado'}</div>`;
+                                                document.body.appendChild(toast);
+                                                setTimeout(() => toast.remove(), 5000);
+                                            }
+                                        }}
+                                        className="flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-medium rounded-lg transition-colors"
+                                    >
+                                        <i className="fab fa-whatsapp"></i>
+                                        1️⃣ Enviar Confirmação
+                                    </button>
+                                    
+                                    <button
+                                        type="button"
+                                        onClick={async () => {
+                                            try {
+                                                const message = generateReminderMessage({
+                                                    ...formData,
+                                                    fullName: formData.patient
+                                                });
+                                                await sendWhatsAppMessage(formData.phone, message);
+                                                // Toast sucesso
+                                                const toast = document.createElement('div');
+                                                toast.className = 'fixed bottom-4 right-4 bg-amber-500 text-white px-4 py-3 rounded-lg text-sm z-50 shadow-lg flex items-center gap-2';
+                                                toast.innerHTML = '<i class="fab fa-whatsapp text-lg"></i> <div><strong>🔔 Enviado com sucesso!</strong><br>Lembrete enviado ao paciente</div>';
+                                                document.body.appendChild(toast);
+                                                setTimeout(() => toast.remove(), 3000);
+                                            } catch (err) {
+                                                // Toast erro
+                                                const toast = document.createElement('div');
+                                                toast.className = 'fixed bottom-4 right-4 bg-red-500 text-white px-4 py-3 rounded-lg text-sm z-50 shadow-lg flex items-center gap-2';
+                                                toast.innerHTML = `<i class="fas fa-exclamation-circle text-lg"></i> <div><strong>Erro ao enviar</strong><br>${err.error || 'WhatsApp não conectado'}</div>`;
+                                                document.body.appendChild(toast);
+                                                setTimeout(() => toast.remove(), 5000);
+                                            }
+                                        }}
+                                        className="flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-emerald-500 text-emerald-600 hover:bg-emerald-50 text-sm font-medium rounded-lg transition-colors"
+                                    >
+                                        <i className="far fa-clock"></i>
+                                        2️⃣ Enviar Lembrete
+                                    </button>
+                                </div>
+                                
+                                <p className="text-xs text-gray-500">
+                                    ⚠️ <strong>Aviso:</strong> Volume baixo (20-100/dia) = risco mínimo de banimento
+                                </p>
+                            </div>
+                        </div>
+                    )}
 
                     {/* Seção: Dados do Agendamento */}
                     <div className="bg-amber-50/30 rounded-lg p-4 border border-amber-100">
