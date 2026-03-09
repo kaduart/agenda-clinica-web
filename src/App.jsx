@@ -24,7 +24,7 @@ import {
   listenAppointmentsForMonth,
   listenToNotifications,
   upsertAppointment,
-
+  updateAppointmentDirect,
   cancelAppointment,
   hardDeleteAppointment,
   fetchAvailableSlots,
@@ -348,31 +348,25 @@ export default function App() {
   // CANCELAR específico (Unificado: Soft Delete para Regular e Discard para Pre)
   const onCancel = async (appointment) => {
     const isPre = appointment.__isPreAgendamento || appointment.operationalStatus === 'pre_agendado';
-    const actionName = isPre ? "descartar este interesse" : "cancelar este agendamento";
-
-    // Confirmação rápida (opcional, mas bom para evitar cliques acidentais se não tiver prompt)
-    // Para regular pede motivo, para pre poderia só confirmar ou pedir motivo também.
+    const actionName = isPre ? "cancelar este pré-agendamento" : "cancelar este agendamento";
 
     let reason = "Cancelado via Web App";
 
-    if (isPre) {
-      // Para pré, apenas confirmamos (ou usamos prompt se quiser motivo de descarte)
-      const ok = await confirmToast(`Deseja ${actionName}?`, { confirmText: "Confirmar", confirmColor: "red" });
-      if (!ok) return;
-      reason = "Descartado pela secretária";
-    } else {
-      reason = prompt("Motivo do cancelamento:", "Cancelado pelo paciente");
-      if (!reason) return;
-    }
+    // Para ambos, pedimos motivo
+    reason = prompt(`Motivo do cancelamento:`, isPre ? "Cancelado pelo paciente" : "Cancelado pelo paciente");
+    if (!reason) return;
 
     try {
-      if (isPre) {
-        await discardPreAppointment(appointment.id, reason);
-        toast.success("Interesse descartado (Cancelado)!");
-      } else {
-        await cancelAppointment(appointment.id, reason);
-        toast.success("Agendamento cancelado!");
-      }
+      // Em vez de deletar, apenas alteramos o status operacional para 'canceled'
+      await updateAppointmentDirect(appointment.id, {
+        ...appointment,
+        operationalStatus: 'canceled',
+        status: 'Cancelado',
+        observations: `${appointment.observations || ''}\n[CANCELADO] ${reason}`.trim()
+      });
+      
+      toast.success(isPre ? "Pré-agendamento cancelado!" : "Agendamento cancelado!");
+      
       // Force refresh imediato para atualizar a lista
       forceRefreshAppointments();
     } catch (e) {
