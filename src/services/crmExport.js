@@ -297,7 +297,7 @@ export const confirmarAgendamento = async (appointment, dadosConfirmacao) => {
                     exportedAt: new Date().toISOString(),
                 },
                 preAgendamento: {
-                    status: "importado",
+                    status: "agendado",
                     crmPreAgendamentoId: data.preAgendamentoId,
                 }
             });

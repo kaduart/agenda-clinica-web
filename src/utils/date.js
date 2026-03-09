@@ -27,7 +27,12 @@ export const formatDateDisplay = (dateString) => {
 // Extrai yyyy-MM-dd de uma data ISO (ex: "2021-12-02T00:00:00.000Z" -> "2021-12-02")
 export const extractDateForInput = (isoDateString) => {
     if (!isoDateString) return "";
-    // Pega os primeiros 10 caracteres (yyyy-MM-dd) ou tenta criar uma data
+    // Se já está no formato yyyy-MM-dd, retorna direto (evita bug de timezone)
+    if (/^\d{4}-\d{2}-\d{2}$/.test(String(isoDateString))) return isoDateString;
+    // Para ISO com tempo, pega os primeiros 10 chars diretamente (evita conversão UTC→local)
+    if (String(isoDateString).length >= 10 && String(isoDateString).includes('T')) {
+        return String(isoDateString).substring(0, 10);
+    }
     const date = new Date(isoDateString);
     if (isNaN(date.getTime())) return "";
     const y = date.getFullYear();

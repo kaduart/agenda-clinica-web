@@ -76,7 +76,9 @@ export default function AppointmentModal({ appointment, professionals, patients,
             const prePatientId = appointment.originalData?.patientId || "";
 
             // Busca dados do paciente na lista de patients (se tiver ID)
-            const foundPatientId = pObj._id || appointment.patientId || prePatientId || "";
+            // Nota: appointment.patient pode ser string ID ou objeto populado
+            const patientStringId = typeof appointment.patient === 'string' ? appointment.patient : '';
+            const foundPatientId = pObj._id || appointment.patientId || prePatientId || patientStringId || "";
             console.log("🔍 [AppointmentModal] Buscando paciente na lista:", { foundPatientId, patientsCount: patients?.length });
             const foundPatient = foundPatientId ? (patients || []).find(p => p._id === foundPatientId) : null;
             console.log("🔍 [AppointmentModal] Paciente encontrado na lista:", foundPatient ? "SIM" : "NÃO", foundPatient?.fullName);
@@ -217,9 +219,11 @@ export default function AppointmentModal({ appointment, professionals, patients,
         console.log("🔄 [AppointmentModal] ========== useEffect PATIENTS ==========");
         
         // Tenta pegar patientId de várias fontes
-        const pid = formData.patientId || 
-                    appointment?.patientId || 
+        // appointment.patient pode ser string ID (não populado) ou objeto
+        const pid = formData.patientId ||
+                    appointment?.patientId ||
                     appointment?.patient?._id ||
+                    (typeof appointment?.patient === 'string' ? appointment.patient : '') ||
                     appointment?.originalData?.patientId;
         
         console.log("🔍 [AppointmentModal] Verificando:", {
