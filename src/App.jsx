@@ -346,7 +346,18 @@ export default function App() {
   };
 
   // CANCELAR específico (Unificado: Soft Delete para Regular e Discard para Pre)
+  const isCancellingRef = React.useRef(false);
+  
   const onCancel = async (appointment) => {
+    // Previne cliques duplos
+    if (isCancellingRef.current) {
+      console.log("⏳ [onCancel] Já está processando, ignorando clique duplo");
+      return;
+    }
+    
+    console.log("🔥 [onCancel] INICIANDO:", appointment.id, appointment.patientName || appointment.patient);
+    isCancellingRef.current = true;
+    
     const isPre = appointment.__isPreAgendamento || appointment.operationalStatus === 'pre_agendado';
     const actionName = isPre ? "descartar este pré-agendamento" : "cancelar este agendamento";
 
@@ -355,12 +366,18 @@ export default function App() {
     if (isPre) {
       // Para pré-agendamento: descarta (status = 'descartado')
       const ok = await confirmToast(`Deseja ${actionName}?`, { confirmText: "Confirmar", confirmColor: "red" });
-      if (!ok) return;
+      if (!ok) {
+        isCancellingRef.current = false;
+        return;
+      }
       reason = "Descartado pela secretária";
     } else {
       // Para agendamento real: pede motivo
       reason = prompt("Motivo do cancelamento:", "Cancelado pelo paciente");
-      if (!reason) return;
+      if (!reason) {
+        isCancellingRef.current = false;
+        return;
+      }
     }
 
     try {
@@ -378,6 +395,8 @@ export default function App() {
     } catch (e) {
       console.error("[onCancel]", e);
       toast.error("Erro ao cancelar: " + e.message);
+    } finally {
+      isCancellingRef.current = false;
     }
   };
 

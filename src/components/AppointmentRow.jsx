@@ -290,6 +290,7 @@ export default function AppointmentRow({ appointment, onEdit, onDelete, onRemind
                         type="button"
                         className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-amber-50 hover:text-amber-800 flex items-center gap-2"
                         onClick={() => {
+                          console.log("🖱️ [AppointmentRow] Botão CANCELAR clicado:", appointment.id);
                           onCancel?.(appointment);
                           setShowMenu(false);
                         }}
