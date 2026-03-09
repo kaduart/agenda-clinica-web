@@ -688,6 +688,19 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                 />
                             </div>
                             <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Data de nascimento *</label>
+                                <input
+                                    type="date"
+                                    name="birthDate"
+                                    value={formData.birthDate}
+                                    onChange={handleChange}
+                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                    required
+                                />
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                            <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
                                 <input
                                     type="text"
@@ -697,16 +710,16 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                                 />
                             </div>
-                        </div>
-                        <div className="mt-4">
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Responsável</label>
-                            <input
-                                type="text"
-                                name="responsible"
-                                value={formData.responsible}
-                                onChange={handleChange}
-                                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
-                            />
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Responsável</label>
+                                <input
+                                    type="text"
+                                    name="responsible"
+                                    value={formData.responsible}
+                                    onChange={handleChange}
+                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                />
+                            </div>
                         </div>
                     </div>
 
