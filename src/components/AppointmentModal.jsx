@@ -46,12 +46,9 @@ export default function AppointmentModal({ appointment, professionals, patients,
     }, [formData.operationalStatus]);
 
     React.useEffect(() => {
-        console.log("📝 [AppointmentModal] useEffect - appointment:", JSON.stringify(appointment, null, 2));
-        console.log("📝 [AppointmentModal] useEffect - appointment?.id:", appointment?.id);
-        console.log("📝 [AppointmentModal] useEffect - appointment?.serviceType:", appointment?.serviceType);
-        console.log("📝 [AppointmentModal] useEffect - appointment?.sessionValue:", appointment?.sessionValue);
-        console.log("📝 [AppointmentModal] useEffect - appointment?.paymentMethod:", appointment?.paymentMethod);
-        console.log("📝 [AppointmentModal] useEffect - appointment?.package:", appointment?.package);
+        console.log("📝 [AppointmentModal] ========== useEffect PRINCIPAL ==========");
+        console.log("📝 [AppointmentModal] appointment:", JSON.stringify(appointment, null, 2));
+        console.log("📝 [AppointmentModal] patients disponíveis:", patients?.length || 0);
         const today = formatDateLocal(new Date());
 
         if (appointment) {
@@ -78,6 +75,12 @@ export default function AppointmentModal({ appointment, professionals, patients,
             // Para pré-agendamentos, o patientId pode estar em originalData.patientId
             const prePatientId = appointment.originalData?.patientId || "";
 
+            // Busca dados do paciente na lista de patients (se tiver ID)
+            const foundPatientId = pObj._id || appointment.patientId || prePatientId || "";
+            console.log("🔍 [AppointmentModal] Buscando paciente na lista:", { foundPatientId, patientsCount: patients?.length });
+            const foundPatient = foundPatientId ? (patients || []).find(p => p._id === foundPatientId) : null;
+            console.log("🔍 [AppointmentModal] Paciente encontrado na lista:", foundPatient ? "SIM" : "NÃO", foundPatient?.fullName);
+
             // Extract professional data
             const dObj = (typeof appointment.doctor === 'object' && appointment.doctor !== null)
                 ? appointment.doctor
@@ -88,18 +91,38 @@ export default function AppointmentModal({ appointment, professionals, patients,
                 // Dados do paciente
                 patient: pName || "",
                 patientName: pName || "",  // alias para o backend
-                phone: pPhone || prePatientInfo.phone || "",
-                birthDate: extractDateForInput(appointment.birthDate) ||
-                    extractDateForInput(pObj.dateOfBirth) ||
-                    extractDateForInput(prePatientInfo.birthDate) ||
-                    "",
-                email: appointment.email || pObj.email || prePatientInfo.email || "",
-                responsible: appointment.responsible || "",
+                phone: pPhone || prePatientInfo.phone || foundPatient?.phone || "",
+                birthDate: (() => {
+                    const d1 = extractDateForInput(appointment.birthDate);
+                    const d2 = extractDateForInput(pObj.dateOfBirth);
+                    const d3 = extractDateForInput(prePatientInfo.birthDate);
+                    const d4 = extractDateForInput(foundPatient?.dateOfBirth);
+                    const final = d1 || d2 || d3 || d4 || "";
+                    console.log("🎂 [AppointmentModal] EXTRAINDO DATA:", { 
+                        appointmentBirthDate: appointment.birthDate, 
+                        pObjDateOfBirth: pObj.dateOfBirth, 
+                        prePatientBirthDate: prePatientInfo.birthDate,
+                        foundPatientDateOfBirth: foundPatient?.dateOfBirth,
+                        d1, d2, d3, d4, final
+                    });
+                    return final;
+                })(),
+                email: appointment.email || pObj.email || prePatientInfo.email || foundPatient?.email || "",
+                responsible: appointment.responsible || 
+                    foundPatient?.guardianName || 
+                    foundPatient?.responsible || 
+                    foundPatient?.parentName || "",
                 patientId: pObj._id || appointment.patientId || prePatientId || "",
 
-                // Dados do agendamento
-                date: appointment.date || today,
-                time: appointment.time || "08:00",
+                // Dados do agendamento (date/time para agendamentos, preferredDate/preferredTime para pré-agendamentos)
+                date: extractDateForInput(appointment.date) || 
+                    extractDateForInput(appointment.preferredDate) || 
+                    extractDateForInput(appointment.originalData?.preferredDate) || 
+                    today,
+                time: appointment.time || 
+                    appointment.preferredTime || 
+                    appointment.originalData?.preferredTime || 
+                    "08:00",
                 professional: profName || "",
                 professionalName: profName || "",  // alias para o backend
                 professionalId: dObj._id || appointment.professionalId || "",
@@ -146,6 +169,11 @@ export default function AppointmentModal({ appointment, professionals, patients,
                 visualFlag: appointment.visualFlag || "",
                 metadata: appointment.metadata || null,
             };
+            console.log("✅ [AppointmentModal] setFormData PRINCIPAL:", { 
+                patientId: formDataToSet.patientId, 
+                birthDate: formDataToSet.birthDate,
+                phone: formDataToSet.phone 
+            });
             setFormData(formDataToSet);
         } else {
             setFormData({
@@ -182,64 +210,131 @@ export default function AppointmentModal({ appointment, professionals, patients,
                 metadata: null,
             });
         }
-    }, [appointment, professionals]);
+    }, [appointment, professionals, patients]);
+
+    // Quando patients carregar ou appointment mudar, busca dados do paciente
+    React.useEffect(() => {
+        console.log("🔄 [AppointmentModal] ========== useEffect PATIENTS ==========");
+        
+        // Tenta pegar patientId de várias fontes
+        const pid = formData.patientId || 
+                    appointment?.patientId || 
+                    appointment?.patient?._id ||
+                    appointment?.originalData?.patientId;
+        
+        console.log("🔍 [AppointmentModal] Verificando:", {
+            formDataPatientId: formData.patientId,
+            appointmentPatientId: appointment?.patientId,
+            appointmentPatientObjId: appointment?.patient?._id,
+            prePatientId: appointment?.originalData?.patientId,
+            finalPid: pid,
+            patientsCount: patients?.length,
+            currentBirthDate: formData.birthDate
+        });
+        
+        if (!pid) {
+            console.log("⏳ [AppointmentModal] Sem patientId em nenhuma fonte");
+            return;
+        }
+        
+        if (!patients || patients.length === 0) {
+            console.log("⏳ [AppointmentModal] Patients ainda não carregou");
+            return;
+        }
+        
+        if (formData.birthDate && formData.birthDate !== "") {
+            console.log("✅ [AppointmentModal] Já tem data de nascimento:", formData.birthDate);
+            return;
+        }
+        
+        const patientFromList = patients.find(p => p._id === pid);
+        if (!patientFromList) {
+            console.log("❌ [AppointmentModal] Paciente não encontrado na lista:", pid);
+            console.log("📋 [AppointmentModal] IDs disponíveis:", patients.slice(0, 5).map(p => p._id));
+            return;
+        }
+        
+        console.log("✅ [AppointmentModal] Paciente encontrado na lista:", patientFromList.fullName, "birthDate:", patientFromList.dateOfBirth);
+        
+        if (!patientFromList.dateOfBirth) {
+            console.log("⚠️ [AppointmentModal] Paciente encontrado mas sem data de nascimento no cadastro");
+            return;
+        }
+        
+        console.log("🎯 [AppointmentModal] >>>>> Preenchendo data de nascimento:", patientFromList.dateOfBirth);
+        
+        setFormData(prev => ({
+            ...prev,
+            birthDate: extractDateForInput(patientFromList.dateOfBirth),
+            phone: prev.phone || patientFromList.phone || "",
+            email: prev.email || patientFromList.email || "",
+            responsible: prev.responsible || patientFromList.guardianName || patientFromList.responsible || ""
+        }));
+    }, [formData.patientId, patients, appointment]);
 
     // Estado para loading de detalhes (busca da API se necessário)
     const [isLoadingDetails, setIsLoadingDetails] = React.useState(false);
 
-    // Busca detalhes completos quando abrir o modal (se não tiver os dados financeiros)
+    // Busca detalhes completos quando abrir o modal de edição
     React.useEffect(() => {
         const fetchDetailsIfNeeded = async () => {
             // NÃO busca se for pré-agendamento (ainda não existe como agendamento real)
             const isPreAgendamento = appointment?.__isPreAgendamento || appointment?.operationalStatus === 'pre_agendado';
             
-            // Só busca se tem ID válido, não é pré-agendamento e não tem os dados financeiros
+            // Sempre busca dados atualizados da API para agendamentos existentes
             if (appointment?.id && !appointment.id.startsWith('ext_') && !isPreAgendamento) {
-                const missingFinancialData =
-                    !appointment.serviceType ||
-                    appointment.sessionValue === undefined ||
-                    appointment.sessionValue === null;
+                console.log("🔍 [AppointmentModal] Buscando detalhes do agendamento no servidor...");
+                setIsLoadingDetails(true);
+                try {
+                    const response = await api.get(`/api/appointments/${appointment.id}`);
+                    const data = response.data.data || response.data;
 
-                if (missingFinancialData) {
-                    console.log("🔍 [AppointmentModal] Buscando detalhes financeiros do servidor...");
-                    setIsLoadingDetails(true);
-                    try {
-                        const response = await api.get(`/api/appointments/${appointment.id}`);
-                        const data = response.data.data || response.data;
+                    console.log("🔍 [AppointmentModal] Detalhes completos recebidos:", {
+                        serviceType: data.serviceType,
+                        sessionValue: data.sessionValue,
+                        paymentMethod: data.paymentMethod,
+                        package: data.package ? 'Sim' : 'Não',
+                        paymentStatus: data.paymentStatus,
+                        billingType: data.billingType
+                    });
 
-                        console.log("🔍 [AppointmentModal] Detalhes recebidos:", {
-                            serviceType: data.serviceType,
+                    // Atualiza com os dados recebidos da API
+                    setFormData(prev => {
+                        console.log("🔍 [AppointmentModal] Atualizando dados do formulário:", {
                             sessionValue: data.sessionValue,
-                            paymentMethod: data.paymentMethod
+                            serviceType: data.serviceType,
+                            paymentMethod: data.paymentMethod,
+                            hasPackage: !!data.package
                         });
-
-                        // Só atualiza se o valor ainda estiver zerado no formData
-                        setFormData(prev => {
-                            const needsUpdate = prev.crm.paymentAmount === 0 && data.sessionValue > 0;
-                            if (!needsUpdate) return prev;
-
-                            console.log("🔍 [AppointmentModal] Atualizando valor do formulário:", data.sessionValue);
-                            return {
-                                ...prev,
-                                crm: {
-                                    ...prev.crm,
-                                    serviceType: data.serviceType === 'evaluation' ? 'individual_session' :
-                                        data.serviceType === 'session' ? 'package_session' :
-                                            prev.crm.serviceType,
-                                    sessionType: data.serviceType === 'evaluation' ? 'avaliacao' :
-                                        data.serviceType === 'session' ? 'sessao' :
-                                            prev.crm.sessionType,
-                                    paymentMethod: data.paymentMethod || prev.crm.paymentMethod,
-                                    paymentAmount: Number(data.sessionValue || prev.crm.paymentAmount),
-                                    usePackage: data.serviceType === 'session' || !!data.package,
-                                }
-                            };
-                        });
-                    } catch (error) {
-                        console.error("❌ [AppointmentModal] Erro ao buscar detalhes:", error);
-                    } finally {
-                        setIsLoadingDetails(false);
-                    }
+                        return {
+                            ...prev,
+                            // Dados do pacote se existir
+                            package: data.package || prev.package,
+                            // Dados de faturamento
+                            paymentStatus: data.paymentStatus || prev.paymentStatus,
+                            billingType: data.billingType || prev.billingType,
+                            insuranceProvider: data.insuranceProvider || prev.insuranceProvider,
+                            insuranceValue: data.insuranceValue ?? prev.insuranceValue,
+                            authorizationCode: data.authorizationCode || prev.authorizationCode,
+                            // Dados CRM
+                            crm: {
+                                ...prev.crm,
+                                serviceType: data.serviceType === 'evaluation' ? 'individual_session' :
+                                    data.serviceType === 'session' ? 'package_session' :
+                                        prev.crm.serviceType,
+                                sessionType: data.serviceType === 'evaluation' ? 'avaliacao' :
+                                    data.serviceType === 'session' ? 'sessao' :
+                                        prev.crm.sessionType,
+                                paymentMethod: data.paymentMethod || prev.crm.paymentMethod,
+                                paymentAmount: Number(data.sessionValue ?? prev.crm.paymentAmount),
+                                usePackage: data.serviceType === 'session' || !!data.package,
+                            }
+                        };
+                    });
+                } catch (error) {
+                    console.error("❌ [AppointmentModal] Erro ao buscar detalhes:", error);
+                } finally {
+                    setIsLoadingDetails(false);
                 }
             }
         };
@@ -481,8 +576,11 @@ export default function AppointmentModal({ appointment, professionals, patients,
             console.log("✅ [AppointmentModal] patientName:", dataToSave.patientName);
             console.log("✅ [AppointmentModal] Payload completo:", JSON.stringify(dataToSave, null, 2));
             await onSave(dataToSave);
+            // Só fecha o modal se deu sucesso (não throwou erro)
+            onClose();
         } catch (error) {
             console.error("Erro ao salvar:", error);
+            // Em caso de erro, mantém o modal aberto para o usuário corrigir
         } finally {
             setIsLoading(false);
         }
@@ -492,6 +590,49 @@ export default function AppointmentModal({ appointment, professionals, patients,
     const isPre = !!appointment?.__isPreAgendamento || appointment?.operationalStatus === 'pre_agendado';
     const isEdit = !!appointment?.id; // BLOQUEIA SEMPRE (só novo pode editar) // BLOQUEIA SÓ EM APPOINTMENT (não em pré-agendamento)
     const source = appointment?.source || appointment?.metadata?.origin?.source || appointment?.originalData?.source;
+
+    // Handler para confirmar pré-agendamento com loading
+    const handleConfirmPre = async () => {
+        if (!onConfirmPre) return;
+        
+        console.log("🚀 [AppointmentModal] handleConfirmPre - Iniciando...");
+        console.log("🚀 [AppointmentModal] formData:", formData);
+        console.log("🚀 [AppointmentModal] patientId:", formData.patientId);
+        console.log("🚀 [AppointmentModal] birthDate:", formData.birthDate);
+        
+        // Se não tem patientId mas temos patients carregados, tenta buscar
+        if (!formData.patientId && patients && patients.length > 0) {
+            console.log("🔍 [AppointmentModal] Buscando paciente na lista pelo nome...");
+            const foundByName = patients.find(p => 
+                p.fullName.toLowerCase().trim() === formData.patient.toLowerCase().trim()
+            );
+            if (foundByName) {
+                console.log("✅ [AppointmentModal] Paciente encontrado na lista:", foundByName._id);
+                // Atualiza o formData com o patientId encontrado
+                setFormData(prev => ({
+                    ...prev,
+                    patientId: foundByName._id
+                }));
+                // Chama com o patientId atualizado
+                const updatedFormData = { ...formData, patientId: foundByName._id };
+                
+                setIsLoading(true);
+                try {
+                    await onConfirmPre(updatedFormData);
+                } finally {
+                    setIsLoading(false);
+                }
+                return;
+            }
+        }
+        
+        setIsLoading(true);
+        try {
+            await onConfirmPre(formData);
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
     // Se for pré-agendamento, mapeamos de preferredDate/Time
     return (
@@ -1165,18 +1306,34 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                             : "bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
                                         }`}
                                 >
-                                    {isLoading ? "Salvando..." : "💾 Salvar Alterações"}
+                                    {isLoading ? (
+                                        <>
+                                            <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                                            </svg>
+                                            Salvando...
+                                        </>
+                                    ) : "💾 Salvar Alterações"}
                                 </button>
                                 <button
                                     type="button"
-                                    onClick={() => onConfirmPre && onConfirmPre(formData)}
+                                    onClick={handleConfirmPre}
                                     disabled={isLoading}
                                     className={`px-5 py-2 rounded-lg font-semibold flex items-center justify-center gap-2 ${isLoading
                                             ? "bg-gray-400 cursor-not-allowed text-white"
                                             : "bg-teal-600 hover:bg-teal-700 text-white shadow-sm"
                                         }`}
                                 >
-                                    {isLoading ? "Processando..." : "✅ Confirmar Agendamento"}
+                                    {isLoading ? (
+                                        <>
+                                            <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                                            </svg>
+                                            Processando...
+                                        </>
+                                    ) : "✅ Confirmar Agendamento"}
                                 </button>
                             </>
                         ) : (

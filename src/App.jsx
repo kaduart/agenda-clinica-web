@@ -311,10 +311,11 @@ export default function App() {
     
     try {
       console.log("🔥 [onConfirmPreAppointment] Confirmando Pré-Agendamento...");
+      console.log("🔥 [onConfirmPreAppointment] appointmentData:", appointmentData);
       
       const doc = (professionals || []).find(p => p.fullName === appointmentData.professional);
 
-      // Envia apenas os campos que o backend espera
+      // Envia todos os campos necessários para o backend
       const importData = {
         doctorId: doc?.id || appointmentData.professionalId,
         date: appointmentData.date,
@@ -322,7 +323,14 @@ export default function App() {
         sessionValue: Number(appointmentData.crm?.paymentAmount || 0),
         serviceType: appointmentData.crm?.serviceType === 'package_session' ? 'session' : 'evaluation',
         paymentMethod: appointmentData.crm?.paymentMethod || 'pix',
-        notes: appointmentData.observations
+        notes: appointmentData.observations,
+        // DADOS DO PACIENTE (obrigatórios para o backend)
+        patientId: appointmentData.patientId,
+        isNewPatient: appointmentData.isNewPatient,
+        birthDate: appointmentData.birthDate,
+        phone: appointmentData.phone,
+        email: appointmentData.email,
+        responsible: appointmentData.responsible
       };
 
       console.log("📤 [onConfirmPreAppointment] Enviando:", importData);
@@ -427,7 +435,7 @@ export default function App() {
       } catch (err) {
         console.error("❌ Erro ao atualizar pré-agendamento:", err);
         toast.error("Erro ao salvar: " + (err.response?.data?.error || err.message));
-        return;
+        throw err; // Propaga erro para o modal saber que falhou
       }
     }
 
@@ -469,6 +477,7 @@ export default function App() {
       console.error("[saveAppointment] Erro:", err);
       const msg = err.response?.data?.error || err.message;
       toast.error("Erro ao salvar: " + msg);
+      throw err; // Propaga erro para o modal saber que falhou
     }
   };
 
