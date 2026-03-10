@@ -598,7 +598,22 @@ export default function AppointmentModal({ appointment, professionals, patients,
     // Handler para confirmar pré-agendamento com loading
     const handleConfirmPre = async () => {
         if (!onConfirmPre) return;
-        
+
+        // Se o status foi alterado para cancelado, cancela em vez de confirmar
+        if (formData.operationalStatus === 'canceled' || formData.operationalStatus === 'cancelado') {
+            console.log("🚫 [handleConfirmPre] Status=canceled → chamando /cancelar");
+            setIsLoading(true);
+            try {
+                await api.post(`/api/pre-agendamento/${appointment.id}/cancelar`);
+                onClose();
+            } catch (err) {
+                alert("Erro ao cancelar: " + (err.response?.data?.error || err.message));
+            } finally {
+                setIsLoading(false);
+            }
+            return;
+        }
+
         console.log("🚀 [AppointmentModal] handleConfirmPre - Iniciando...");
         console.log("🚀 [AppointmentModal] formData:", formData);
         console.log("🚀 [AppointmentModal] patientId:", formData.patientId);

@@ -69,8 +69,8 @@ export const updatePreAppointment = async (id, data) => {
 
 /**
  * Descarta um pré-agendamento
- * @param {string} id 
- * @param {string} reason 
+ * @param {string} id
+ * @param {string} reason
  * @returns {Promise<Object>}
  */
 export const discardPreAppointment = async (id, reason) => {
@@ -79,6 +79,21 @@ export const discardPreAppointment = async (id, reason) => {
         return response.data;
     } catch (error) {
         console.error('❌ Erro ao descartar pré-agendamento:', error);
+        throw error;
+    }
+};
+
+/**
+ * Cancela um pré-agendamento (apenas altera status para 'cancelado')
+ * @param {string} id
+ * @returns {Promise<Object>}
+ */
+export const cancelPreAppointment = async (id) => {
+    try {
+        const response = await api.post(`/api/pre-agendamento/${id}/cancelar`);
+        return response.data;
+    } catch (error) {
+        console.error('❌ Erro ao cancelar pré-agendamento:', error);
         throw error;
     }
 };

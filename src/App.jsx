@@ -31,7 +31,7 @@ import {
   generateCycleAppointments,
 } from "./services/appointmentsRepo";
 
-import { approvePreAppointment, discardPreAppointment, updatePreAppointment } from "./services/preAppointmentsRepo";
+import { approvePreAppointment, discardPreAppointment, cancelPreAppointment, updatePreAppointment } from "./services/preAppointmentsRepo";
 
 import {
   addProfessional,
@@ -382,9 +382,9 @@ export default function App() {
 
     try {
       if (isPre) {
-        // Pré-agendamento: usa discard para marcar como 'descartado'
-        await discardPreAppointment(appointment.id, reason);
-        toast.success("Pré-agendamento descartado!");
+        // Pré-agendamento: cancela (status = 'cancelado')
+        await cancelPreAppointment(appointment.id);
+        toast.success("Pré-agendamento cancelado!");
       } else {
         // Agendamento real: cancela (soft delete / status cancelado)
         await cancelAppointment(appointment.id, reason);
@@ -417,9 +417,22 @@ export default function App() {
     console.log("🔥 [saveAppointment] appointmentId:", appointmentId);
     console.log("🔥 [saveAppointment] isPreEditing:", isPreEditing);
 
-    // Se for pré-agendamento, atualiza os dados (não importa/confirma ainda)
+    // Se for pré-agendamento, verifica se está cancelando ou apenas atualizando
     if (isPreEditing) {
       try {
+        console.log("🔍 [saveAppointment] isPre=true, operationalStatus recebido:", appointmentData.operationalStatus);
+        console.log("🔍 [saveAppointment] appointmentData completo:", JSON.stringify(appointmentData, null, 2));
+        // Se o status mudou para cancelado, chama a rota de cancelar
+        if (appointmentData.operationalStatus === 'canceled' || appointmentData.operationalStatus === 'cancelado') {
+          console.log("✅ [saveAppointment] Detectado cancelamento de pré-agendamento, chamando /cancelar");
+          await cancelPreAppointment(appointmentId);
+          toast.success("Pré-agendamento cancelado!");
+          setIsModalOpen(false);
+          setEditingAppointment(null);
+          forceRefreshAppointments();
+          return;
+        }
+
         console.log("🔥 [saveAppointment] Atualizando Pré-Agendamento...");
         
         const doc = (professionals || []).find(p => p.fullName === appointmentData.professional);
@@ -869,6 +882,7 @@ export default function App() {
             onClose={() => {
               setIsModalOpen(false);
               setEditingAppointment(null);
+              forceRefreshAppointments();
             }}
             onReloadPatients={async () => {
               console.log("🔄 [App.jsx] Recarregando pacientes...");

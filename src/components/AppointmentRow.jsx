@@ -34,7 +34,6 @@ export default function AppointmentRow({ appointment, onEdit, onDelete, onRemind
   };
 
   const specialtyKey = resolveSpecialtyKey(appointment);
-  const specialtyConfig = SPECIALTIES[specialtyKey];
 
   const hasReminder = !!(appointment.reminderText && !appointment.reminderDone);
 
@@ -124,7 +123,9 @@ export default function AppointmentRow({ appointment, onEdit, onDelete, onRemind
         ? "border-l-[8px] border-l-emerald-600 bg-emerald-100 hover:bg-emerald-200"
         : isPre
           ? "border-l-[8px] border-l-indigo-600 bg-indigo-50 hover:bg-indigo-100/60"
-          : `border-l-[8px] ${tone.border} ${tone.bg} ${tone.hover}`;
+          : appointment.operationalStatus === "scheduled"
+            ? "border-l-[8px] border-l-blue-600 bg-blue-100 hover:bg-blue-200"
+            : `border-l-[8px] ${tone.border} ${tone.bg} ${tone.hover}`;
 
   // Handler para enviar mensagem WhatsApp
   const handleWhatsAppSend = async (type) => {
