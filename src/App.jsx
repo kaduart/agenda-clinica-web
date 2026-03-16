@@ -623,11 +623,11 @@ export default function App() {
     // 2. Remover pré-agendamentos descartados/cancelados (não mostrar na agenda)
     base = base.filter(appointment => {
       if (!isPreAgendamento(appointment)) return true; // Mantém agendamentos reais
-      // Filtra pré-agendamentos descartados ou cancelados
+      // Filtra pré-agendamentos descartados, desistidos ou cancelados (não mostrar na agenda)
       // O status real está em metadata.preAgendamentoStatus ou originalData.status
       const realStatus = appointment.metadata?.preAgendamentoStatus || appointment.originalData?.status;
       if (realStatus === 'desistiu' || realStatus === 'descartado' || realStatus === 'cancelado') {
-        console.log(`[filteredAppointments] Filtrando pré-agendamento descartado: ${appointment.id} (${appointment.patientName}, status: ${realStatus})`);
+        console.log(`[filteredAppointments] Filtrando pré-agendamento finalizado: ${appointment.id} (${appointment.patientName}, status: ${realStatus})`);
         return false;
       }
       return true;
@@ -635,7 +635,9 @@ export default function App() {
 
     // 3. Remover pré-agendamentos duplicados (quando existe agendamento real para mesma data/hora/profissional)
     // Isso acontece quando o backend não remove o pré-agendamento após criar o agendamento real
-    const realAppointments = base.filter(a => !isPreAgendamento(a) && !["canceled", "missed", "Cancelado"].includes(a.operationalStatus || a.status));
+    // 🎯 NOTA: Incluímos TODOS os agendamentos reais (incluindo cancelados) para deduplicação
+    // pois um pré-agendamento convertido e depois cancelado ainda deve ser considerado duplicado
+    const realAppointments = base.filter(a => !isPreAgendamento(a));
     base = base.filter(appointment => {
       if (!isPreAgendamento(appointment)) return true; // Mantém agendamentos reais
       
