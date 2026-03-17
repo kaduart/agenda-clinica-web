@@ -626,7 +626,7 @@ export default function App() {
       // Filtra pré-agendamentos descartados, desistidos ou cancelados (não mostrar na agenda)
       // O status real está em metadata.preAgendamentoStatus ou originalData.status
       const realStatus = appointment.metadata?.preAgendamentoStatus || appointment.originalData?.status;
-      if (realStatus === 'desistiu' || realStatus === 'descartado' || realStatus === 'cancelado') {
+      if (realStatus === 'desistiu' || realStatus === 'descartado') { // 'cancelado' aparece no histórico
         console.log(`[filteredAppointments] Filtrando pré-agendamento finalizado: ${appointment.id} (${appointment.patientName}, status: ${realStatus})`);
         return false;
       }
