@@ -477,7 +477,7 @@ export default function App() {
     const candidate = {
       ...(isEditing ? editingAppointment : {}),
       ...appointmentData,
-      operationalStatus: appointmentData.operationalStatus || editingAppointment?.operationalStatus || "scheduled",
+      operationalStatus: appointmentData.operationalStatus || editingAppointment?.operationalStatus || "pre_agendado",
     };
     
     console.log("🔍 [App.jsx saveAppointment] candidate.operationalStatus final:", candidate.operationalStatus);
@@ -537,7 +537,7 @@ export default function App() {
       time: "08:00",
       professional: professionals[0] || "",
       specialty: specialtyLabel,
-      operationalStatus: "scheduled",
+      operationalStatus: "pre_agendado",
       patient: "",
       responsible: "",
       observations: "",
@@ -563,7 +563,7 @@ export default function App() {
         time: payload.time,
         professional: payload.professional || (professionals[0] || ""),
         specialty: specialtyLabel,
-        operationalStatus: "scheduled",
+        operationalStatus: "pre_agendado",
         patient: "",
         responsible: "",
         observations: "",

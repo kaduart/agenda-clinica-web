@@ -19,7 +19,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
         professionalId: "",
         specialty: appointment?.specialty || "Fonoaudiologia",
         specialtyKey: appointment?.specialtyKey || resolveSpecialtyKey(appointment?.specialty || "Fonoaudiologia"),
-        operationalStatus: appointment?.operationalStatus || "scheduled",
+        operationalStatus: appointment?.operationalStatus || "pre_agendado",
         status: "",
         observations: "",
         createdAt: appointment?.createdAt || null,
@@ -33,7 +33,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
             serviceType: appointment?.crm?.serviceType || "individual_session",
             sessionType: appointment?.crm?.sessionType || "avaliacao",
             paymentMethod: appointment?.crm?.paymentMethod || "pix",
-            paymentAmount: Number(appointment?.crm?.paymentAmount || 0),
+            paymentAmount: Number(appointment?.crm?.paymentAmount || appointment?.suggestedValue || 0),
             usePackage: !!appointment?.crm?.usePackage,
         },
         visualFlag: "",
@@ -132,7 +132,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                 specialtyKey:
                     appointment.specialtyKey ||
                     resolveSpecialtyKey(appointment.specialty || "Fonoaudiologia"),
-                operationalStatus: appointment.operationalStatus || "scheduled",
+                operationalStatus: appointment.operationalStatus || "pre_agendado",
                 status: appointment.status || "",
                 observations: appointment.observations || "",
                 createdAt: appointment.createdAt || null,
@@ -159,6 +159,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                     paymentAmount: Number(
                         appointment.crm?.paymentAmount ||
                         appointment.sessionValue ||
+                        appointment.suggestedValue ||
                         appointment.package?.sessionValue ||
                         0
                     ),
@@ -191,7 +192,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                 professionalId: "",
                 specialty: "Fonoaudiologia",
                 specialtyKey: resolveSpecialtyKey("Fonoaudiologia"),
-                operationalStatus: "scheduled",
+                operationalStatus: "pre_agendado",
                 status: "",
                 observations: "",
                 createdAt: null,
@@ -1315,7 +1316,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                         </button>
                         
                         {isPre ? (
-                            // Botões para pré-agendamento: Salvar e Confirmar
+                            // Pré-agendamento: Salvar (submit) + Confirmar (button)
                             <>
                                 <button
                                     type="submit"
@@ -1325,15 +1326,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                             : "bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
                                         }`}
                                 >
-                                    {isLoading ? (
-                                        <>
-                                            <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                                            </svg>
-                                            Salvando...
-                                        </>
-                                    ) : "💾 Salvar Alterações"}
+                                    {isLoading ? "Salvando..." : "💾 Salvar"}
                                 </button>
                                 <button
                                     type="button"
