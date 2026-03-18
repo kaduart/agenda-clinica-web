@@ -75,15 +75,29 @@ export default function AppointmentRow({ appointment, onEdit, onDelete, onRemind
   const rowToneBySpecialty = (key) => {
     switch (key) {
       case "fonoaudiologia":
-        return { bg: "bg-sky-300", hover: "hover:bg-sky-400", border: "border-l-sky-700" };
+        return { bg: "bg-teal-500", hover: "hover:bg-teal-600", border: "border-l-teal-700" };
       case "psicologia":
-        return { bg: "bg-violet-300", hover: "hover:bg-violet-400", border: "border-l-violet-700" };
+        return { bg: "bg-violet-500", hover: "hover:bg-violet-600", border: "border-l-violet-700" };
+      case "psicomotricidade":
+        return { bg: "bg-lime-500", hover: "hover:bg-lime-600", border: "border-l-lime-700" };
+      case "psicopedagogia":
+        return { bg: "bg-cyan-500", hover: "hover:bg-cyan-600", border: "border-l-cyan-700" };
       case "terapia_ocupacional":
-        return { bg: "bg-amber-300", hover: "hover:bg-amber-400", border: "border-l-amber-700" };
+        return { bg: "bg-amber-500", hover: "hover:bg-amber-600", border: "border-l-amber-700" };
       case "fisioterapia":
-        return { bg: "bg-teal-300", hover: "hover:bg-teal-400", border: "border-l-teal-700" };
+        return { bg: "bg-sky-500", hover: "hover:bg-sky-600", border: "border-l-sky-700" };
+      case "tongue_tie_test":
+        return { bg: "bg-fuchsia-500", hover: "hover:bg-fuchsia-600", border: "border-l-fuchsia-700" };
+      case "neuropsych_evaluation":
+        return { bg: "bg-rose-500", hover: "hover:bg-rose-600", border: "border-l-rose-700" };
+      case "pediatria":
+        return { bg: "bg-indigo-500", hover: "hover:bg-indigo-600", border: "border-l-indigo-700" };
+      case "neuroped":
+        return { bg: "bg-red-500", hover: "hover:bg-red-600", border: "border-l-red-700" };
+      case "musicoterapia":
+        return { bg: "bg-orange-500", hover: "hover:bg-orange-600", border: "border-l-orange-700" };
       default:
-        return { bg: "bg-gray-50", hover: "hover:bg-gray-100", border: "border-l-gray-300" };
+        return { bg: "bg-gray-400", hover: "hover:bg-gray-500", border: "border-l-gray-700" };
     }
   };
 
@@ -123,9 +137,7 @@ export default function AppointmentRow({ appointment, onEdit, onDelete, onRemind
         ? "border-l-[8px] border-l-emerald-600 bg-emerald-100 hover:bg-emerald-200"
         : isPre
           ? "border-l-[8px] border-l-indigo-600 bg-indigo-50 hover:bg-indigo-100/60"
-          : appointment.operationalStatus === "scheduled"
-            ? "border-l-[8px] border-l-blue-600 bg-blue-100 hover:bg-blue-200"
-            : `border-l-[8px] ${tone.border} ${tone.bg} ${tone.hover}`;
+          : `border-l-[8px] ${tone.border} ${tone.bg} ${tone.hover}`;
 
   // Handler para enviar mensagem WhatsApp
   const handleWhatsAppSend = async (type) => {
