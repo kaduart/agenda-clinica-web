@@ -283,8 +283,8 @@ export default function AppointmentModal({ appointment, professionals, patients,
     // Busca detalhes completos quando abrir o modal de edição
     React.useEffect(() => {
         const fetchDetailsIfNeeded = async () => {
-            // NÃO busca se for pré-agendamento (ainda não existe como agendamento real)
-            const isPreAgendamento = appointment?.__isPreAgendamento || appointment?.operationalStatus === 'pre_agendado';
+            // NÃO busca se for pré-agendamento da agenda externa (ainda não existe como agendamento real)
+            const isPreAgendamento = !!appointment?.__isPreAgendamento;
             
             // Sempre busca dados atualizados da API para agendamentos existentes
             if (appointment?.id && !appointment.id.startsWith('ext_') && !isPreAgendamento) {
@@ -353,8 +353,8 @@ export default function AppointmentModal({ appointment, professionals, patients,
 
     // Estado para controlar se é paciente novo ou existente
     const [isNewPatient, setIsNewPatient] = React.useState(() => {
-        // Detecta se é pré-agendamento
-        const isPre = !!appointment?.__isPreAgendamento || appointment?.operationalStatus === 'pre_agendado';
+        // Detecta se é pré-agendamento da agenda externa
+        const isPre = !!appointment?.__isPreAgendamento;
 
         // Se já tem patientId (direto ou em originalData para pré-agendamentos), é existente
         const hasPatientId = appointment?.patientId ||
@@ -372,8 +372,8 @@ export default function AppointmentModal({ appointment, professionals, patients,
         // Se está criando novo e não tem nada, assume novo por padrão
         if (!appointment?.id && !hasPatientName) return true;
 
-        // Se tem nome mas não tem ID, pode ser novo
-        return !hasPatientName;
+        // Sem patientId → sempre novo paciente (será criado no submit)
+        return true;
     });
 
     // Sincroniza isNewPatient quando formData.patientId muda (ex: ao carregar pré-agendamento)
@@ -592,8 +592,10 @@ export default function AppointmentModal({ appointment, professionals, patients,
     };
 
 
-    const isPre = !!appointment?.__isPreAgendamento || appointment?.operationalStatus === 'pre_agendado';
-    const isEdit = !!appointment?.id; // BLOQUEIA SEMPRE (só novo pode editar) // BLOQUEIA SÓ EM APPOINTMENT (não em pré-agendamento)
+    // isPre = APENAS pré-agendamentos da agenda externa (têm __isPreAgendamento)
+    // Agendamentos internos com status "pre_agendado" são appointments normais
+    const isPre = !!appointment?.__isPreAgendamento;
+    const isEdit = !!appointment?.id;
     const source = appointment?.source || appointment?.metadata?.origin?.source || appointment?.originalData?.source;
 
     // Handler para confirmar pré-agendamento com loading
@@ -1067,18 +1069,6 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                     <option value="missed">Faltou</option>
                                 </select>
                             </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Tipo (CRM)</label>
-                                <select
-                                    name="crm.serviceType"
-                                    value={formData.crm.serviceType}
-                                    onChange={handleChange}
-                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
-                                >
-                                    <option value="individual_session">Sessão avulsa</option>
-                                    <option value="package_session">Sessão de pacote</option>
-                                </select>
-                            </div>
                         </div>
                     </div>
 
@@ -1316,38 +1306,26 @@ export default function AppointmentModal({ appointment, professionals, patients,
                         </button>
                         
                         {isPre ? (
-                            // Pré-agendamento: Salvar (submit) + Confirmar (button)
-                            <>
-                                <button
-                                    type="submit"
-                                    disabled={isLoading}
-                                    className={`px-5 py-2 rounded-lg font-semibold flex items-center justify-center gap-2 ${isLoading
-                                            ? "bg-gray-400 cursor-not-allowed text-white"
-                                            : "bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
-                                        }`}
-                                >
-                                    {isLoading ? "Salvando..." : "💾 Salvar"}
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={handleConfirmPre}
-                                    disabled={isLoading}
-                                    className={`px-5 py-2 rounded-lg font-semibold flex items-center justify-center gap-2 ${isLoading
-                                            ? "bg-gray-400 cursor-not-allowed text-white"
-                                            : "bg-teal-600 hover:bg-teal-700 text-white shadow-sm"
-                                        }`}
-                                >
-                                    {isLoading ? (
-                                        <>
-                                            <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                                            </svg>
-                                            Processando...
-                                        </>
-                                    ) : "✅ Confirmar Agendamento"}
-                                </button>
-                            </>
+                            // Pré-agendamento: botão único que confirma (já envia dados atualizados)
+                            <button
+                                type="button"
+                                onClick={handleConfirmPre}
+                                disabled={isLoading}
+                                className={`px-5 py-2 rounded-lg font-semibold flex items-center justify-center gap-2 ${isLoading
+                                        ? "bg-gray-400 cursor-not-allowed text-white"
+                                        : "bg-teal-600 hover:bg-teal-700 text-white shadow-sm"
+                                    }`}
+                            >
+                                {isLoading ? (
+                                    <>
+                                        <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                                        </svg>
+                                        Processando...
+                                    </>
+                                ) : "✅ Confirmar Agendamento"}
+                            </button>
                         ) : (
                             // Botão normal para agendamentos
                             <button

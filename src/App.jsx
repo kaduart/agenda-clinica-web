@@ -407,7 +407,9 @@ export default function App() {
     console.log("🔥 [saveAppointment] appointmentData recebido:", JSON.stringify(appointmentData, null, 2));
     
     const appointmentId = editingAppointment?.id;
-    const isPreEditing = editingAppointment?.__isPreAgendamento || editingAppointment?.operationalStatus === 'pre_agendado';
+    // Pré-agendamento externo (da agenda externa) — identificado APENAS pela flag __isPreAgendamento
+    // Agendamentos internos com status "pre_agendado" são appointments normais, não entram aqui
+    const isPreEditing = !!editingAppointment?.__isPreAgendamento;
     const isEditing = !!appointmentId && !isPreEditing;
     const isImportingPre = isPreEditing;
     
@@ -477,7 +479,7 @@ export default function App() {
     const candidate = {
       ...(isEditing ? editingAppointment : {}),
       ...appointmentData,
-      operationalStatus: appointmentData.operationalStatus || editingAppointment?.operationalStatus || "pre_agendado",
+      operationalStatus: appointmentData.operationalStatus || editingAppointment?.operationalStatus || "scheduled",
     };
     
     console.log("🔍 [App.jsx saveAppointment] candidate.operationalStatus final:", candidate.operationalStatus);

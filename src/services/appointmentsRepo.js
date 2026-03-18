@@ -216,7 +216,7 @@ export const updateAppointmentDirect = async (appointmentId, appointmentData) =>
     console.log("📝 [updateAppointmentDirect] Enviando:", JSON.stringify(payload.crm, null, 2));
     console.log("📝 [updateAppointmentDirect] Payload operationalStatus:", payload.operationalStatus);
     
-    const response = await api.post('/api/import-from-agenda/sync-update', payload, {
+    const response = await api.post('/api/agenda-externa/update', payload, {
         timeout: 30000
     });
     
@@ -281,7 +281,7 @@ export const upsertAppointment = async ({ editingAppointment, appointmentData })
     
     // Criação -> Apenas cria o Pré-Agendamento (Pendente)
     console.log(`[upsertAppointment] Criando Pré-Agendamento...`);
-    const preRes = await api.post('/api/import-from-agenda', payload);
+    const preRes = await api.post('/api/agenda-externa/pre-agendar', payload);
 
     if (!preRes.data.success) {
         throw new Error(preRes.data.error || "Erro ao criar pré-agendamento");
@@ -412,7 +412,7 @@ export const confirmAppointment = async (preAgendamentoId) => {
     if (!preAgendamentoId) throw new Error("ID do pré-agendamento ausente.");
 
     try {
-        const response = await api.post('/api/import-from-agenda/confirmar-agendamento', {
+        const response = await api.post('/api/agenda-externa/confirmar-agendamento', {
             preAgendamentoId
         });
         return response.data;

@@ -123,7 +123,7 @@ export const exportToCRM = async (appointment) => {
         };
 
         // Enviar para API
-        const data = await apiRequest('/api/import-from-agenda', {
+        const data = await apiRequest('/api/agenda-externa/pre-agendar', {
             method: 'POST',
             body: payload
         });
@@ -222,7 +222,7 @@ export const confirmarAgendamento = async (appointment, dadosConfirmacao) => {
             notes: "Confirmado pela secretária",
         };
 
-        const data = await apiRequest('/api/import-from-agenda/confirmar-por-external-id', {
+        const data = await apiRequest('/api/agenda-externa/confirmar', {
             method: 'POST',
             body
         });
@@ -258,7 +258,7 @@ export const syncCancelToCRM = async (appointment, reason = "Cancelado via agend
     try {
         localCache.set(cacheKey, { status: 'syncing' });
 
-        const data = await apiRequest('/api/import-from-agenda/sync-cancel', {
+        const data = await apiRequest('/api/agenda-externa/cancel', {
             method: 'POST',
             body: {
                 _id: appointment.id,
@@ -313,7 +313,7 @@ export const syncUpdateToCRM = async (appointment, updates) => {
             if (payload[key] === undefined) delete payload[key];
         });
 
-        const data = await apiRequest('/api/import-from-agenda/sync-update', {
+        const data = await apiRequest('/api/agenda-externa/update', {
             method: 'POST',
             body: payload
         });
@@ -331,7 +331,7 @@ export const syncUpdateToCRM = async (appointment, updates) => {
  */
 export const syncDeleteToCRM = async (appointmentId, reason = "Excluído via agenda externa") => {
     try {
-        const data = await apiRequest('/api/import-from-agenda/sync-delete', {
+        const data = await apiRequest('/api/agenda-externa/delete', {
             method: 'POST',
             body: { _id: appointmentId, reason }
         });
@@ -408,7 +408,7 @@ export const fetchWeeklyAvailability = async (startDate, specialty, days = 7) =>
             days: String(days)
         });
         
-        const data = await apiRequest(`/api/import-from-agenda/weekly-availability?${params}`);
+        const data = await apiRequest(`/api/agenda-externa/disponibilidade?${params}`);
         return data;
     } catch (err) {
         console.error("[fetchWeeklyAvailability] Erro:", err);
