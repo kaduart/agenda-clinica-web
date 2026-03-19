@@ -1,6 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import api from '../services/api.js';
 
+// 🟢 Baileys - WhatsApp não-oficial (sem Puppeteer)
+// Substitui o whatsapp-web.js que não funciona no Render
+
 // Estado global simples
 let openModalFn = null;
 
@@ -28,10 +31,12 @@ export default function WhatsAppQRGlobal() {
 
   const checkStatus = async () => {
     try {
-      const response = await api.get('/api/whatsapp-web/status');
-      const { isReady: ready, hasQR } = response.data;
+      // 🟢 Usando Baileys (sem Puppeteer) - funciona no Render
+      const response = await api.get('/api/baileys/status');
+      const { status, hasQR, qrCodeBase64, connected } = response.data?.data || {};
       
-      if (ready) {
+      // Se já conectado
+      if (connected || status === 'connected') {
         setIsReady(true);
         setQrImage(null);
         if (intervalRef.current) {
@@ -45,21 +50,28 @@ export default function WhatsAppQRGlobal() {
         return;
       }
       
-      if (hasQR && lastQRRef.current !== hasQR) {
-        const baseUrl = api.defaults?.baseURL || '';
-        const qrResponse = await fetch(`${baseUrl}/api/whatsapp-web/qr`);
-        const html = await qrResponse.text();
-        
-        const imgMatch = html.match(/src="([^"]+)"/);
-        if (imgMatch && imgMatch[1] !== lastQRRef.current) {
-          lastQRRef.current = imgMatch[1];
-          setQrImage(imgMatch[1]);
-        }
+      // Se tem QR code
+      if (hasQR && qrCodeBase64 && qrCodeBase64 !== lastQRRef.current) {
+        lastQRRef.current = qrCodeBase64;
+        setQrImage(qrCodeBase64);
       }
       
       setLoading(false);
     } catch (err) {
+      console.error('Erro ao verificar status:', err);
       setLoading(false);
+    }
+  };
+
+  // Conectar ao abrir o modal
+  const handleConnect = async () => {
+    setLoading(true);
+    try {
+      await api.post('/api/baileys/connect');
+      // Aguarda um pouco pro QR code ser gerado
+      setTimeout(checkStatus, 2000);
+    } catch (err) {
+      console.error('Erro ao conectar:', err);
     }
   };
 
@@ -78,8 +90,11 @@ export default function WhatsAppQRGlobal() {
     lastQRRef.current = null;
     setLoading(true);
     
-    checkStatus();
-    intervalRef.current = setInterval(checkStatus, 10000);
+    // Inicia conexão automaticamente
+    handleConnect();
+    
+    // Polling de status
+    intervalRef.current = setInterval(checkStatus, 5000);
     
     return () => {
       if (intervalRef.current) {
