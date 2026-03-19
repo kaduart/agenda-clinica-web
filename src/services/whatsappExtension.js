@@ -1,6 +1,6 @@
 /**
- * 🟢 Envio de WhatsApp via backend (Baileys)
- * Substituiu o whatsapp-web.js (Puppeteer) que não funciona no Render
+ * 🟢 Envio de WhatsApp via whatsapp-web.js (Puppeteer)
+ * Funciona local e produção (com Chrome instalado)
  */
 import api from './api.js';
 import { openWhatsAppQRModal } from '../components/WhatsAppQRGlobal.jsx';
@@ -10,8 +10,7 @@ import { openWhatsAppQRModal } from '../components/WhatsAppQRGlobal.jsx';
  */
 export async function sendViaExtension(phone, message) {
   try {
-    // 🟢 Usando Baileys (sem Puppeteer)
-    const response = await api.post('/api/baileys/send', { 
+    const response = await api.post('/api/whatsapp-web/send', { 
       phone, 
       message: message 
     });
@@ -19,14 +18,11 @@ export async function sendViaExtension(phone, message) {
   } catch (err) {
     const error = err.response?.data?.error || err.message || 'Erro ao enviar mensagem';
     
-    // Verifica se é erro de não conectado e abre o modal automaticamente
+    // Verifica se é erro de não conectado
     const isNotConnected = 
       error.includes('nao esta conectado') ||
       error.includes('não conectado') ||
-      error.includes('não conectado') ||
-      error.includes('Escaneie o QR') ||
-      error.includes('qr') ||
-      error.includes('QR');
+      error.includes('Escaneie o QR');
     
     if (isNotConnected) {
       console.log('[WhatsApp] Não conectado - abrindo modal QR');

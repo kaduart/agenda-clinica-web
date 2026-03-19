@@ -1,9 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import api from '../services/api.js';
 
-// 🟢 Baileys - WhatsApp não-oficial (sem Puppeteer)
-// Substitui o whatsapp-web.js que não funciona no Render
-
 // Estado global simples
 let openModalFn = null;
 
@@ -31,12 +28,10 @@ export default function WhatsAppQRGlobal() {
 
   const checkStatus = async () => {
     try {
-      // 🟢 Usando Baileys (sem Puppeteer) - funciona no Render
-      const response = await api.get('/api/baileys/status');
-      const { status, hasQR, qrCodeBase64, connected } = response.data?.data || {};
+      const response = await api.get('/api/whatsapp-web/status');
+      const { isReady, hasQR } = response.data;
       
-      // Se já conectado
-      if (connected || status === 'connected') {
+      if (isReady) {
         setIsReady(true);
         setQrImage(null);
         if (intervalRef.current) {
@@ -50,16 +45,22 @@ export default function WhatsAppQRGlobal() {
         return;
       }
       
-      // Se tem QR code
-      if (hasQR && qrCodeBase64 && qrCodeBase64 !== lastQRRef.current) {
-        lastQRRef.current = qrCodeBase64;
-        setQrImage(qrCodeBase64);
+      if (hasQR) {
+        const baseUrl = api.defaults?.baseURL || '';
+        const qrResponse = await fetch(`${baseUrl}/api/whatsapp-web/qr`);
+        const html = await qrResponse.text();
+        
+        const imgMatch = html.match(/src="([^"]+)"/);
+        if (imgMatch && imgMatch[1] !== lastQRRef.current) {
+          lastQRRef.current = imgMatch[1];
+          setQrImage(imgMatch[1]);
+        }
       }
       
       setLoading(false);
     } catch (err) {
-      console.error('Erro ao verificar status:', err);
       setLoading(false);
+      console.error('Erro:', err);
     }
   };
 
@@ -67,11 +68,12 @@ export default function WhatsAppQRGlobal() {
   const handleConnect = async () => {
     setLoading(true);
     try {
-      await api.post('/api/baileys/connect');
-      // Aguarda um pouco pro QR code ser gerado
+      await api.post('/api/whatsapp-web/connect');
       setTimeout(checkStatus, 2000);
     } catch (err) {
-      console.error('Erro ao conectar:', err);
+      // API não disponível em produção
+      setLoading(false);
+      setIsReady(false);
     }
   };
 
