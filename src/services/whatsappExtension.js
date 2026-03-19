@@ -9,7 +9,11 @@ import api from './api.js';
  */
 export async function sendViaExtension(phone, message) {
   try {
-    const response = await api.post('/api/whatsapp-web/send', { phone, message });
+    // Garante que quebras de linha sejam preservadas no JSON
+    const response = await api.post('/api/whatsapp-web/send', { 
+      phone, 
+      message: message 
+    });
     return response.data;
   } catch (err) {
     const error = err.response?.data?.error || err.message || 'Erro ao enviar mensagem';
@@ -28,16 +32,19 @@ export function generateConfirmationMessage(paciente) {
   const hora = paciente.time || '';
   const profissional = paciente.professional || paciente.doctor?.fullName || '';
   
-  return `Olá, avaliação está CONFIRMADA! 💚\n\n` +
-    `O agendamento de *${nome}* está confirmado para a avaliação inicial.\n\n` +
-    `📅 Data: ${data}\n` +
-    `⏰ Horário: ${hora}\n` +
-    `👩‍⚕️ Profissional: ${profissional}\n` +
-    `🏥 Clínica Fono Inova\n\n` +
-    `Ficamos muito felizes em recebê-los e preparar tudo com carinho ✨\n\n` +
-    `Qualquer dúvida antes da consulta, pode contar com a gente.\n\n` +
-    `Um dia antes enviaremos uma mensagem de confirmação.\n\n` +
-    `Até o dia e horário combinados! 😊💚`;
+  // Formato exato como na imagem
+  return `Olá, avaliação está CONFIRMADA! 💚
+O agendamento de ${nome} está confirmado para a avaliação inicial.
+
+📅 Data: ${data}
+⏰ Horário: ${hora}
+👩‍⚕️ Profissional: ${profissional}
+
+🏥 Clínica Fono Inova Ficamos muito felizes em recebê-los e preparar tudo com carinho ✨
+💬 Qualquer dúvida antes da consulta, pode contar com a gente.
+
+Um dia antes enviaremos uma mensagem de confirmação.
+Até o dia e horário combinados! 😊💚`;
 }
 
 /**
@@ -50,11 +57,14 @@ export function generateReminderMessage(paciente) {
     : '';
   const hora = paciente.time || '';
   
-  return `Olá ${nome}! 💚\n\n` +
-    `Lembrete: sua avaliação é *AMANHÃ*! 🔔\n\n` +
-    `📅 Data: ${data}\n` +
-    `⏰ Horário: ${hora}\n` +
-    `🏥 Clínica Fono Inova\n\n` +
-    `Estamos te esperando! ✨\n\n` +
-    `Precisa remarcar? Responda aqui.`;
+  return `Olá ${nome}! 💚
+Lembrete: sua avaliação é *AMANHÃ*! 🔔
+
+📅 Data: ${data}
+⏰ Horário: ${hora}
+🏥 Clínica Fono Inova
+
+Estamos te esperando! ✨
+
+Precisa remarcar? Responda aqui.`;
 }

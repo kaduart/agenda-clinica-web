@@ -3,10 +3,12 @@ import { SPECIALTIES } from "../config/specialties";
 import { formatDateDisplay } from "../utils/date";
 import { resolveSpecialtyKey } from "../utils/specialty";
 import { sendViaExtension, generateConfirmationMessage, generateReminderMessage } from "../services/whatsappExtension";
+import WhatsAppQRModal from "./WhatsAppQRModal";
 
 export default function AppointmentRow({ appointment, onEdit, onDelete, onReminder, onGenerateCycle, onCancel }) {
   
   const [showMenu, setShowMenu] = useState(false);
+  const [showQRModal, setShowQRModal] = useState(false);
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -168,6 +170,18 @@ export default function AppointmentRow({ appointment, onEdit, onDelete, onRemind
         });
     
     const result = await sendViaExtension(patientPhone, message);
+    
+    // Verifica se é erro de WhatsApp não conectado
+    const isNotConnected = result.error && (
+      result.error.includes('WhatsApp nao esta conectado') ||
+      result.error.includes('WhatsApp não conectado') ||
+      result.error.includes('Escaneie o QR')
+    );
+    
+    if (isNotConnected) {
+      setShowQRModal(true);
+      return;
+    }
     
     const toast = document.createElement('div');
     if (result.success) {
@@ -368,6 +382,12 @@ export default function AppointmentRow({ appointment, onEdit, onDelete, onRemind
 
         </div>
       </td>
+      
+      {/* Modal QR Code */}
+      <WhatsAppQRModal 
+        isOpen={showQRModal} 
+        onClose={() => setShowQRModal(false)} 
+      />
     </tr>
   );
 }
