@@ -2,7 +2,12 @@
   "permissions": {
     "allow": [
       "Bash(find /home/user/projetos/agenda-clinica-web/src -name *.ts -o -name *.tsx -o -name *.js -o -name *.vue)",
-      "Bash(find /home/user/projetos/CRM-CLINICA/back -name bookingProductMapper* -o -name bookingproductmapper*)"
+      "Bash(find /home/user/projetos/CRM-CLINICA/back -name bookingProductMapper* -o -name bookingproductmapper*)",
+      "Read(//home/user/projetos/**)"
+    ],
+    "additionalDirectories": [
+      "/home/user/projetos/crm/back/routes",
+      "/home/user/projetos/crm/back/utils"
     ]
   }
 }
