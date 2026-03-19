@@ -47,6 +47,7 @@ import { resolveSpecialtyKey } from "./utils/specialty";
 
 import ReminderModal from "./components/ReminderModal";
 import RemindersListModal from "./components/RemindersListModal";
+import WhatsAppQRGlobal from "./components/WhatsAppQRGlobal";
 
 // crmExport removido pois a sincronização agora é automática no repo
 // import { ... } from "./services/crmExport"; 
@@ -950,6 +951,9 @@ export default function App() {
           toast.info(`Abrir agendamento: ${appointmentId}`);
         }}
       />
+      
+      {/* Modal QR Code Global */}
+      <WhatsAppQRGlobal />
     </div>
   );
 }

@@ -3,12 +3,10 @@ import { SPECIALTIES } from "../config/specialties";
 import { formatDateDisplay } from "../utils/date";
 import { resolveSpecialtyKey } from "../utils/specialty";
 import { sendViaExtension, generateConfirmationMessage, generateReminderMessage } from "../services/whatsappExtension";
-import WhatsAppQRModal from "./WhatsAppQRModal";
 
 export default function AppointmentRow({ appointment, onEdit, onDelete, onReminder, onGenerateCycle, onCancel }) {
   
   const [showMenu, setShowMenu] = useState(false);
-  const [showQRModal, setShowQRModal] = useState(false);
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -171,30 +169,23 @@ export default function AppointmentRow({ appointment, onEdit, onDelete, onRemind
     
     const result = await sendViaExtension(patientPhone, message);
     
-    // Verifica se é erro de WhatsApp não conectado
-    const isNotConnected = result.error && (
-      result.error.includes('WhatsApp nao esta conectado') ||
-      result.error.includes('WhatsApp não conectado') ||
-      result.error.includes('Escaneie o QR')
-    );
+    console.log('[WhatsApp] Resultado:', result);
     
-    if (isNotConnected) {
-      setShowQRModal(true);
-      return;
-    }
-    
+    // O modal já abre automaticamente no service se não conectado
+    // Só mostra toast de sucesso ou erro
     const toast = document.createElement('div');
     if (result.success) {
       toast.className = `fixed bottom-4 right-4 ${type === 'confirm' ? 'bg-emerald-500' : 'bg-amber-500'} text-white px-4 py-2 rounded-lg text-sm z-50 shadow-lg`;
-      toast.innerHTML = result.sent
-        ? `<i class="fab fa-whatsapp mr-2"></i> ✅ ${type === 'confirm' ? 'Confirmado' : 'Lembrete'} enviado!`
-        : `<i class="fab fa-whatsapp mr-2"></i> ✍️ Mensagem pronta!`;
-    } else {
+      toast.innerHTML = `<i class="fab fa-whatsapp mr-2"></i> ✅ ${type === 'confirm' ? 'Confirmado' : 'Lembrete'} enviado!`;
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 3000);
+    } else if (!result.error?.includes('conectado') && !result.error?.includes('QR')) {
+      // Só mostra erro se NÃO for erro de conexão (o modal já abre nesse caso)
       toast.className = 'fixed bottom-4 right-4 bg-red-500 text-white px-4 py-2 rounded-lg text-sm z-50 shadow-lg';
-      toast.innerHTML = `<i class="fas fa-exclamation-circle mr-2"></i> ${result.error}`;
+      toast.innerHTML = `<i class="fas fa-exclamation-circle mr-2"></i> ${result.error || 'Erro ao enviar'}`;
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 6000);
     }
-    document.body.appendChild(toast);
-    setTimeout(() => toast.remove(), result.success ? 3000 : 6000);
   };
 
   return (
@@ -382,12 +373,6 @@ export default function AppointmentRow({ appointment, onEdit, onDelete, onRemind
 
         </div>
       </td>
-      
-      {/* Modal QR Code */}
-      <WhatsAppQRModal 
-        isOpen={showQRModal} 
-        onClose={() => setShowQRModal(false)} 
-      />
     </tr>
   );
 }

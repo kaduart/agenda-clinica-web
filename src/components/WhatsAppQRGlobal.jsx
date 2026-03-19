@@ -1,20 +1,36 @@
-import { useEffect, useState, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import api from '../services/api.js';
 
-export default function WhatsAppQRModal({ isOpen, onClose }) {
+// Estado global simples
+let openModalFn = null;
+
+export function openWhatsAppQRModal() {
+  if (openModalFn) {
+    openModalFn();
+  }
+}
+
+export default function WhatsAppQRGlobal() {
+  const [isOpen, setIsOpen] = useState(false);
   const [qrImage, setQrImage] = useState(null);
   const [isReady, setIsReady] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const intervalRef = useRef(null);
   const lastQRRef = useRef(null);
+
+  // Registra a função global
+  useEffect(() => {
+    openModalFn = () => setIsOpen(true);
+    return () => {
+      openModalFn = null;
+    };
+  }, []);
 
   const checkStatus = async () => {
     try {
       const response = await api.get('/api/whatsapp-web/status');
       const { isReady: ready, hasQR } = response.data;
       
-      // Se conectou, para o polling e fecha
       if (ready) {
         setIsReady(true);
         setQrImage(null);
@@ -23,12 +39,12 @@ export default function WhatsAppQRModal({ isOpen, onClose }) {
           intervalRef.current = null;
         }
         setTimeout(() => {
-          onClose();
+          setIsOpen(false);
+          setIsReady(false);
         }, 2000);
         return;
       }
       
-      // Só busca QR se tiver mudado ou não tiver ainda
       if (hasQR && lastQRRef.current !== hasQR) {
         const baseUrl = api.defaults?.baseURL || '';
         const qrResponse = await fetch(`${baseUrl}/api/whatsapp-web/qr`);
@@ -43,14 +59,12 @@ export default function WhatsAppQRModal({ isOpen, onClose }) {
       
       setLoading(false);
     } catch (err) {
-      setError(err.message || 'Erro ao verificar status');
       setLoading(false);
     }
   };
 
   useEffect(() => {
     if (!isOpen) {
-      // Limpa quando fecha
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
@@ -59,15 +73,12 @@ export default function WhatsAppQRModal({ isOpen, onClose }) {
       return;
     }
 
-    // Reset estado
     setIsReady(false);
     setQrImage(null);
     lastQRRef.current = null;
+    setLoading(true);
     
-    // Primeira checagem
     checkStatus();
-    
-    // Verificar a cada 10 segundos (não 3s) - reduz carga no servidor
     intervalRef.current = setInterval(checkStatus, 10000);
     
     return () => {
@@ -81,12 +92,12 @@ export default function WhatsAppQRModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
         {/* Header */}
         <div className="bg-gradient-to-r from-emerald-600 to-green-700 p-4 text-white relative">
           <button
-            onClick={onClose}
+            onClick={() => setIsOpen(false)}
             className="absolute top-4 right-4 text-white hover:text-gray-200 transition-colors"
           >
             <i className="fas fa-times text-lg"></i>
@@ -114,19 +125,6 @@ export default function WhatsAppQRModal({ isOpen, onClose }) {
               </div>
               <h3 className="text-lg font-semibold text-green-700 mb-2">WhatsApp Conectado!</h3>
               <p className="text-gray-600 text-sm">Você já pode enviar mensagens.</p>
-            </div>
-          ) : error ? (
-            <div className="py-8">
-              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <i className="fas fa-times text-2xl text-red-600"></i>
-              </div>
-              <p className="text-red-600 mb-4">{error}</p>
-              <button
-                onClick={checkStatus}
-                className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
-              >
-                Tentar novamente
-              </button>
             </div>
           ) : qrImage ? (
             <div className="space-y-4">
@@ -164,7 +162,7 @@ export default function WhatsAppQRModal({ isOpen, onClose }) {
         {/* Footer */}
         <div className="bg-gray-50 px-6 py-4 border-t border-gray-200">
           <button
-            onClick={onClose}
+            onClick={() => setIsOpen(false)}
             className="w-full py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors font-medium"
           >
             Fechar

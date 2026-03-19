@@ -3,13 +3,13 @@
  * Envia mensagens silenciosamente pelo servidor — sem extensao Chrome, sem reload de aba
  */
 import api from './api.js';
+import { openWhatsAppQRModal } from '../components/WhatsAppQRGlobal.jsx';
 
 /**
  * Envia mensagem via backend
  */
 export async function sendViaExtension(phone, message) {
   try {
-    // Garante que quebras de linha sejam preservadas no JSON
     const response = await api.post('/api/whatsapp-web/send', { 
       phone, 
       message: message 
@@ -17,6 +17,19 @@ export async function sendViaExtension(phone, message) {
     return response.data;
   } catch (err) {
     const error = err.response?.data?.error || err.message || 'Erro ao enviar mensagem';
+    
+    // Verifica se é erro de não conectado e abre o modal automaticamente
+    const isNotConnected = 
+      error.includes('nao esta conectado') ||
+      error.includes('não conectado') ||
+      error.includes('Escaneie o QR') ||
+      error.includes('qr');
+    
+    if (isNotConnected) {
+      console.log('[WhatsApp] Não conectado - abrindo modal QR');
+      openWhatsAppQRModal();
+    }
+    
     return { success: false, error };
   }
 }
