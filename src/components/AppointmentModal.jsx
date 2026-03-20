@@ -514,6 +514,14 @@ export default function AppointmentModal({ appointment, professionals, patients,
                 return;
             }
 
+            // Validação: telefone obrigatório com DDD (mínimo 10 dígitos)
+            const phoneDigits = (formData.phone || '').replace(/\D/g, '');
+            if (phoneDigits.length < 10) {
+                alert("Telefone obrigatório com DDD (ex: 62981665539)");
+                setIsLoading(false);
+                return;
+            }
+
             // Alerta quando valor é 0 mas status indica pagamento (pode ser dados não carregados do backend)
             const isEditing = !!appointment?.id;
             const valorZerado = formData.crm.paymentAmount === 0 || formData.crm.paymentAmount === '';

@@ -1,31 +1,45 @@
 /**
- * 🟢 Envio de WhatsApp via whatsapp-web.js (Puppeteer)
- * Funciona local e produção (com Chrome instalado)
+ * 🟢 Envio de WhatsApp
+ * 
+ * Opções (prioridade):
+ * 1. VPS externo (chip comum) - se configurado
+ * 2. API Oficial da Meta (Business) - fallback
  */
 import api from './api.js';
 import { openWhatsAppQRModal } from '../components/WhatsAppQRGlobal.jsx';
 
 /**
- * Envia mensagem via backend
+ * Envia mensagem (usa VPS se disponível, senão API Meta)
  */
 export async function sendViaExtension(phone, message) {
   try {
-    const response = await api.post('/api/whatsapp-web/send', { 
+    // 🟢 Tenta VPS primeiro (chip comum)
+    const response = await api.post('/api/whatsapp-vps/send', { 
       phone, 
-      message: message 
+      message 
     });
     return response.data;
   } catch (err) {
-    const error = err.response?.data?.error || err.message || 'Erro ao enviar mensagem';
+    const error = err.response?.data?.error || '';
     
-    // Verifica se é erro de não conectado
-    const isNotConnected = 
-      error.includes('nao esta conectado') ||
-      error.includes('não conectado') ||
-      error.includes('Escaneie o QR');
+    // Se VPS não configurado, usa API Meta
+    if (err.response?.status === 404 || error.includes('não configurado')) {
+      console.log('[WhatsApp] VPS não configurado, usando API Meta...');
+      
+      try {
+        const response = await api.post('/api/whatsapp/send-text', { 
+          phone, 
+          text: message 
+        });
+        return response.data;
+      } catch (metaErr) {
+        const metaError = metaErr.response?.data?.error || metaErr.message;
+        return { success: false, error: metaError };
+      }
+    }
     
-    if (isNotConnected) {
-      console.log('[WhatsApp] Não conectado - abrindo modal QR');
+    // VPS configurado mas offline
+    if (error.includes('conectar')) {
       openWhatsAppQRModal();
     }
     
@@ -44,7 +58,6 @@ export function generateConfirmationMessage(paciente) {
   const hora = paciente.time || '';
   const profissional = paciente.professional || paciente.doctor?.fullName || '';
   
-  // Formato exato como na imagem
   return `Olá, avaliação está CONFIRMADA! 💚
 O agendamento de ${nome} está confirmado para a avaliação inicial.
 
