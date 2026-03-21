@@ -402,6 +402,7 @@ export const syncIfNeeded = async (oldAppointment, newAppointment) => {
  */
 export const fetchWeeklyAvailability = async (startDate, specialty, days = 7) => {
     try {
+        // 🚨 FIX: Usar a mesma rota do CRM para evitar lógica duplicada
         const params = new URLSearchParams({
             startDate,
             specialty,
