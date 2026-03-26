@@ -3,71 +3,7 @@ import { formatDateLocal, extractDateForInput } from "../utils/date";
 import { resolveSpecialtyKey } from "../utils/specialty";
 import api from "../services/api";
 import { sendWhatsAppMessage, generateConfirmationMessage, generateReminderMessage } from "../services/baileysApi";
-
-// 🆕 Lista de feriados nacionais (2024-2027)
-const FERIADOS_NACIONAIS = [
-  // 2024
-  '2024-01-01', '2024-02-12', '2024-02-13', '2024-03-29', '2024-04-21',
-  '2024-05-01', '2024-05-30', '2024-09-07', '2024-10-12', '2024-11-02',
-  '2024-11-15', '2024-12-25',
-  // 2025
-  '2025-01-01', '2025-03-04', '2025-03-05', '2025-04-18', '2025-04-21',
-  '2025-05-01', '2025-06-19', '2025-09-07', '2025-10-12', '2025-11-02',
-  '2025-11-15', '2025-12-25',
-  // 2026
-  '2026-01-01', '2026-02-16', '2026-02-17', '2026-04-03', '2026-04-21',
-  '2026-05-01', '2026-06-04', '2026-09-07', '2026-10-12', '2026-11-02',
-  '2026-11-15', '2026-12-25',
-  // 2027
-  '2027-01-01', '2027-02-08', '2027-02-09', '2027-03-26', '2027-04-21',
-  '2027-05-01', '2027-05-27', '2027-09-07', '2027-10-12', '2027-11-02',
-  '2027-11-15', '2027-12-25',
-];
-
-// 🆕 Nomes dos feriados
-const FERIADOS_NOMES = {
-  '2024-01-01': 'Confraternização Universal', '2024-02-12': 'Carnaval', '2024-02-13': 'Quarta-feira de Cinzas',
-  '2024-03-29': 'Sexta-feira Santa', '2024-04-21': 'Tiradentes', '2024-05-01': 'Dia do Trabalho',
-  '2024-05-30': 'Corpus Christi', '2024-09-07': 'Independência', '2024-10-12': 'Nossa Senhora Aparecida',
-  '2024-11-02': 'Finados', '2024-11-15': 'Proclamação da República', '2024-12-25': 'Natal',
-  '2025-01-01': 'Confraternização Universal', '2025-03-04': 'Carnaval', '2025-03-05': 'Quarta-feira de Cinzas',
-  '2025-04-18': 'Sexta-feira Santa', '2025-04-21': 'Tiradentes', '2025-05-01': 'Dia do Trabalho',
-  '2025-06-19': 'Corpus Christi', '2025-09-07': 'Independência', '2025-10-12': 'Nossa Senhora Aparecida',
-  '2025-11-02': 'Finados', '2025-11-15': 'Proclamação da República', '2025-12-25': 'Natal',
-  '2026-01-01': 'Confraternização Universal', '2026-02-16': 'Carnaval', '2026-02-17': 'Quarta-feira de Cinzas',
-  '2026-04-03': 'Sexta-feira Santa', '2026-04-21': 'Tiradentes', '2026-05-01': 'Dia do Trabalho',
-  '2026-06-04': 'Corpus Christi', '2026-09-07': 'Independência', '2026-10-12': 'Nossa Senhora Aparecida',
-  '2026-11-02': 'Finados', '2026-11-15': 'Proclamação da República', '2026-12-25': 'Natal',
-  '2027-01-01': 'Confraternização Universal', '2027-02-08': 'Carnaval', '2027-02-09': 'Quarta-feira de Cinzas',
-  '2027-03-26': 'Sexta-feira Santa', '2027-04-21': 'Tiradentes', '2027-05-01': 'Dia do Trabalho',
-  '2027-05-27': 'Corpus Christi', '2027-09-07': 'Independência', '2027-10-12': 'Nossa Senhora Aparecida',
-  '2027-11-02': 'Finados', '2027-11-15': 'Proclamação da República', '2027-12-25': 'Natal',
-};
-
-// 🆕 Verifica se é feriado (retorna nome ou null)
-const getHolidayName = (dateStr) => {
-  return FERIADOS_NOMES[dateStr] || null;
-};
-
-// 🆕 Verifica se horário está bloqueado por feriado parcial
-const isTimeBlockedByHoliday = (dateStr, timeStr) => {
-  const holidayName = getHolidayName(dateStr);
-  if (!holidayName) return null;
-  
-  // Quarta-feira de Cinzas: bloqueia apenas manhã (antes das 12h)
-  if (dateStr === '2025-03-05' || dateStr === '2026-02-17' || dateStr === '2027-02-09') {
-    const hour = parseInt(timeStr?.split(':')[0] || '0');
-    const isMorning = hour < 12;
-    return {
-      name: holidayName,
-      blocked: isMorning,
-      note: isMorning ? 'Manhã livre' : 'Tarde normal'
-    };
-  }
-  
-  // Feriados de dia todo
-  return { name: holidayName, blocked: true };
-};
+import { getHolidays, holidaysToMap, isTimeBlockedByHoliday as checkHolidayBlock } from "../services/calendarService";
 
 export default function AppointmentModal({ appointment, professionals, patients, onSave, onConfirmPre, onClose, onReloadPatients, authError }) {
     const [formData, setFormData] = React.useState({
@@ -104,6 +40,34 @@ export default function AppointmentModal({ appointment, professionals, patients,
         visualFlag: "",
         metadata: null,
     });
+
+    // 🆕 Estado para feriados da API
+    const [holidays, setHolidays] = React.useState({});
+    const [currentYear, setCurrentYear] = React.useState(new Date().getFullYear());
+
+    // 🆕 Busca feriados da API quando o ano muda
+    React.useEffect(() => {
+        const fetchHolidays = async () => {
+            try {
+                const holidaysList = await getHolidays(currentYear);
+                const holidaysMap = holidaysToMap(holidaysList);
+                setHolidays(holidaysMap);
+            } catch (error) {
+                console.error('[AppointmentModal] Erro ao buscar feriados:', error);
+            }
+        };
+        fetchHolidays();
+    }, [currentYear]);
+
+    // 🆕 Atualiza o ano quando a data do formulário mudar
+    React.useEffect(() => {
+        if (formData.date) {
+            const year = parseInt(formData.date.split('-')[0], 10);
+            if (year !== currentYear) {
+                setCurrentYear(year);
+            }
+        }
+    }, [formData.date]);
 
     // Monitora mudanças no operationalStatus
     React.useEffect(() => {
@@ -572,7 +536,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
             console.log("🚀 [AppointmentModal] appointment?.id:", appointment?.id);
 
             // 🆕 Validação: verifica se é feriado
-            const holidayCheck = isTimeBlockedByHoliday(formData.date, formData.time);
+            const holidayCheck = checkHolidayBlock(formData.date, formData.time, holidays);
             if (holidayCheck?.blocked) {
                 const message = holidayCheck.note 
                     ? `🗓️ ${holidayCheck.name} (${holidayCheck.note})\n\nNão é possível agendar neste horário.`
@@ -1060,7 +1024,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                         
                         {/* 🆕 Alerta de feriado */}
                         {(() => {
-                            const holidayCheck = isTimeBlockedByHoliday(formData.date, formData.time);
+                            const holidayCheck = checkHolidayBlock(formData.date, formData.time, holidays);
                             if (!holidayCheck?.blocked) return null;
                             return (
                                 <div className="mb-3 bg-red-50 border border-red-200 rounded-lg p-3 flex items-center gap-2">
