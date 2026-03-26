@@ -108,6 +108,12 @@ export default function ProfessionalsAvailability({ activeSpecialty, isExpanded,
                             {availability.daysWithAvailability} dias com vaga
                         </span>
                     )}
+                    {/* 🆕 Mostra contador de feriados se houver */}
+                    {availability?.days?.some(d => d.isHoliday) && (
+                        <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded-full ml-2">
+                            🗓️ {availability.days.filter(d => d.isHoliday).length} feriado(s)
+                        </span>
+                    )}
                 </div>
                 <i className={`fas fa-chevron-${isExpanded ? 'up' : 'down'} transition-transform duration-200`}></i>
             </button>
@@ -185,6 +191,12 @@ export default function ProfessionalsAvailability({ activeSpecialty, isExpanded,
                                             <span className="text-sm text-gray-600">
                                                 {formatDateDisplay(day.date)}
                                             </span>
+                                            {/* 🆕 Badge de feriado no dia */}
+                                            {day.isHoliday && (
+                                                <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full ml-auto">
+                                                    🗓️ {day.holidayName || 'Feriado'}
+                                                </span>
+                                            )}
                                         </div>
 
                                         {/* Profissionais */}
@@ -195,25 +207,56 @@ export default function ProfessionalsAvailability({ activeSpecialty, isExpanded,
                                                         <span className="font-medium text-gray-800">
                                                             {prof.name.split(' ')[0]}
                                                         </span>
-                                                        <span className="text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded">
-                                                            {prof.availableSlots.length} vagas
-                                                        </span>
-                                                    </div>
-                                                    <div className="flex flex-wrap gap-1">
-                                                        {prof.availableSlots.slice(0, 5).map((slot) => (
-                                                            <span
-                                                                key={slot}
-                                                                className="text-xs px-1.5 py-0.5 bg-gray-100 text-gray-700 rounded"
-                                                            >
-                                                                {slot}
+                                                        {/* 🆕 Badge de feriado ou vagas disponíveis */}
+                                                        {prof.isHoliday ? (
+                                                            <span className="text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded" title={prof.holidayName}>
+                                                                🗓️ {prof.holidayName || 'Feriado'}
                                                             </span>
-                                                        ))}
-                                                        {prof.availableSlots.length > 5 && (
-                                                            <span className="text-xs text-gray-500">
-                                                                +{prof.availableSlots.length - 5}
+                                                        ) : (
+                                                            <span className="text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded">
+                                                                {prof.availableSlots.length} vagas
                                                             </span>
                                                         )}
                                                     </div>
+                                                    {/* 🆕 Mostra slots indisponíveis (feriado) de forma diferente */}
+                                                    {prof.isHoliday && prof.allSlots ? (
+                                                        <div className="flex flex-wrap gap-1">
+                                                            {prof.allSlots.slice(0, 5).map((slot) => (
+                                                                <span
+                                                                    key={typeof slot === 'string' ? slot : slot.time}
+                                                                    className={`text-xs px-1.5 py-0.5 rounded ${
+                                                                        slot.available 
+                                                                            ? 'bg-gray-100 text-gray-700' 
+                                                                            : 'bg-gray-200 text-gray-400 line-through'
+                                                                    }`}
+                                                                    title={slot.label || ''}
+                                                                >
+                                                                    {typeof slot === 'string' ? slot : slot.time}
+                                                                </span>
+                                                            ))}
+                                                            {prof.allSlots.length > 5 && (
+                                                                <span className="text-xs text-gray-500">
+                                                                    +{prof.allSlots.length - 5}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    ) : (
+                                                        <div className="flex flex-wrap gap-1">
+                                                            {prof.availableSlots.slice(0, 5).map((slot) => (
+                                                                <span
+                                                                    key={slot}
+                                                                    className="text-xs px-1.5 py-0.5 bg-gray-100 text-gray-700 rounded"
+                                                                >
+                                                                    {slot}
+                                                                </span>
+                                                            ))}
+                                                            {prof.availableSlots.length > 5 && (
+                                                                <span className="text-xs text-gray-500">
+                                                                    +{prof.availableSlots.length - 5}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    )}
                                                 </div>
                                             ))}
                                         </div>

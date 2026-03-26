@@ -696,16 +696,26 @@ export default function App() {
     });
 
     // 4. Injeção de Slots Virtuais (Fase 4)
+    // 🆕 Atualizado para suportar novo formato com metadados (available, reason, label)
     if (filters.filterProfessional && filters.filterDate && availableSlots.length > 0) {
-      const virtualAppointments = availableSlots.map(time => ({
-        id: `virtual_${filters.filterDate}_${time}_${filters.filterProfessional}`,
-        date: filters.filterDate,
-        time,
-        professional: filters.filterProfessional,
-        patient: "Livre",
-        status: "Vaga",
-        __isVirtual: true
-      }));
+      const virtualAppointments = availableSlots
+        .filter(slot => {
+          // 🆕 Filtra apenas slots disponíveis (suporta formato antigo string e novo objeto)
+          const isAvailable = typeof slot === 'string' ? true : slot.available;
+          return isAvailable;
+        })
+        .map(slot => {
+          const time = typeof slot === 'string' ? slot : slot.time;
+          return {
+            id: `virtual_${filters.filterDate}_${time}_${filters.filterProfessional}`,
+            date: filters.filterDate,
+            time,
+            professional: filters.filterProfessional,
+            patient: "Livre",
+            status: "Vaga",
+            __isVirtual: true
+          };
+        });
 
       // Evita duplicatas visuais se já houver um agendamento real ou pré-agendamento no mesmo horário
       const realTimes = new Set(base.map(a => `${a.time}|${a.professional}`));

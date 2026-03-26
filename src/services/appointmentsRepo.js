@@ -332,12 +332,15 @@ export const hardDeleteAppointment = async (id) => {
 export const createCycleId = () => `cyc_${Date.now()}`;
 
 // Busca slots disponíveis Reais via API do CRM
+// 🆕 Atualizado para suportar formato com metadados (available, reason, label)
 export const fetchAvailableSlots = async (doctorId, date) => {
     try {
         const response = await api.get('/api/appointments/available-slots', {
             params: { doctorId, date }
         });
-        return response.data; // Retorna array de strings ["08:00", "08:40", ...]
+        // 🆕 Retorna array de objetos: [{ time, available, reason, label }, ...]
+        // ou formato antigo: ["08:00", "08:40", ...]
+        return response.data;
     } catch (error) {
         console.error('[fetchAvailableSlots] Erro:', error);
         return [];
