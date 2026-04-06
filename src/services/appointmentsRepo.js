@@ -53,6 +53,26 @@ const resolvePatientName = (a) => {
     return 'Paciente Desconhecido';
 };
 
+// 🌐 Traduz status do backend (inglês) para português
+const translateStatus = (status) => {
+    const statusMap = {
+        'scheduled': 'Agendado',
+        'confirmed': 'Confirmado',
+        'pre_agendado': 'Pré-agendado',
+        'pre_agendamento': 'Pré-agendamento',
+        'canceled': 'Cancelado',
+        'cancelado': 'Cancelado',
+        'paid': 'Pago',
+        'completed': 'Concluído',
+        'missed': 'Faltou',
+        'pending': 'Pendente',
+        'processing_create': 'Processando',
+        'processing_complete': 'Processando',
+        'processing_cancel': 'Processando',
+    };
+    return statusMap[status] || status;
+};
+
 // Mesmo algoritmo do backend getSafeProfessionalName
 const resolveProfessionalName = (a) => {
     const d = a.doctor;
@@ -84,7 +104,7 @@ const mapV2Appointment = (a) => {
         professionalId: (a.doctor && typeof a.doctor === 'object') ? a.doctor._id?.toString() : (a.doctor || null),
         specialty: a.doctor?.specialty || a.specialty || '',
         operationalStatus: a.operationalStatus,
-        status: a.operationalStatus,
+        status: translateStatus(a.operationalStatus),
         billingType: a.billingType || 'particular',
         insuranceProvider: a.insuranceProvider || '',
         observations: a.notes || a.observations || '',
