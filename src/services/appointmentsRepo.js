@@ -44,16 +44,65 @@ export const listenToNotifications = (onNotification) => {
     };
 };
 
+// Mesmo algoritmo do backend getSafePatientName
+const resolvePatientName = (a) => {
+    const p = a.patient;
+    if (p && typeof p === 'object') return p.fullName || p.name || null;
+    if (a.patientInfo?.fullName) return a.patientInfo.fullName;
+    if (a.patientName && typeof a.patientName === 'string') return a.patientName;
+    return 'Paciente Desconhecido';
+};
+
+// Mesmo algoritmo do backend getSafeProfessionalName
+const resolveProfessionalName = (a) => {
+    const d = a.doctor;
+    if (d && typeof d === 'object') return d.fullName || d.name || null;
+    if (a.professionalName) return a.professionalName;
+    if (a.professional && typeof a.professional === 'string') return a.professional;
+    return 'Profissional Desconhecido';
+};
+
+// Mapeia resposta V2 → formato que a agenda espera
+const mapV2Appointment = (a) => {
+    // date pode vir como ISO string "2026-04-06T03:00:00.000Z" ou "2026-04-06"
+    const rawDate = typeof a.date === 'string' ? a.date : (a.date ? new Date(a.date).toISOString() : '');
+    const dateStr = rawDate.substring(0, 10); // sempre YYYY-MM-DD
+
+    const patientName = resolvePatientName(a);
+    const professional = resolveProfessionalName(a);
+
+    return {
+        id: a._id?.toString() || a.id,
+        _id: a._id?.toString() || a.id,
+        date: dateStr,
+        time: a.time,
+        patientName,
+        patient: patientName,
+        patientId: (a.patient && typeof a.patient === 'object') ? a.patient._id?.toString() : (a.patient || null),
+        phone: a.patient?.phone || a.patientInfo?.phone || '',
+        professional,
+        professionalId: (a.doctor && typeof a.doctor === 'object') ? a.doctor._id?.toString() : (a.doctor || null),
+        specialty: a.doctor?.specialty || a.specialty || '',
+        operationalStatus: a.operationalStatus,
+        status: a.operationalStatus,
+        billingType: a.billingType || 'particular',
+        insuranceProvider: a.insuranceProvider || '',
+        observations: a.notes || a.observations || '',
+        duration: a.duration || 40,
+        visualFlag: a.visualFlag || null,
+        paymentStatus: a.paymentStatus || null,
+        metadata: a.metadata || null,
+    };
+};
+
 export const listenAppointmentsForMonth = (year, month, onData, specificDate = null) => {
     let startDate, endDate;
-    
-    // Se tiver data específica, busca apenas aquele dia
+
     if (specificDate) {
         startDate = specificDate;
         endDate = specificDate;
         console.log(`[fetchAppointments] Data específica: ${startDate}`);
     } else {
-        // Busca o mês inteiro
         const firstDay = new Date(year, month, 1);
         const lastDay = new Date(year, month + 1, 0);
         startDate = formatDateLocal(firstDay);
@@ -64,20 +113,20 @@ export const listenAppointmentsForMonth = (year, month, onData, specificDate = n
     // Função interna para buscar dados
     const fetchData = async () => {
         try {
-            console.log(`[fetchAppointments] Buscando: ${startDate} a ${endDate}`);
-            const response = await api.get('/api/appointments', {
+            console.log(`[fetchAppointments] Buscando V2: ${startDate} a ${endDate}`);
+            const response = await api.get('/api/v2/appointments', {
                 params: {
                     startDate,
                     endDate,
-                    limit: 1000 // Garantir que venha tudo do mês
+                    limit: 500,
+                    page: 1,
                 }
             });
 
-            // O backend retorna um array de calendarEvents já formatado
-            // O frontend espera { id, ...campos }
-            // O backend /api/appointments já retorna [{ id: "...", title: "...", start: "...", ... }]
-            const list = response.data;
-            console.log(`[fetchAppointments] Recebidos ${list.length} agendamentos:`, list.map(a => `${a.date} ${a.time} ${a.patientName}`));
+            // V2 retorna { success, data: { appointments: [...], pagination: {...} } }
+            const raw = response.data?.data?.appointments || [];
+            const list = raw.map(mapV2Appointment);
+            console.log(`[fetchAppointments] Recebidos ${list.length} agendamentos (V2)`);
             onData(list);
         } catch (error) {
             console.error('[fetchAppointments] Erro:', error);
@@ -298,10 +347,10 @@ export const upsertAppointment = async ({ editingAppointment, appointmentData })
 export const cancelAppointment = async (id, reason = "Cancelado via Web App", options = {}) => {
     console.log(`[cancelAppointment] Cancelando via API: ${id}`);
     try {
-        await api.patch(`/api/appointments/${id}/cancel`, {
+        await api.patch(`/api/v2/appointments/${id}/cancel`, {
             reason,
             confirmedAbsence: options.confirmedAbsence || false,
-            notifyPatient: options.notifyPatient || false // Passando caso o backend suporte futuramente ou em middleware
+            notifyPatient: options.notifyPatient || false
         });
     } catch (error) {
         console.error('[cancelAppointment] Erro ao cancelar:', error);
@@ -347,12 +396,13 @@ export const fetchAvailableSlots = async (doctorId, date) => {
     }
 };
 
-// Adaptação: fetch via API
+// Adaptação: fetch via API V2
 export const fetchAppointmentsInRange = async (startDate, endDate) => {
-    const response = await api.get('/api/appointments', {
-        params: { startDate, endDate }
+    const response = await api.get('/api/v2/appointments', {
+        params: { startDate, endDate, limit: 500, page: 1 }
     });
-    return response.data;
+    const raw = response.data?.data?.appointments || [];
+    return raw.map(mapV2Appointment);
 };
 
 // Gerador de Ciclo: Adaptado para chamar upsertAppointment em loop
@@ -415,8 +465,9 @@ export const confirmAppointment = async (preAgendamentoId) => {
     if (!preAgendamentoId) throw new Error("ID do pré-agendamento ausente.");
 
     try {
+        // Backend lê { _id } — preAgendamentoId é o _id do Appointment
         const response = await api.post('/api/agenda-externa/confirmar-agendamento', {
-            preAgendamentoId
+            _id: preAgendamentoId
         });
         return response.data;
     } catch (error) {
@@ -427,6 +478,7 @@ export const confirmAppointment = async (preAgendamentoId) => {
 export const confirmPresence = async (id) => {
     console.log(`[confirmPresence] Confirmando presença/manual para: ${id}`);
     try {
+        // V2 não tem /confirm — mantém V1 que ainda existe e funciona
         const response = await api.patch(`/api/appointments/${id}/confirm`);
         return response.data;
     } catch (error) {
