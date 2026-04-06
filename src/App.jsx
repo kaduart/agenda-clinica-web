@@ -183,27 +183,24 @@ export default function App() {
       console.log("👂 [App.jsx] Profissionais recebidos:", data.length);
       setProfessionals(data);
     });
+    return () => {
+      console.log("👂 [App.jsx] Listener de profissionais desmontado");
+      unsub();
+    };
+  }, []);
 
-    // Busca lista de pacientes
+  // Carrega pacientes lazy — só quando o modal de agendamento abre
+  useEffect(() => {
+    if (!isModalOpen) return;
+    if (patients.length > 0) return; // já carregado
     fetchPatients().then((data) => {
-      console.log("👥 [App.jsx] Pacientes carregados:", data?.length || 0);
       setPatients(data || []);
-      if (!data || data.length === 0) {
-        setPatientsError('empty');
-      } else {
-        setPatientsError(null);
-      }
-    }).catch((err) => {
-      console.error("❌ [App.jsx] Erro ao carregar pacientes:", err);
+      setPatientsError(data?.length ? null : 'empty');
+    }).catch(() => {
       setPatientsError('auth');
       setPatients([]);
     });
-
-    return () => {
-      console.log("👂 [App.jsx] Listener de profissionais desmontado");
-      unsub(); // É async/no-op agora, mas mantemos a chamada
-    };
-  }, []);
+  }, [isModalOpen]);
 
   useEffect(() => {
     let targetYear = currentYear;

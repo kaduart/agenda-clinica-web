@@ -364,7 +364,7 @@ export const deleteAppointment = cancelAppointment; // Alias para retrocompatibi
 export const hardDeleteAppointment = async (id) => {
     console.log(`[hardDeleteAppointment] Excluindo permanentemente: ${id}`);
     try {
-        await api.delete(`/api/appointments/${id}`);
+        await api.delete(`/api/v2/appointments/${id}`);
     } catch (error) {
         console.error('[hardDeleteAppointment] Erro ao excluir:', error);
         throw error;
@@ -384,7 +384,7 @@ export const createCycleId = () => `cyc_${Date.now()}`;
 // 🆕 Atualizado para suportar formato com metadados (available, reason, label)
 export const fetchAvailableSlots = async (doctorId, date) => {
     try {
-        const response = await api.get('/api/appointments/available-slots', {
+        const response = await api.get('/api/v2/appointments/available-slots', {
             params: { doctorId, date }
         });
         // 🆕 Retorna array de objetos: [{ time, available, reason, label }, ...]
@@ -478,8 +478,7 @@ export const confirmAppointment = async (preAgendamentoId) => {
 export const confirmPresence = async (id) => {
     console.log(`[confirmPresence] Confirmando presença/manual para: ${id}`);
     try {
-        // V2 não tem /confirm — mantém V1 que ainda existe e funciona
-        const response = await api.patch(`/api/appointments/${id}/confirm`);
+        const response = await api.patch(`/api/v2/appointments/${id}/confirm`);
         return response.data;
     } catch (error) {
         console.error('[confirmPresence] Erro:', error);
