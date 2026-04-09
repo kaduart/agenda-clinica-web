@@ -227,15 +227,17 @@ const waitForSocketEvent = (eventName, targetId, timeoutMs = 5000) => {
 };
 
 // FUNÇÃO AUXILIAR: Mapeia campos do frontend para o backend
-// Frontend: serviceType='individual_session'/'package_session', sessionType='avaliacao'/'sessao'
-// Backend:  serviceType='evaluation'/'session', sessionType='avaliacao'/'sessao'
-const mapCrmToBackend = (crm) => {
+// Frontend: serviceType='individual_session'/'package_session', specialty='fonoaudiologia'/'terapia_ocupacional'
+// Backend:  serviceType='evaluation'/'session', sessionType='fonoaudiologia'/'terapia_ocupacional' (especialidade)
+const mapCrmToBackend = (crm, specialty) => {
     const serviceTypeBackend = crm?.serviceType === "package_session" ? "session" : "evaluation";
-    const sessionTypeBackend = crm?.sessionType === "sessao" ? "sessao" : "avaliacao";
+    
+    // sessionType no backend é a ESPECIALIDADE (fonoaudiologia, terapia_ocupacional), não 'avaliacao'/'sessao'
+    const sessionTypeBackend = specialty || crm?.sessionType;
     
     console.log("📝 [mapCrmToBackend] Mapeando:");
     console.log("  serviceType:", crm?.serviceType, "→", serviceTypeBackend);
-    console.log("  sessionType:", crm?.sessionType, "→", sessionTypeBackend);
+    console.log("  sessionType (especialidade):", specialty, "→", sessionTypeBackend);
     
     return {
         serviceType: serviceTypeBackend,
@@ -251,7 +253,7 @@ export const updateAppointmentDirect = async (appointmentId, appointmentData) =>
     console.log("📝 [appointmentsRepo] updateAppointmentDirect - ID:", appointmentId);
     console.log("📝 [appointmentsRepo] updateAppointmentDirect - appointmentData.operationalStatus recebido:", appointmentData.operationalStatus);
     
-    const crmBackend = mapCrmToBackend(appointmentData.crm);
+    const crmBackend = mapCrmToBackend(appointmentData.crm, appointmentData.specialty);
     
     const payload = {
         _id: appointmentId,
@@ -342,7 +344,7 @@ export const upsertAppointment = async ({ editingAppointment, appointmentData })
         observations: appointmentData.observations,
 
         // Dados CRM mapeados
-        crm: mapCrmToBackend(appointmentData.crm),
+        crm: mapCrmToBackend(appointmentData.crm, appointmentData.specialty),
     };
 
     console.log("[upsertAppointment] Enviando para API...");
