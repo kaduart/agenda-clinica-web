@@ -234,7 +234,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                 crm: {
                     serviceType: "individual_session",
                     sessionType: "avaliacao",
-                    paymentMethod: "pix",
+                    paymentMethod: appointment?.crm?.paymentMethod || "pix",
                     paymentAmount: 0,
                     usePackage: false,
                 },
@@ -1290,9 +1290,11 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                                 >
                                     <option value="pix">Pix</option>
-                                    <option value="cash">Dinheiro</option>
-                                    <option value="credit_card">Cartão Crédito</option>
-                                    <option value="debit_card">Cartão Débito</option>
+                                    <option value="dinheiro">Dinheiro</option>
+                                    <option value="cartao_credito">Cartão Crédito</option>
+                                    <option value="cartao_debito">Cartão Débito</option>
+                                    <option value="transferencia_bancaria">Transferência</option>
+                                    <option value="outro">Outro</option>
                                 </select>
                             </div>
                             <div>

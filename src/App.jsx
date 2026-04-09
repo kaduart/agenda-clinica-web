@@ -31,7 +31,7 @@ import {
   generateCycleAppointments,
 } from "./services/appointmentsRepo";
 
-import { approvePreAppointment, discardPreAppointment, cancelPreAppointment, updatePreAppointment } from "./services/preAppointmentsRepo";
+import { approvePreAppointment, discardPreAppointment, cancelPreAppointment, updatePreAppointment, fetchPreAppointments } from "./services/preAppointmentsRepo";
 
 import {
   addProfessional,
@@ -61,6 +61,7 @@ export default function App() {
 
   const [view, setView] = React.useState("list");
   const [appointments, setAppointments] = React.useState([]);
+  const [preAppointments, setPreAppointments] = React.useState([]);
   const [professionals, setProfessionals] = React.useState([]);
   const [patients, setPatients] = React.useState([]);
   const [patientsError, setPatientsError] = React.useState(null);
@@ -224,6 +225,29 @@ export default function App() {
       unsub();
     };
   }, [currentYear, currentMonth, filters.filterDate, refreshTrigger]);
+
+  // 🆕 Buscar pré-agendamentos (pre_agendado) para exibir na agenda
+  useEffect(() => {
+    const loadPreAppointments = async () => {
+      try {
+        const filters = {};
+        if (activeSpecialty && activeSpecialty !== 'all') {
+          filters.specialty = activeSpecialty;
+        }
+        const data = await fetchPreAppointments(filters);
+        console.log("👂 [App.jsx] Pré-agendamentos recebidos:", data.length);
+        setPreAppointments(data);
+      } catch (error) {
+        console.error("❌ [App.jsx] Erro ao buscar pré-agendamentos:", error);
+      }
+    };
+    
+    loadPreAppointments();
+    
+    // Recarregar a cada 30 segundos
+    const interval = setInterval(loadPreAppointments, 30000);
+    return () => clearInterval(interval);
+  }, [activeSpecialty, refreshTrigger]);
 
   useEffect(() => {
     const unsub = listenReminders((list) => setReminders(list));
@@ -578,12 +602,35 @@ export default function App() {
 
   // ========== FILTROS + SORT ==========
   const filteredAppointments = React.useMemo(() => {
-    console.log(`[filteredAppointments] Total appointments: ${appointments?.length}, filterDate: ${filters.filterDate}, activeSpecialty: ${activeSpecialty}`);
+    console.log(`[filteredAppointments] Total appointments: ${appointments?.length}, preAppointments: ${preAppointments?.length}, filterDate: ${filters.filterDate}, activeSpecialty: ${activeSpecialty}`);
+    
+    // 🆕 Converter pré-agendamentos para o formato da agenda e combinar com appointments
+    const mappedPreAppointments = (preAppointments || []).map(pre => ({
+      id: pre._id || pre.id,
+      _id: pre._id || pre.id,
+      date: pre.preferredDate || pre.date,
+      time: pre.preferredTime || pre.time,
+      patient: pre.patientInfo?.fullName || pre.patientName,
+      patientName: pre.patientInfo?.fullName || pre.patientName,
+      phone: pre.patientInfo?.phone,
+      birthDate: pre.patientInfo?.birthDate,
+      email: pre.patientInfo?.email,
+      professional: pre.professionalName || (pre.doctor?.fullName),
+      specialty: pre.specialty,
+      operationalStatus: 'pre_agendado',
+      status: 'Pré-agendado',
+      observations: pre.notes || pre.observations,
+      __isPreAgendamento: true,
+      originalData: pre,
+      source: pre.metadata?.origin?.source || 'crm'
+    }));
+    
+    const allAppointments = [...(appointments || []), ...mappedPreAppointments];
     
     const weeks = getWeeksInMonth(currentYear, currentMonth);
 
     // 1. Filtrar agendamentos reais (Data/Semana/Especialidade)
-    let base = (appointments || []).filter((appointment) => {
+    let base = allAppointments.filter((appointment) => {
       // Se tiver especialidade ativa, filtra por ela
       if (activeSpecialty && activeSpecialty !== "todas") {
         if (resolveSpecialtyKey(appointment) !== activeSpecialty) return false;
@@ -735,7 +782,7 @@ export default function App() {
     base = sortAppointmentsByDateTimeAsc(base);
     console.log(`[filteredAppointments] Resultado final: ${base.length} agendamentos`);
     return base;
-  }, [appointments, activeSpecialty, filters, currentYear, currentMonth, availableSlots]);
+  }, [appointments, preAppointments, activeSpecialty, filters, currentYear, currentMonth, availableSlots]);
 
   // ========== PROFESSIONALS ==========
   const onOpenProfessionals = () => {
