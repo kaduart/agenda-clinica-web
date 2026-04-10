@@ -53,10 +53,11 @@ const resolvePatientName = (a) => {
     return 'Paciente Desconhecido';
 };
 
-// 🌐 Traduz status do backend (inglês) para português
+// 🌐 Traduz status do backend (inglês/português) para português
 const translateStatus = (status) => {
     const statusMap = {
         'scheduled': 'Agendado',
+        'agendado': 'Agendado',  // ← Status legado em português
         'confirmed': 'Confirmado',
         'pre_agendado': 'Pré-agendado',
         'pre_agendamento': 'Pré-agendamento',

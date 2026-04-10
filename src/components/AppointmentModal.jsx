@@ -1303,7 +1303,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                             </div>
                         )}
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Forma de Pagamento (CRM)</label>
                                 <select
@@ -1318,6 +1318,31 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                     <option value="cartao_debito">Cartão Débito</option>
                                     <option value="transferencia_bancaria">Transferência</option>
                                     <option value="outro">Outro</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Serviço *</label>
+                                <select
+                                    name="crm.sessionType"
+                                    value={formData.crm.sessionType || 'avaliacao'}
+                                    onChange={(e) => {
+                                        const value = e.target.value;
+                                        setFormData(prev => ({
+                                            ...prev,
+                                            crm: {
+                                                ...prev.crm,
+                                                sessionType: value,
+                                                // Atualiza serviceType automaticamente baseado no tipo
+                                                serviceType: value === 'avaliacao' ? 'individual_session' : 'package_session'
+                                            }
+                                        }));
+                                    }}
+                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                >
+                                    <option value="avaliacao">Avaliação</option>
+                                    <option value="sessao">Sessão</option>
+                                    <option value="sessao_avulsa">Sessão Avulsa</option>
+                                    <option value="retorno">Retorno</option>
                                 </select>
                             </div>
                             <div>
