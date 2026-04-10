@@ -5,6 +5,61 @@ import api from "../services/api";
 import { sendWhatsAppMessage, generateConfirmationMessage, generateReminderMessage } from "../services/baileysApi";
 import { getHolidays, holidaysToMap, isTimeBlockedByHoliday as checkHolidayBlock } from "../services/calendarService";
 
+/**
+ * 🔧 UNIFICAÇÃO: Extrai dados do paciente de forma consistente
+ * Funciona tanto para agendamentos normais quanto pré-agendamentos
+ */
+function resolvePatientData(appointment, foundPatient) {
+    // Fontes de dados (em ordem de prioridade)
+    const pObj = (typeof appointment?.patient === 'object' && appointment?.patient !== null) ? appointment.patient : {};
+    const patientInfo = appointment?.patientInfo || {}; // Pré-agendamentos
+    const originalDataInfo = appointment?.originalData?.patientInfo || {}; // Pré-agendamentos importados
+    const prePatientInfo = { ...originalDataInfo, ...patientInfo }; // Merge das fontes de pré-agendamento
+    
+    return {
+        // Nome
+        fullName: pObj.fullName || 
+                  appointment?.patientName || 
+                  prePatientInfo.fullName ||
+                  (typeof appointment?.patient === 'string' ? appointment.patient : '') ||
+                  '',
+        
+        // Telefone
+        phone: appointment?.phone || 
+               pObj.phone || 
+               prePatientInfo.phone ||
+               foundPatient?.phone ||
+               '',
+        
+        // Data de nascimento
+        birthDate: appointment?.birthDate || 
+                   pObj.dateOfBirth || 
+                   prePatientInfo.birthDate ||
+                   foundPatient?.dateOfBirth ||
+                   '',
+        
+        // Email
+        email: appointment?.email || 
+               pObj.email || 
+               prePatientInfo.email ||
+               foundPatient?.email ||
+               '',
+        
+        // Responsável
+        responsible: appointment?.responsible || 
+                     foundPatient?.guardianName || 
+                     foundPatient?.responsible ||
+                     '',
+        
+        // ID do paciente
+        patientId: pObj._id || 
+                   appointment?.patientId || 
+                   appointment?.originalData?.patientId ||
+                   (typeof appointment?.patient === 'string' ? appointment.patient : '') ||
+                   ''
+    };
+}
+
 export default function AppointmentModal({ appointment, professionals, patients, onSave, onConfirmPre, onClose, onReloadPatients, authError }) {
     const [formData, setFormData] = React.useState({
         patient: "",
@@ -81,36 +136,21 @@ export default function AppointmentModal({ appointment, professionals, patients,
         const today = formatDateLocal(new Date());
 
         if (appointment) {
-            // Extract patient data carefully - patient pode ser objeto ou ID string
+            // 🔧 UNIFICAÇÃO: Busca ID do paciente para encontrar na lista
             const pObj = (typeof appointment.patient === 'object' && appointment.patient !== null)
                 ? appointment.patient
                 : {};
-
-            // Tenta obter o nome de várias fontes possíveis
-            const pName = pObj.fullName ||
-                appointment.patientName ||
-                (typeof appointment.patient === 'string' ? appointment.patient : '') ||
-                '';
-
-            // Tenta obter o telefone de várias fontes possíveis
-            const pPhone = appointment.phone ||
-                pObj.phone ||
-                appointment.patientPhone ||
-                '';
-
-            // Para pré-agendamentos, os dados estão em originalData.patientInfo
-            const prePatientInfo = appointment.originalData?.patientInfo || {};
-
-            // Para pré-agendamentos, o patientId pode estar em originalData.patientId
             const prePatientId = appointment.originalData?.patientId || "";
-
-            // Busca dados do paciente na lista de patients (se tiver ID)
-            // Nota: appointment.patient pode ser string ID ou objeto populado
             const patientStringId = typeof appointment.patient === 'string' ? appointment.patient : '';
             const foundPatientId = pObj._id || appointment.patientId || prePatientId || patientStringId || "";
+            
             console.log("🔍 [AppointmentModal] Buscando paciente na lista:", { foundPatientId, patientsCount: patients?.length });
             const foundPatient = foundPatientId ? (patients || []).find(p => p._id === foundPatientId) : null;
             console.log("🔍 [AppointmentModal] Paciente encontrado na lista:", foundPatient ? "SIM" : "NÃO", foundPatient?.fullName);
+
+            // 🔧 UNIFICAÇÃO: Extrai dados do paciente de forma consistente
+            const patientData = resolvePatientData(appointment, foundPatient);
+            console.log("👤 [AppointmentModal] Dados unificados do paciente:", patientData);
 
             // Extract professional data
             const dObj = (typeof appointment.doctor === 'object' && appointment.doctor !== null)
@@ -119,31 +159,14 @@ export default function AppointmentModal({ appointment, professionals, patients,
             const profName = dObj.fullName || appointment.professional || appointment.professionalName;
 
             const formDataToSet = {
-                // Dados do paciente
-                patient: pName || "",
-                patientName: pName || "",  // alias para o backend
-                phone: pPhone || prePatientInfo.phone || foundPatient?.phone || "",
-                birthDate: (() => {
-                    const d1 = extractDateForInput(appointment.birthDate);
-                    const d2 = extractDateForInput(pObj.dateOfBirth);
-                    const d3 = extractDateForInput(prePatientInfo.birthDate);
-                    const d4 = extractDateForInput(foundPatient?.dateOfBirth);
-                    const final = d1 || d2 || d3 || d4 || "";
-                    console.log("🎂 [AppointmentModal] EXTRAINDO DATA:", { 
-                        appointmentBirthDate: appointment.birthDate, 
-                        pObjDateOfBirth: pObj.dateOfBirth, 
-                        prePatientBirthDate: prePatientInfo.birthDate,
-                        foundPatientDateOfBirth: foundPatient?.dateOfBirth,
-                        d1, d2, d3, d4, final
-                    });
-                    return final;
-                })(),
-                email: appointment.email || pObj.email || prePatientInfo.email || foundPatient?.email || "",
-                responsible: appointment.responsible || 
-                    foundPatient?.guardianName || 
-                    foundPatient?.responsible || 
-                    foundPatient?.parentName || "",
-                patientId: pObj._id || appointment.patientId || prePatientId || "",
+                // Dados do paciente - UNIFICADO
+                patient: patientData.fullName,
+                patientName: patientData.fullName,
+                phone: patientData.phone,
+                birthDate: extractDateForInput(patientData.birthDate) || "",
+                email: patientData.email,
+                responsible: patientData.responsible,
+                patientId: patientData.patientId,
 
                 // Dados do agendamento (date/time para agendamentos, preferredDate/preferredTime para pré-agendamentos)
                 date: extractDateForInput(appointment.date) || 

@@ -227,22 +227,34 @@ const waitForSocketEvent = (eventName, targetId, timeoutMs = 5000) => {
 };
 
 // FUNÇÃO AUXILIAR: Mapeia campos do frontend para o backend
-// Frontend: serviceType='individual_session'/'package_session', specialty='fonoaudiologia'/'terapia_ocupacional'
-// Backend:  serviceType='evaluation'/'session', sessionType='fonoaudiologia'/'terapia_ocupacional' (especialidade)
+// Frontend: serviceType='individual_session'/'package_session', specialty='fonoaudiologia'/'terapia_ocupacional', paymentMethod='credit_card'/'debit_card'/'cash'
+// Backend:  serviceType='evaluation'/'session', sessionType='fonoaudiologia'/'terapia_ocupacional' (especialidade), paymentMethod='cartao_credito'/'cartao_debito'/'dinheiro'
 const mapCrmToBackend = (crm, specialty) => {
     const serviceTypeBackend = crm?.serviceType === "package_session" ? "session" : "evaluation";
     
     // sessionType no backend é a ESPECIALIDADE (fonoaudiologia, terapia_ocupacional), não 'avaliacao'/'sessao'
     const sessionTypeBackend = specialty || crm?.sessionType;
     
+    // 🆕 Mapeia paymentMethod do frontend (inglês) para o backend (português)
+    const paymentMethodMap = {
+        'credit_card': 'cartao_credito',
+        'debit_card': 'cartao_debito',
+        'cash': 'dinheiro',
+        'pix': 'pix',
+        'bank_transfer': 'transferencia_bancaria',
+        'other': 'outro'
+    };
+    const paymentMethodBackend = paymentMethodMap[crm?.paymentMethod] || crm?.paymentMethod || 'pix';
+    
     console.log("📝 [mapCrmToBackend] Mapeando:");
     console.log("  serviceType:", crm?.serviceType, "→", serviceTypeBackend);
     console.log("  sessionType (especialidade):", specialty, "→", sessionTypeBackend);
+    console.log("  paymentMethod:", crm?.paymentMethod, "→", paymentMethodBackend);
     
     return {
         serviceType: serviceTypeBackend,
         sessionType: sessionTypeBackend,
-        paymentMethod: crm?.paymentMethod || "pix",
+        paymentMethod: paymentMethodBackend,
         paymentAmount: Number(crm?.paymentAmount || 0),
         usePackage: Boolean(crm?.usePackage),
     };
