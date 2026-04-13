@@ -44,6 +44,7 @@ import { confirmToast } from "./utils/confirmToast";
 import { formatDateLocal, getWeeksInMonth } from "./utils/date";
 import { sortAppointmentsByDateTimeAsc } from "./utils/sort";
 import { resolveSpecialtyKey } from "./utils/specialty";
+import { SPECIALTIES } from "./config/specialties";
 
 import ReminderModal from "./components/ReminderModal";
 import RemindersListModal from "./components/RemindersListModal";
@@ -281,11 +282,7 @@ export default function App() {
 
   // ========== LABEL DA ESPECIALIDADE ATUAL ==========
   const activeSpecialtyLabel = useMemo(() => {
-    if (activeSpecialty === "fonoaudiologia") return "Fonoaudiologia";
-    if (activeSpecialty === "psicologia") return "Psicologia";
-    if (activeSpecialty === "terapia_ocupacional") return "Terapia Ocupacional";
-    if (activeSpecialty === "fisioterapia") return "Fisioterapia";
-    return "";
+    return SPECIALTIES[activeSpecialty]?.name || "";
   }, [activeSpecialty]);
 
   // ========== FUNÇÕES DE AÇÃO (Simplificadas para API) ==========
@@ -554,13 +551,7 @@ export default function App() {
   const openCreateModal = () => {
     console.log("📝 [App.jsx] Abrindo modal de criação");
 
-    const specialtyLabel = (() => {
-      if (activeSpecialty === "fonoaudiologia") return "Fonoaudiologia";
-      if (activeSpecialty === "psicologia") return "Psicologia";
-      if (activeSpecialty === "terapia_ocupacional") return "Terapia Ocupacional";
-      if (activeSpecialty === "fisioterapia") return "Fisioterapia";
-      return "Fonoaudiologia";
-    })();
+    const specialtyLabel = SPECIALTIES[activeSpecialty]?.name || "Fonoaudiologia";
 
     setEditingAppointment({
       date: formatDateLocal(new Date()),
@@ -580,13 +571,7 @@ export default function App() {
     console.log("[handleSlotClick]", payload);
 
     if (payload?.__isEmptySlot) {
-      const specialtyLabel = (() => {
-        if (activeSpecialty === "fonoaudiologia") return "Fonoaudiologia";
-        if (activeSpecialty === "psicologia") return "Psicologia";
-        if (activeSpecialty === "terapia_ocupacional") return "Terapia Ocupacional";
-        if (activeSpecialty === "fisioterapia") return "Fisioterapia";
-        return "Fonoaudiologia";
-      })();
+      const specialtyLabel = SPECIALTIES[activeSpecialty]?.name || "Fonoaudiologia";
 
       setEditingAppointment({
         date: payload.date,
