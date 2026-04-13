@@ -1,12 +1,14 @@
 /**
- * 🚀 Serviço de Integração com CRM - Versão MongoDB (sem Firebase)
+ * 🚀 Serviço de Integração com CRM - Versão V2 Adapter
  * 
- * Substitui o crmExport.js que usava Firebase
- * Agora usa API REST diretamente
+ * LEGADO: Substitui lógica antiga espalhada.
+ * AGORA: thin wrapper sobre api/v2/agendaV2Client
+ * 
+ * Quando seguro, este arquivo pode ser deprecado e os imports
+ * migrados diretamente para appointmentsRepo.js ou agendaV2Client.
  */
 
-const EXPORT_TOKEN = import.meta.env.VITE_API_TOKEN || "agenda_export_token_fono_inova_2025_secure_abc123";
-const BACKEND_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+import * as v2 from "../api/v2/agendaV2Client";
 
 // Cache local com localStorage (persiste entre reloads)
 const getCache = () => {
@@ -25,7 +27,6 @@ const setCache = (key, value) => {
 
 const getCacheItem = (key) => getCache()[key];
 
-// Compatibilidade com código antigo
 const localCache = {
     get: getCacheItem,
     set: setCache,
@@ -36,43 +37,16 @@ const localCache = {
     }
 };
 
-const apiRequest = async (endpoint, options = {}) => {
-    const url = `${BACKEND_URL}${endpoint}`;
-    const config = {
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${EXPORT_TOKEN}`,
-            ...options.headers
-        },
-        ...options
-    };
-    
-    if (config.body && typeof config.body === 'object') {
-        // Converter externalId/id para _id se necessário
-        if (config.body.externalId || config.body.id) {
-            config.body._id = config.body.externalId || config.body.id;
-            delete config.body.externalId;
-            delete config.body.id;
-        }
-        config.body = JSON.stringify(config.body);
-    }
-    
-    const response = await fetch(url, config);
-    const data = await response.json();
-    
-    if (!response.ok) {
-        throw new Error(data.error || `HTTP ${response.status}`);
-    }
-    
-    return data;
-};
+// ===============================
+// 🔁 THIN WRAPPERS (V2 ADAPTER)
+// ===============================
 
 /**
  * Exporta agendamento confirmado para o CRM
+ * @deprecated Use appointmentsRepo.upsertAppointment diretamente
  */
 export const exportToCRM = async (appointment) => {
     try {
-        // Verificar se já foi exportado
         const cacheKey = `export_${appointment.id}`;
         const cached = localCache.get(cacheKey);
         
@@ -80,7 +54,6 @@ export const exportToCRM = async (appointment) => {
             return { success: true, cached: true };
         }
 
-        // Validações
         if (appointment.status !== "Confirmado") {
             alert("⚠️ Apenas agendamentos confirmados podem ser exportados.");
             return { success: false, error: 'Status não confirmado' };
@@ -97,7 +70,6 @@ export const exportToCRM = async (appointment) => {
             return { success: false, error: 'Campos faltando' };
         }
 
-        // Preparar payload (usando _id direto)
         const payload = {
             _id: appointment.id,
             professionalName: appointment.professional,
@@ -114,7 +86,7 @@ export const exportToCRM = async (appointment) => {
             observations: appointment.observations || undefined,
             crm: {
                 serviceType: appointment.crm?.serviceType || "individual_session",
-                sessionType: appointment.crm?.sessionType || "avaliacao",
+                sessionType: appointment.crm?.sessionType || "evaluation",
                 paymentMethod: appointment.crm?.paymentMethod || "pix",
                 paymentAmount: Number(appointment.crm?.paymentAmount || 0),
                 usePackage: !!appointment.crm?.usePackage,
@@ -122,13 +94,8 @@ export const exportToCRM = async (appointment) => {
             },
         };
 
-        // Enviar para API
-        const data = await apiRequest('/api/agenda-externa/pre-agendar', {
-            method: 'POST',
-            body: payload
-        });
+        const data = await v2.createPreAppointment(payload);
 
-        // Salvar no cache local
         localCache.set(cacheKey, {
             status: 'success',
             crmPreAgendamentoId: data.preAgendamentoId,
@@ -140,14 +107,11 @@ export const exportToCRM = async (appointment) => {
 
     } catch (err) {
         console.error("❌ Erro ao exportar:", err);
-        
-        // Salvar erro no cache
         localCache.set(`export_${appointment.id}`, {
             status: 'error',
             error: err.message,
             attemptedAt: new Date().toISOString()
         });
-        
         alert("❌ Erro ao exportar:\n\n" + err.message);
         return { success: false, error: err.message };
     }
@@ -155,13 +119,14 @@ export const exportToCRM = async (appointment) => {
 
 /**
  * Envia pré-agendamento automaticamente
+ * @deprecated Use appointmentsRepo.upsertAppointment diretamente
  */
 export const autoSendPreAgendamento = async (appointment) => {
     try {
         const payload = {
             _id: appointment.id,
             professionalName: appointment.professional,
-            professionalId: appointment.professionalId,  // ← ID do médico no CRM (MongoDB _id)
+            professionalId: appointment.professionalId,
             date: appointment.date,
             time: appointment.time,
             specialty: appointment.specialtyKey || appointment.specialty || "fonoaudiologia",
@@ -182,15 +147,11 @@ export const autoSendPreAgendamento = async (appointment) => {
             source: 'agenda_externa'
         };
 
-        const data = await apiRequest('/api/pre-agendamento/webhook', {
-            method: 'POST',
-            body: payload
-        });
+        const data = await v2.createPreAppointment(payload);
 
-        // Cache local
         localCache.set(`pre_${appointment.id}`, {
             status: 'enviado',
-            crmPreAgendamentoId: data.id,
+            crmPreAgendamentoId: data.preAgendamentoId || data.appointmentId,
             sentAt: new Date().toISOString()
         });
 
@@ -208,11 +169,11 @@ export const autoSendPreAgendamento = async (appointment) => {
 
 /**
  * Confirma agendamento no CRM
+ * @deprecated Use appointmentsRepo.confirmAppointment diretamente
  */
 export const confirmarAgendamento = async (appointment, dadosConfirmacao) => {
     try {
-        const body = {
-            _id: appointment.id,
+        const data = await v2.confirmPreAppointment(appointment.id, {
             doctorId: dadosConfirmacao.doctorId,
             date: dadosConfirmacao.date || appointment.date,
             time: dadosConfirmacao.time || appointment.time,
@@ -220,14 +181,8 @@ export const confirmarAgendamento = async (appointment, dadosConfirmacao) => {
             serviceType: appointment.crm?.serviceType || "evaluation",
             paymentMethod: appointment.crm?.paymentMethod || "pix",
             notes: "Confirmado pela secretária",
-        };
-
-        const data = await apiRequest('/api/agenda-externa/confirmar', {
-            method: 'POST',
-            body
         });
 
-        // Atualizar cache
         localCache.set(`export_${appointment.id}`, {
             status: 'confirmed',
             crmAppointmentId: data.appointmentId,
@@ -244,6 +199,7 @@ export const confirmarAgendamento = async (appointment, dadosConfirmacao) => {
 
 /**
  * Sincroniza cancelamento com o CRM
+ * @deprecated Use appointmentsRepo.cancelAppointment diretamente
  */
 export const syncCancelToCRM = async (appointment, reason = "Cancelado via agenda externa") => {
     const cacheKey = `syncCancel_${appointment.id}`;
@@ -257,14 +213,8 @@ export const syncCancelToCRM = async (appointment, reason = "Cancelado via agend
 
     try {
         localCache.set(cacheKey, { status: 'syncing' });
-
-        const data = await apiRequest('/api/agenda-externa/cancel', {
-            method: 'POST',
-            body: {
-                _id: appointment.id,
-                reason,
-                confirmedAbsence: appointment.confirmedAbsence || false
-            }
+        const data = await v2.cancelAppointment(appointment.id, reason, {
+            confirmedAbsence: appointment.confirmedAbsence || false
         });
 
         localCache.set(cacheKey, {
@@ -283,6 +233,7 @@ export const syncCancelToCRM = async (appointment, reason = "Cancelado via agend
 
 /**
  * Sincroniza atualização com o CRM
+ * @deprecated Use appointmentsRepo.updateAppointmentDirect diretamente
  */
 export const syncUpdateToCRM = async (appointment, updates) => {
     const hasPre = localCache.get(`pre_${appointment.id}`)?.status === 'enviado';
@@ -313,11 +264,7 @@ export const syncUpdateToCRM = async (appointment, updates) => {
             if (payload[key] === undefined) delete payload[key];
         });
 
-        const data = await apiRequest('/api/agenda-externa/update', {
-            method: 'POST',
-            body: payload
-        });
-
+        const data = await v2.updateAppointment(appointment.id, payload);
         return { success: true, data };
 
     } catch (err) {
@@ -328,18 +275,14 @@ export const syncUpdateToCRM = async (appointment, updates) => {
 
 /**
  * Sincroniza exclusão com o CRM
+ * @deprecated Use appointmentsRepo.hardDeleteAppointment diretamente
  */
 export const syncDeleteToCRM = async (appointmentId, reason = "Excluído via agenda externa") => {
     try {
-        const data = await apiRequest('/api/agenda-externa/delete', {
-            method: 'POST',
-            body: { _id: appointmentId, reason }
-        });
-
-        // Limpar cache
+        console.log(`[syncDeleteToCRM] Excluindo ${appointmentId}. Motivo: ${reason}`);
+        const data = await v2.deleteAppointment(appointmentId);
         localCache.delete(`pre_${appointmentId}`);
         localCache.delete(`export_${appointmentId}`);
-
         return data;
 
     } catch (err) {
@@ -350,6 +293,7 @@ export const syncDeleteToCRM = async (appointmentId, reason = "Excluído via age
 
 /**
  * Wrapper inteligente de sincronização
+ * @deprecated Use appointmentsRepo diretamente
  */
 export const syncIfNeeded = async (oldAppointment, newAppointment) => {
     console.log("[syncIfNeeded] ==========================================");
@@ -364,12 +308,10 @@ export const syncIfNeeded = async (oldAppointment, newAppointment) => {
         return { success: true, skipped: true };
     }
 
-    // Se mudou para Confirmado
     const mudouParaConfirmado = changes.status === "Confirmado" && oldAppointment.status !== "Confirmado";
     const aindaNaoFoiImportado = !localCache.get(`export_${newAppointment.id}`)?.crmAppointmentId;
 
     if (mudouParaConfirmado && aindaNaoFoiImportado) {
-        // Se já tem pré-agendamento, confirma
         if (localCache.get(`pre_${newAppointment.id}`)?.crmPreAgendamentoId) {
             return confirmarAgendamento(newAppointment, {
                 date: newAppointment.date,
@@ -378,7 +320,6 @@ export const syncIfNeeded = async (oldAppointment, newAppointment) => {
             });
         }
         
-        // Se não tem, cria e confirma
         await autoSendPreAgendamento(newAppointment);
         await new Promise(r => setTimeout(r, 500));
         return confirmarAgendamento(newAppointment, {
@@ -388,28 +329,16 @@ export const syncIfNeeded = async (oldAppointment, newAppointment) => {
         });
     }
 
-    // Outras mudanças
     return syncUpdateToCRM(oldAppointment, changes);
 };
 
 /**
  * 🗓️ Busca disponibilidade semanal de horários livres
- * 
- * @param {string} startDate - Data de início (YYYY-MM-DD)
- * @param {string} specialty - Especialidade (fonoaudiologia, psicologia, etc)
- * @param {number} days - Quantidade de dias (default: 7)
- * @returns {Promise<Object>} - Grade de disponibilidade
+ * @deprecated Use appointmentsRepo.fetchWeeklyAvailability diretamente
  */
 export const fetchWeeklyAvailability = async (startDate, specialty, days = 7) => {
     try {
-        // 🚨 FIX: Usar a mesma rota do CRM para evitar lógica duplicada
-        const params = new URLSearchParams({
-            startDate,
-            specialty,
-            days: String(days)
-        });
-        
-        const data = await apiRequest(`/api/agenda-externa/disponibilidade?${params}`);
+        const data = await v2.getWeeklyAvailability({ startDate, specialty, days });
         return data;
     } catch (err) {
         console.error("[fetchWeeklyAvailability] Erro:", err);

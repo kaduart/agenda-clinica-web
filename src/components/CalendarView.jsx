@@ -257,11 +257,11 @@ export default function WeeklyView({
                                                                     onClick={() => onSlotClick(apt)}
                                                                     className={`px-2 py-1 rounded-md text-xs font-bold border ${isCanceled
                                                                         ? "bg-red-100 text-red-800 border-red-200 line-through opacity-70"
-                                                                        : (apt.__isPreAgendamento || apt.operationalStatus === 'pre_agendado')
+                                                                        : (apt.operationalStatus === 'pre_agendado')
                                                                             ? "bg-pink-200 text-pink-900 border-pink-300 hover:bg-pink-300"
                                                                             : "bg-yellow-200 text-yellow-900 border-yellow-300 hover:bg-yellow-300"
                                                                         }`}
-                                                                    title={(apt.__isPreAgendamento || apt.operationalStatus === 'pre_agendado') ? `Interesse: ${apt.patientName || apt.patient?.fullName || apt.patient}` : (apt.patientName || apt.patient?.fullName || apt.patient || "Ocupado")}
+                                                                    title={(apt.operationalStatus === 'pre_agendado') ? `Interesse: ${apt.patientName || apt.patient?.fullName || apt.patient}` : (apt.patientName || apt.patient?.fullName || apt.patient || "Ocupado")}
                                                                 >
                                                                     {t}
                                                                 </button>

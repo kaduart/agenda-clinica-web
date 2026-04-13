@@ -2,6 +2,7 @@ import React from "react";
 import { formatDateLocal, extractDateForInput } from "../utils/date";
 import { resolveSpecialtyKey } from "../utils/specialty";
 import api from "../services/api";
+import { cancelPreAppointment } from "../services/preAppointmentsRepo";
 import { sendWhatsAppMessage, generateConfirmationMessage, generateReminderMessage } from "../services/baileysApi";
 import { getHolidays, holidaysToMap, isTimeBlockedByHoliday as checkHolidayBlock } from "../services/calendarService";
 
@@ -33,6 +34,8 @@ function resolvePatientData(appointment, foundPatient) {
         
         // Data de nascimento
         birthDate: appointment?.birthDate || 
+                   appointment?.patientInfo?.birthDate ||
+                   appointment?.originalData?.patientInfo?.birthDate ||
                    pObj.dateOfBirth || 
                    prePatientInfo.birthDate ||
                    foundPatient?.dateOfBirth ||
@@ -75,7 +78,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
         professionalId: "",
         specialty: appointment?.specialty || "Fonoaudiologia",
         specialtyKey: appointment?.specialtyKey || resolveSpecialtyKey(appointment?.specialty || "Fonoaudiologia"),
-        operationalStatus: appointment?.operationalStatus || "pre_agendado",
+        operationalStatus: appointment?.operationalStatus || "scheduled",
         status: "",
         observations: "",
         createdAt: appointment?.createdAt || null,
@@ -87,7 +90,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
         package: null,
         crm: {
             serviceType: appointment?.crm?.serviceType || "individual_session",
-            sessionType: appointment?.crm?.sessionType || "avaliacao",
+            sessionType: appointment?.crm?.sessionType || resolveSpecialtyKey(appointment),
             paymentMethod: appointment?.crm?.paymentMethod || "pix",
             paymentAmount: Number(appointment?.crm?.paymentAmount || appointment?.suggestedValue || 0),
             usePackage: !!appointment?.crm?.usePackage,
@@ -156,7 +159,18 @@ export default function AppointmentModal({ appointment, professionals, patients,
             const dObj = (typeof appointment.doctor === 'object' && appointment.doctor !== null)
                 ? appointment.doctor
                 : {};
-            const profName = dObj.fullName || appointment.professional || appointment.professionalName;
+            
+            // 🆕 Resolve professionalId quando doctor vem como string (não populado) — caso V2
+            let resolvedProfId = dObj._id || appointment.professionalId || "";
+            let resolvedProfName = dObj.fullName || appointment.professional || appointment.professionalName || "";
+            
+            if (!resolvedProfName && typeof appointment.doctor === 'string') {
+                const matchedProf = (professionals || []).find(p => String(p.id) === String(appointment.doctor) || String(p._id) === String(appointment.doctor));
+                if (matchedProf) {
+                    resolvedProfId = matchedProf.id || matchedProf._id;
+                    resolvedProfName = matchedProf.fullName;
+                }
+            }
 
             const formDataToSet = {
                 // Dados do paciente - UNIFICADO
@@ -177,14 +191,14 @@ export default function AppointmentModal({ appointment, professionals, patients,
                     appointment.preferredTime || 
                     appointment.originalData?.preferredTime || 
                     "08:00",
-                professional: profName || "",
-                professionalName: profName || "",  // alias para o backend
-                professionalId: dObj._id || appointment.professionalId || "",
+                professional: resolvedProfName || "",
+                professionalName: resolvedProfName || "",  // alias para o backend
+                professionalId: resolvedProfId || "",
                 specialty: appointment.specialty || "Fonoaudiologia",
                 specialtyKey:
                     appointment.specialtyKey ||
                     resolveSpecialtyKey(appointment.specialty || "Fonoaudiologia"),
-                operationalStatus: appointment.operationalStatus || "pre_agendado",
+                operationalStatus: appointment.operationalStatus || "scheduled",
                 status: appointment.status || "",
                 observations: appointment.observations || "",
                 createdAt: appointment.createdAt || null,
@@ -204,8 +218,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                         (appointment.serviceType === 'evaluation' ? 'individual_session' :
                             appointment.serviceType === 'session' ? 'package_session' :
                                 appointment.package ? "package_session" : "individual_session"),
-                    sessionType: appointment.crm?.sessionType ||
-                        (appointment.serviceType === 'evaluation' ? 'avaliacao' : 'sessao'),
+                    sessionType: appointment.crm?.sessionType || resolveSpecialtyKey(appointment),
                     paymentMethod: appointment.crm?.paymentMethod ||
                         appointment.paymentMethod || "pix",
                     paymentAmount: Number(
@@ -256,7 +269,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                 package: null,
                 crm: {
                     serviceType: "individual_session",
-                    sessionType: "avaliacao",
+                    sessionType: resolveSpecialtyKey("Fonoaudiologia"),
                     paymentMethod: appointment?.crm?.paymentMethod || "pix",
                     paymentAmount: 0,
                     usePackage: false,
@@ -336,14 +349,14 @@ export default function AppointmentModal({ appointment, professionals, patients,
     React.useEffect(() => {
         const fetchDetailsIfNeeded = async () => {
             // NÃO busca se for pré-agendamento da agenda externa (ainda não existe como agendamento real)
-            const isPreAgendamento = !!appointment?.__isPreAgendamento;
+            const isPreAgendamento = appointment?.operationalStatus === 'pre_agendado';
             
             // Sempre busca dados atualizados da API para agendamentos existentes
             if (appointment?.id && !appointment.id.startsWith('ext_') && !isPreAgendamento) {
                 console.log("🔍 [AppointmentModal] Buscando detalhes do agendamento no servidor...");
                 setIsLoadingDetails(true);
                 try {
-                    const response = await api.get(`/api/appointments/${appointment.id}`);
+                    const response = await api.get(`/api/v2/appointments/${appointment.id}`);
                     const data = response.data.data || response.data;
 
                     console.log("🔍 [AppointmentModal] Detalhes completos recebidos:", {
@@ -379,9 +392,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                 serviceType: data.serviceType === 'evaluation' ? 'individual_session' :
                                     data.serviceType === 'session' ? 'package_session' :
                                         prev.crm.serviceType,
-                                sessionType: data.serviceType === 'evaluation' ? 'avaliacao' :
-                                    data.serviceType === 'session' ? 'sessao' :
-                                        prev.crm.sessionType,
+                                sessionType: prev.specialtyKey || resolveSpecialtyKey(prev.specialty),
                                 paymentMethod: data.paymentMethod || prev.crm.paymentMethod,
                                 paymentAmount: Number(data.sessionValue ?? prev.crm.paymentAmount),
                                 usePackage: data.serviceType === 'session' || !!data.package,
@@ -406,7 +417,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
     // Estado para controlar se é paciente novo ou existente
     const [isNewPatient, setIsNewPatient] = React.useState(() => {
         // Detecta se é pré-agendamento da agenda externa
-        const isPre = !!appointment?.__isPreAgendamento;
+        const isPre = appointment?.operationalStatus === 'pre_agendado';
 
         // Se já tem patientId (direto ou em originalData para pré-agendamentos), é existente
         const hasPatientId = appointment?.patientId ||
@@ -474,26 +485,27 @@ export default function AppointmentModal({ appointment, professionals, patients,
     };
 
     // Auto-seleciona paciente se o usuário digitou o nome completo e saiu do campo
-    const handlePatientBlur = () => {
+    const handlePatientBlur = (currentValue) => {
         // Pequeno delay para permitir que o clique na sugestão seja processado primeiro
         setTimeout(() => {
             setShowSuggestions(false);
 
-            if (formData.patient && !formData.patientId) {
-                const exactMatch = (patients || []).find(p =>
-                    p.fullName.toLowerCase().trim() === formData.patient.toLowerCase().trim()
-                );
-                if (exactMatch) {
-                    console.log("[AppointmentModal] Auto-selecionando paciente existente:", exactMatch.fullName);
-                    setFormData(prev => ({
-                        ...prev,
-                        patient: exactMatch.fullName,
-                        patientId: exactMatch._id,
-                        phone: exactMatch.phone || prev.phone,
-                        birthDate: exactMatch.dateOfBirth ? exactMatch.dateOfBirth.split('T')[0] : prev.birthDate,
-                        email: exactMatch.email || prev.email,
-                    }));
-                }
+            const searchValue = (currentValue || formData.patient || "").trim();
+            if (!searchValue || formData.patientId) return;
+
+            const exactMatch = (patients || []).find(p =>
+                p.fullName.toLowerCase().trim() === searchValue.toLowerCase()
+            );
+            if (exactMatch) {
+                console.log("[AppointmentModal] Auto-selecionando paciente existente:", exactMatch.fullName);
+                selectPatient(exactMatch);
+                return;
+            }
+
+            // Fallback: se só há 1 sugestão filtrada, auto-seleciona também
+            if (filteredPatients.length === 1) {
+                console.log("[AppointmentModal] Auto-selecionando única sugestão:", filteredPatients[0].fullName);
+                selectPatient(filteredPatients[0]);
             }
         }, 200);
     };
@@ -569,8 +581,10 @@ export default function AppointmentModal({ appointment, professionals, patients,
                 return;
             }
 
-            // Validação: se não é novo paciente, precisa ter selecionado um da lista
-            if (!isNewPatient && !formData.patientId) {
+            // 🛡️ Se não tem patientId mas tem nome digitado, automaticamente cria como novo paciente
+            const effectiveIsNewPatient = isNewPatient || (!formData.patientId && !!formData.patient?.trim());
+            
+            if (!effectiveIsNewPatient && !formData.patientId) {
                 console.error("❌ [AppointmentModal] ERRO: Tentou salvar paciente existente sem patientId!");
                 alert("Por favor, selecione um paciente existente da lista ou marque 'Criando novo paciente'");
                 setIsLoading(false);
@@ -611,8 +625,8 @@ export default function AppointmentModal({ appointment, professionals, patients,
                 // Dados do paciente
                 patient: formData.patient,
                 patientName: formData.patient,
-                patientId: isNewPatient ? null : formData.patientId,  // Só envia ID se for existente
-                isNewPatient: isNewPatient,  // Flag para o backend saber
+                patientId: effectiveIsNewPatient ? null : formData.patientId,  // Só envia ID se for existente
+                isNewPatient: effectiveIsNewPatient,  // Flag para o backend saber
                 phone: formData.phone,
                 birthDate: formData.birthDate,
                 email: formData.email,
@@ -648,7 +662,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
             console.log("✅ [AppointmentModal] =========================================");
             console.log("✅ [AppointmentModal] ENVIANDO PARA onSave:");
             console.log("✅ [AppointmentModal] patientId:", dataToSave.patientId);
-            console.log("✅ [AppointmentModal] isNewPatient:", dataToSave.isNewPatient);
+            console.log("✅ [AppointmentModal] effectiveIsNewPatient:", effectiveIsNewPatient, "| original:", isNewPatient);
             console.log("✅ [AppointmentModal] patientName:", dataToSave.patientName);
             console.log("✅ [AppointmentModal] Payload completo:", JSON.stringify(dataToSave, null, 2));
             await onSave(dataToSave);
@@ -663,9 +677,8 @@ export default function AppointmentModal({ appointment, professionals, patients,
     };
 
 
-    // isPre = APENAS pré-agendamentos da agenda externa (têm __isPreAgendamento)
-    // Agendamentos internos com status "pre_agendado" são appointments normais
-    const isPre = !!appointment?.__isPreAgendamento;
+    // isPre = pré-agendamentos (operationalStatus === 'pre_agendado')
+    const isPre = appointment?.operationalStatus === 'pre_agendado';
     const isEdit = !!appointment?.id;
     const source = appointment?.source || appointment?.metadata?.origin?.source || appointment?.originalData?.source;
 
@@ -678,7 +691,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
             console.log("🚫 [handleConfirmPre] Status=canceled → chamando /cancelar");
             setIsLoading(true);
             try {
-                await api.post(`/api/pre-agendamento/${appointment.id}/cancelar`);
+                await cancelPreAppointment(appointment.id);
                 onClose();
             } catch (err) {
                 alert("Erro ao cancelar: " + (err.response?.data?.error || err.message));
@@ -849,13 +862,15 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                         <input
                                             type="text"
                                             placeholder="Buscar paciente..."
-                                            value={showSuggestions ? undefined : (formData.patient || "")}
+                                            value={formData.patient || ""}
                                             onChange={(e) => handlePatientChange(e.target.value)}
                                             onFocus={() => {
                                                 setShowSuggestions(true);
                                                 setFilteredPatients(patients.slice(0, 10));
                                             }}
+                                            onBlur={(e) => handlePatientBlur(e.target.value)}
                                             className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                            required
                                         />
                                         <i className="fas fa-search absolute right-3 top-3.5 text-gray-400"></i>
                                     </div>
@@ -1171,14 +1186,14 @@ export default function AppointmentModal({ appointment, professionals, patients,
                             <h4 className="text-sm font-semibold text-indigo-800 flex items-center gap-2">
                                 <i className="fas fa-dollar-sign text-indigo-600"></i> Faturamento
                             </h4>
-                            {isEdit && (
+                            {isEdit && appointment?.operationalStatus !== 'pre_agendado' && (
                                 <button
                                     type="button"
                                     onClick={async () => {
                                         if (!appointment?.id) return;
                                         setIsLoadingDetails(true);
                                         try {
-                                            const response = await api.get(`/api/appointments/${appointment.id}`);
+                                            const response = await api.get(`/api/v2/appointments/${appointment.id}`);
                                             const data = response.data.data || response.data;
                                             setFormData(prev => ({
                                                 ...prev,
@@ -1190,8 +1205,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                                 crm: {
                                                     serviceType: data.serviceType === 'evaluation' ? 'individual_session' :
                                                         data.serviceType === 'session' ? 'package_session' : prev.crm.serviceType,
-                                                    sessionType: data.serviceType === 'evaluation' ? 'avaliacao' :
-                                                        data.serviceType === 'session' ? 'sessao' : prev.crm.sessionType,
+                                                    sessionType: prev.specialtyKey || resolveSpecialtyKey(prev.specialty),
                                                     paymentMethod: data.paymentMethod || prev.crm.paymentMethod,
                                                     paymentAmount: Number(data.sessionValue ?? prev.crm.paymentAmount),
                                                     usePackage: data.serviceType === 'session' || !!data.package,
@@ -1323,24 +1337,24 @@ export default function AppointmentModal({ appointment, professionals, patients,
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Serviço *</label>
                                 <select
-                                    name="crm.sessionType"
-                                    value={formData.crm.sessionType || 'avaliacao'}
+                                    value={formData.crm.serviceType || 'individual_session'}
                                     onChange={(e) => {
                                         const value = e.target.value;
                                         setFormData(prev => ({
                                             ...prev,
                                             crm: {
                                                 ...prev.crm,
-                                                sessionType: value,
-                                                // Atualiza serviceType automaticamente baseado no tipo
-                                                serviceType: value === 'avaliacao' ? 'individual_session' : 'package_session'
+                                                serviceType: value,
+                                                // sessionType SEMPRE é a especialidade clínica
+                                                sessionType: prev.specialtyKey || resolveSpecialtyKey(prev.specialty),
+                                                usePackage: value === 'package_session' || value === 'sessao'
                                             }
                                         }));
                                     }}
                                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                                 >
-                                    <option value="avaliacao">Avaliação</option>
-                                    <option value="sessao">Sessão</option>
+                                    <option value="individual_session">Avaliação</option>
+                                    <option value="package_session">Sessão (Pacote)</option>
                                     <option value="sessao_avulsa">Sessão Avulsa</option>
                                     <option value="retorno">Retorno</option>
                                 </select>

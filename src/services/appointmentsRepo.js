@@ -1,7 +1,7 @@
 
-import api from "./api";
 import io from 'socket.io-client';
 import { formatDateLocal } from "../utils/date";
+import * as v2 from "../api/v2/agendaV2Client";
 
 // Gerenciamento de Socket
 let socket;
@@ -57,7 +57,7 @@ const resolvePatientName = (a) => {
 const translateStatus = (status) => {
     const statusMap = {
         'scheduled': 'Agendado',
-        'agendado': 'Agendado',  // ← Status legado em português
+        'agendado': 'Agendado',
         'confirmed': 'Confirmado',
         'pre_agendado': 'Pré-agendado',
         'pre_agendamento': 'Pré-agendamento',
@@ -85,9 +85,8 @@ const resolveProfessionalName = (a) => {
 
 // Mapeia resposta V2 → formato que a agenda espera
 const mapV2Appointment = (a) => {
-    // date pode vir como ISO string "2026-04-06T03:00:00.000Z" ou "2026-04-06"
     const rawDate = typeof a.date === 'string' ? a.date : (a.date ? new Date(a.date).toISOString() : '');
-    const dateStr = rawDate.substring(0, 10); // sempre YYYY-MM-DD
+    const dateStr = rawDate.substring(0, 10);
 
     const patientName = resolvePatientName(a);
     const professional = resolveProfessionalName(a);
@@ -131,23 +130,12 @@ export const listenAppointmentsForMonth = (year, month, onData, specificDate = n
         console.log(`[fetchAppointments] Range mensal: ${startDate} → ${endDate}`);
     }
 
-    // Função interna para buscar dados
     const fetchData = async () => {
         try {
-            console.log(`[fetchAppointments] Buscando V2: ${startDate} a ${endDate}`);
-            const response = await api.get('/api/v2/appointments', {
-                params: {
-                    startDate,
-                    endDate,
-                    limit: 500,
-                    page: 1,
-                }
-            });
-
-            // V2 retorna { success, data: { appointments: [...], pagination: {...} } }
-            const raw = response.data?.data?.appointments || [];
-            const list = raw.map(mapV2Appointment);
-            console.log(`[fetchAppointments] Recebidos ${list.length} agendamentos (V2)`);
+            console.log(`[fetchAppointments] Buscando V2 + pré-agendamentos: ${startDate} a ${endDate}`);
+            const merged = await v2.getCalendarData({ startDate, endDate, limit: 500, page: 1 });
+            const list = merged.map(mapV2Appointment);
+            console.log(`[fetchAppointments] Recebidos ${list.length} agendamentos (merge V2 + pré-agendamentos)`);
             onData(list);
         } catch (error) {
             console.error('[fetchAppointments] Erro:', error);
@@ -155,18 +143,14 @@ export const listenAppointmentsForMonth = (year, month, onData, specificDate = n
         }
     };
 
-    // 1. Busca inicial
     fetchData();
 
-    // 2. Configura Socket Listener para atualizações em tempo real
     const s = getSocket();
 
     const handleUpdate = (data) => {
         console.log('📡 Evento Socket recebido:', data);
         console.log('📡 Tipo de evento:', data?.type || 'desconhecido');
         console.log('📡 ID afetado:', data?._id || data?.id || 'não informado');
-        // Estratégia simples: recarregar o mês inteiro em qualquer mudança
-        // Isso garante consistência sem complexidade de merge no frontend
         console.log('🔄 Recarregando dados devido a evento socket...');
         fetchData();
     };
@@ -174,12 +158,11 @@ export const listenAppointmentsForMonth = (year, month, onData, specificDate = n
     s.on('appointmentCreated', handleUpdate);
     s.on('appointmentUpdated', handleUpdate);
     s.on('appointmentDeleted', handleUpdate);
-    s.on('preagendamento:new', handleUpdate); // Se a agenda mostrar pré-agendamentos
+    s.on('preagendamento:new', handleUpdate);
     s.on('preagendamento:updated', handleUpdate);
     s.on('preagendamento:imported', handleUpdate);
-    s.on('preagendamento:discarded', handleUpdate); // Quando descarta um pré-agendamento
+    s.on('preagendamento:discarded', handleUpdate);
 
-    // Retorna função de limpeza
     return () => {
         s.off('appointmentCreated', handleUpdate);
         s.off('appointmentUpdated', handleUpdate);
@@ -192,7 +175,6 @@ export const listenAppointmentsForMonth = (year, month, onData, specificDate = n
 };
 
 export const hasConflict = (appointments, candidate, editingId) => {
-    // Mantido lógica local para feedback rápido, mas o backend valida também
     return (appointments || []).some((a) =>
         a.id !== editingId &&
         a.date === candidate.date &&
@@ -202,75 +184,37 @@ export const hasConflict = (appointments, candidate, editingId) => {
     );
 };
 
-// Helper para aguardar evento socket com timeout
-const waitForSocketEvent = (eventName, targetId, timeoutMs = 5000) => {
-    return new Promise((resolve) => {
-        const s = getSocket();
-        let timer;
-        
-        const handler = (data) => {
-            // Verifica se é o evento correto para o ID que estamos esperando
-            if (data._id === targetId || data.id === targetId) {
-                clearTimeout(timer);
-                s.off(eventName, handler);
-                resolve({ success: true, data, source: 'socket' });
-            }
-        };
-        
-        s.on(eventName, handler);
-        
-        // Timeout de segurança - se socket não chegar, resolvemos com false
-        timer = setTimeout(() => {
-            s.off(eventName, handler);
-            resolve({ success: false });
-        }, timeoutMs);
-    });
-};
+// Helper para aguardar evento socket com timeout (mantido para referência)
+// const waitForSocketEvent = (eventName, targetId, timeoutMs = 5000) => { ... };
 
-// FUNÇÃO AUXILIAR: Mapeia campos do frontend para o backend
-// Frontend: serviceType='individual_session'/'package_session', specialty='fonoaudiologia'/'terapia_ocupacional', paymentMethod='credit_card'/'debit_card'/'cash'
-// Backend:  serviceType='evaluation'/'session', sessionType='fonoaudiologia'/'terapia_ocupacional' (especialidade), paymentMethod='cartao_credito'/'cartao_debito'/'dinheiro'
-const mapCrmToBackend = (crm, specialty) => {
-    const serviceTypeBackend = crm?.serviceType === "package_session" ? "session" : "evaluation";
-    
-    // sessionType no backend é a ESPECIALIDADE (fonoaudiologia, terapia_ocupacional), não 'avaliacao'/'sessao'
-    const sessionTypeBackend = specialty || crm?.sessionType;
-    
-    // 🆕 Mapeia paymentMethod do frontend (inglês) para o backend (português)
-    const paymentMethodMap = {
-        'credit_card': 'cartao_credito',
-        'debit_card': 'cartao_debito',
-        'cash': 'dinheiro',
-        'pix': 'pix',
-        'bank_transfer': 'transferencia_bancaria',
-        'other': 'outro'
-    };
-    const paymentMethodBackend = paymentMethodMap[crm?.paymentMethod] || crm?.paymentMethod || 'pix';
-    
-    console.log("📝 [mapCrmToBackend] Mapeando:");
-    console.log("  serviceType:", crm?.serviceType, "→", serviceTypeBackend);
-    console.log("  sessionType (especialidade):", specialty, "→", sessionTypeBackend);
-    console.log("  paymentMethod:", crm?.paymentMethod, "→", paymentMethodBackend);
-    
-    return {
-        serviceType: serviceTypeBackend,
-        sessionType: sessionTypeBackend,
-        paymentMethod: paymentMethodBackend,
-        paymentAmount: Number(crm?.paymentAmount || 0),
-        usePackage: Boolean(crm?.usePackage),
-    };
-};
+// ===========================================================
+// 📅 CREATE / UPDATE APPOINTMENTS (ADAPTER V2)
+// ===========================================================
 
-// NOVA FUNÇÃO: Atualiza agendamento existente
 export const updateAppointmentDirect = async (appointmentId, appointmentData) => {
     console.log("📝 [appointmentsRepo] updateAppointmentDirect - ID:", appointmentId);
-    console.log("📝 [appointmentsRepo] updateAppointmentDirect - appointmentData.operationalStatus recebido:", appointmentData.operationalStatus);
+    const data = await v2.updateAppointment(appointmentId, appointmentData);
+    console.log('[updateAppointmentDirect] ✅ Sucesso:', data);
+    return { mode: "update", id: appointmentId, data };
+};
+
+export const upsertAppointment = async ({ editingAppointment, appointmentData }) => {
+    console.log("📝 [appointmentsRepo] upsertAppointment chamado");
     
-    const crmBackend = mapCrmToBackend(appointmentData.crm, appointmentData.specialty);
+    const isEditing = editingAppointment?.id && !editingAppointment.id.startsWith('ext_');
+    const appointmentId = isEditing ? editingAppointment.id : null;
     
+    console.log("📝 [appointmentsRepo] isEditing:", isEditing);
+    console.log("📝 [appointmentsRepo] appointmentId:", appointmentId);
+
+    if (isEditing) {
+        console.log("📝 [appointmentsRepo] Usando updateAppointmentDirect para edição");
+        return updateAppointmentDirect(appointmentId, appointmentData);
+    }
+
     const payload = {
-        _id: appointmentId,
         patientId: appointmentData.patientId,
+        isNewPatient: appointmentData.isNewPatient,
         patientInfo: {
             fullName: appointmentData.patientName || appointmentData.patient,
             phone: appointmentData.phone,
@@ -283,172 +227,53 @@ export const updateAppointmentDirect = async (appointmentId, appointmentData) =>
         specialty: appointmentData.specialtyKey || appointmentData.specialty,
         date: appointmentData.date,
         time: appointmentData.time,
-        operationalStatus: appointmentData.operationalStatus || "scheduled", // Fallback apenas se não informado
-        observations: appointmentData.observations,
-        
-        // Dados de faturamento
-        billingType: appointmentData.billingType || "particular",
-        paymentStatus: appointmentData.paymentStatus || "pending",
-        insuranceProvider: appointmentData.insuranceProvider || "",
-        insuranceValue: Number(appointmentData.insuranceValue || 0),
-        authorizationCode: appointmentData.authorizationCode || "",
-        
-        // CRM mapeado
-        crm: crmBackend,
-    };
-    
-    console.log("📝 [updateAppointmentDirect] Enviando:", JSON.stringify(payload.crm, null, 2));
-    console.log("📝 [updateAppointmentDirect] Payload operationalStatus:", payload.operationalStatus);
-    
-    const response = await api.post('/api/agenda-externa/update', payload, {
-        timeout: 30000
-    });
-    
-    console.log('[updateAppointmentDirect] ✅ Sucesso:', response.data);
-    return { mode: "update", id: appointmentId, data: response.data };
-};
-
-export const upsertAppointment = async ({ editingAppointment, appointmentData }) => {
-    console.log("📝 [appointmentsRepo] upsertAppointment chamado");
-    console.log("📝 [appointmentsRepo] editingAppointment:", JSON.stringify(editingAppointment, null, 2));
-    console.log("📝 [appointmentsRepo] appointmentData.id:", appointmentData.id);
-    console.log("📝 [appointmentsRepo] appointmentData.patientId:", appointmentData.patientId);
-    console.log("📝 [appointmentsRepo] appointmentData.isNewPatient:", appointmentData.isNewPatient);
-    console.log("📝 [appointmentsRepo] appointmentData.patientName:", appointmentData.patientName);
-    
-    const safeStatus = appointmentData.status === "Vaga" ? "Pendente" : appointmentData.status;
-    
-    // Verifica se é edição (tem ID válido do MongoDB - 24 chars hex)
-    // IDs que começam com 'ext_' são gerados pelo frontend e não devem ser enviados
-    const isEditing = editingAppointment?.id && !editingAppointment.id.startsWith('ext_');
-    const appointmentId = isEditing ? editingAppointment.id : null;
-    
-    console.log("📝 [appointmentsRepo] isEditing:", isEditing);
-    console.log("📝 [appointmentsRepo] appointmentId:", appointmentId);
-    console.log("📝 [appointmentsRepo] editingAppointment?.id:", editingAppointment?.id);
-    console.log("📝 [appointmentsRepo] editingAppointment?.id?.startsWith('ext_'):", editingAppointment?.id?.startsWith('ext_'));
-
-    // NOVO: Se for edição, usa a função direta que evita problemas de conversão
-    if (isEditing) {
-        console.log("📝 [appointmentsRepo] Usando updateAppointmentDirect para edição");
-        return updateAppointmentDirect(appointmentId, appointmentData);
-    }
-
-    // Payload para CRIAÇÃO (pré-agendamento)
-    const payload = {
-        // Dados do paciente
-        patientId: appointmentData.patientId,  // ID do paciente se já existir
-        isNewPatient: appointmentData.isNewPatient,  // Flag: true = criar novo paciente
-        patientInfo: {
-            fullName: appointmentData.patientName || appointmentData.patient,
-            phone: appointmentData.phone,
-            birthDate: appointmentData.birthDate,
-            email: appointmentData.email
-        },
-        responsible: appointmentData.responsible,
-
-        // Dados do agendamento
-        professionalName: appointmentData.professional,
-        doctorId: appointmentData.professionalId,  // ID do profissional se disponível
-        specialty: appointmentData.specialtyKey || appointmentData.specialty,
-        date: appointmentData.date,
-        time: appointmentData.time,
         operationalStatus: appointmentData.operationalStatus || "scheduled",
         observations: appointmentData.observations,
-
-        // Dados CRM mapeados
-        crm: mapCrmToBackend(appointmentData.crm, appointmentData.specialty),
+        crm: appointmentData.crm,
     };
 
-    console.log("[upsertAppointment] Enviando para API...");
-    console.log("[upsertAppointment] Payload completo:", JSON.stringify(payload, null, 2));
-    
-    // Criação -> Apenas cria o Pré-Agendamento (Pendente)
-    console.log(`[upsertAppointment] Criando Pré-Agendamento...`);
-    const preRes = await api.post('/api/agenda-externa/pre-agendar', payload);
+    console.log("[upsertAppointment] Enviando para API V2 (adapter)...");
+    const preRes = await v2.createPreAppointment(payload);
 
-    if (!preRes.data.success) {
-        throw new Error(preRes.data.error || "Erro ao criar pré-agendamento");
+    if (!preRes.success) {
+        throw new Error(preRes.error || "Erro ao criar pré-agendamento");
     }
 
-    const preId = preRes.data.preAgendamentoId;
-    console.log(`[upsertAppointment] ✅ Pré-Agendamento criado com sucesso: ${preId}`);
+    const preId = preRes.preAgendamentoId || preRes.appointmentId;
+    console.log(`[upsertAppointment] ✅ Pré-Agendamento criado: ${preId}`);
 
-    // Retorna o ID do pré-agendamento. O frontend deve lidar com isso (ex: mostrar na lista como pendente)
     return { mode: "create", id: preId, status: "pending_confirmation" };
 };
 
-// Mantendo deleteAppointment como alias para compatibilidade, mas o nome correto agora é cancelAppointment
 export const cancelAppointment = async (id, reason = "Cancelado via Web App", options = {}) => {
-    console.log(`[cancelAppointment] Cancelando via API: ${id}`);
-    try {
-        await api.patch(`/api/v2/appointments/${id}/cancel`, {
-            reason,
-            confirmedAbsence: options.confirmedAbsence || false,
-            notifyPatient: options.notifyPatient || false
-        });
-    } catch (error) {
-        console.error('[cancelAppointment] Erro ao cancelar:', error);
-        throw error;
-    }
+    console.log(`[cancelAppointment] Cancelando via API V2: ${id}`);
+    return v2.cancelAppointment(id, reason, options);
 };
 
-export const deleteAppointment = cancelAppointment; // Alias para retrocompatibilidade
+export const deleteAppointment = cancelAppointment;
 
-// NOVO: Exclusão permanente (Hard Delete)
 export const hardDeleteAppointment = async (id) => {
     console.log(`[hardDeleteAppointment] Excluindo permanentemente: ${id}`);
-    try {
-        await api.delete(`/api/v2/appointments/${id}`);
-    } catch (error) {
-        console.error('[hardDeleteAppointment] Erro ao excluir:', error);
-        throw error;
-    }
+    return v2.deleteAppointment(id);
 };
-
-// ===============================
-// CICLOS (Mantidos como "stub" ou adaptados se necessário)
-// Nesta migração, ciclos complexos podem precisar de revisão.
-// Por enquanto, desabilitamos a geração em lote no frontend para evitar inconsistência,
-// ou mantemos chamando upsert em loop (menos eficiente mas funcional).
-// ===============================
 
 export const createCycleId = () => `cyc_${Date.now()}`;
 
-// Busca slots disponíveis Reais via API do CRM
-// 🆕 Atualizado para suportar formato com metadados (available, reason, label)
 export const fetchAvailableSlots = async (doctorId, date) => {
-    try {
-        const response = await api.get('/api/v2/appointments/available-slots', {
-            params: { doctorId, date }
-        });
-        // 🆕 Retorna array de objetos: [{ time, available, reason, label }, ...]
-        // ou formato antigo: ["08:00", "08:40", ...]
-        return response.data;
-    } catch (error) {
-        console.error('[fetchAvailableSlots] Erro:', error);
-        return [];
-    }
+    return v2.getAvailableSlots({ doctorId, date });
 };
 
-// Adaptação: fetch via API V2
 export const fetchAppointmentsInRange = async (startDate, endDate) => {
-    const response = await api.get('/api/v2/appointments', {
-        params: { startDate, endDate, limit: 500, page: 1 }
-    });
-    const raw = response.data?.data?.appointments || [];
-    return raw.map(mapV2Appointment);
+    const data = await v2.getCalendarData({ startDate, endDate, limit: 500, page: 1 });
+    return data.map(mapV2Appointment);
 };
 
-// Gerador de Ciclo: Adaptado para chamar upsertAppointment em loop
-// (Solução temporária mas robusta para Fase 1)
 export const generateCycleAppointments = async (baseAppointment, payload, opts = {}) => {
     console.warn("⚠️ Geração de ciclo via API (em loop) - pode ser lento");
     const { selectedSlots } = payload;
     const createdIds = [];
     const skipped = [];
 
-    // Busca existentes para conflito
     const startDate = payload.cycleStartDate;
     const endDate = payload.cycleEndDate;
     const existing = await fetchAppointmentsInRange(startDate, endDate);
@@ -466,7 +291,6 @@ export const generateCycleAppointments = async (baseAppointment, payload, opts =
             }
         }
 
-        // Prepara dados para criar
         const apptData = {
             ...baseAppointment,
             date: slot.date,
@@ -493,41 +317,22 @@ export const deleteCycle = async (cycleId) => {
     console.warn("Deleção de ciclo em lote não implementado na V1 da API.");
 };
 
+// ===========================================================
+// ✅ CONFIRMATIONS (ADAPTER V2)
+// ===========================================================
 
-// Confirma um agendamento pré-agendado (Amanda/Agenda Externa)
 export const confirmAppointment = async (preAgendamentoId) => {
     console.log(`[confirmAppointment] Confirmando PreAgendamento: ${preAgendamentoId}`);
     if (!preAgendamentoId) throw new Error("ID do pré-agendamento ausente.");
-
-    try {
-        // Backend lê { _id } — preAgendamentoId é o _id do Appointment
-        const response = await api.post('/api/agenda-externa/confirmar-agendamento', {
-            _id: preAgendamentoId
-        });
-        return response.data;
-    } catch (error) {
-        throw error;
-    }
+    return v2.confirmPreAppointment(preAgendamentoId);
 };
 
 export const confirmPresence = async (id) => {
     console.log(`[confirmPresence] Confirmando presença/manual para: ${id}`);
-    try {
-        const response = await api.patch(`/api/v2/appointments/${id}/confirm`);
-        return response.data;
-    } catch (error) {
-        console.error('[confirmPresence] Erro:', error);
-        throw error;
-    }
+    return v2.confirmAppointmentPresence(id);
 };
 
 export const discardPreAppointment = async (id, reason) => {
     console.log(`[discardPreAppointment] Descartando: ${id}`);
-    try {
-        const response = await api.post(`/api/pre-agendamento/${id}/descartar`, { reason });
-        return response.data;
-    } catch (error) {
-        console.error('[discardPreAppointment] Descartando error:', error);
-        throw error;
-    }
+    return v2.discardPreAppointment(id, reason);
 };

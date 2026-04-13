@@ -293,7 +293,7 @@ export default function App() {
   // EXCLUIR (Hard Delete) - Remove do banco
   const onDelete = async (id) => {
     const appt = (filteredAppointments || []).find(a => a.id === id);
-    const isPre = appt?.__isPreAgendamento || appt?.operationalStatus === 'pre_agendado';
+    const isPre = appt?.operationalStatus === 'pre_agendado';
 
     // Se for pré, também podemos excluir permanentemente se o usuário quiser (limpar lixo)
     const msg = isPre
@@ -336,15 +336,20 @@ export default function App() {
       console.log("🔥 [onConfirmPreAppointment] appointmentData:", appointmentData);
       
       const doc = (professionals || []).find(p => p.fullName === appointmentData.professional);
+      const resolvedDoctorId = doc?.id || appointmentData.professionalId;
+
+      if (!resolvedDoctorId) {
+        toast.error("Selecione um profissional antes de confirmar o pré-agendamento.");
+        return;
+      }
 
       // Envia todos os campos necessários para o backend
+      // O adapter V2 normaliza paymentMethod, serviceType e sessionType automaticamente
       const importData = {
-        doctorId: doc?.id || appointmentData.professionalId,
+        doctorId: resolvedDoctorId,
         date: appointmentData.date,
         time: appointmentData.time,
         sessionValue: Number(appointmentData.crm?.paymentAmount || 0),
-        serviceType: appointmentData.crm?.serviceType === 'package_session' ? 'session' : 'evaluation',
-        paymentMethod: appointmentData.crm?.paymentMethod || 'pix',
         notes: appointmentData.observations,
         // DADOS DO PACIENTE (obrigatórios para o backend)
         patientId: appointmentData.patientId,
@@ -352,7 +357,9 @@ export default function App() {
         birthDate: appointmentData.birthDate,
         phone: appointmentData.phone,
         email: appointmentData.email,
-        responsible: appointmentData.responsible
+        responsible: appointmentData.responsible,
+        // CRM cru — o adapter V2 normaliza antes de enviar
+        crm: appointmentData.crm
       };
 
       console.log("📤 [onConfirmPreAppointment] Enviando:", importData);
@@ -380,7 +387,7 @@ export default function App() {
     console.log("🔥 [onCancel] INICIANDO:", appointment.id, appointment.patientName || appointment.patient);
     isCancellingRef.current = true;
     
-    const isPre = appointment.__isPreAgendamento || appointment.operationalStatus === 'pre_agendado';
+    const isPre = appointment.operationalStatus === 'pre_agendado';
     const actionName = isPre ? "descartar este pré-agendamento" : "cancelar este agendamento";
 
     let reason = "Cancelado via Web App";
@@ -429,9 +436,8 @@ export default function App() {
     console.log("🔥 [saveAppointment] appointmentData recebido:", JSON.stringify(appointmentData, null, 2));
     
     const appointmentId = editingAppointment?.id;
-    // Pré-agendamento externo (da agenda externa) — identificado APENAS pela flag __isPreAgendamento
-    // Agendamentos internos com status "pre_agendado" são appointments normais, não entram aqui
-    const isPreEditing = !!editingAppointment?.__isPreAgendamento;
+    // 🎯 FONTE ÚNICA DA VERDADE: operationalStatus define se é pré-agendamento
+    const isPreEditing = editingAppointment?.operationalStatus === 'pre_agendado';
     const isEditing = !!appointmentId && !isPreEditing;
     const isImportingPre = isPreEditing;
     
@@ -561,7 +567,7 @@ export default function App() {
       time: "08:00",
       professional: professionals[0] || "",
       specialty: specialtyLabel,
-      operationalStatus: "pre_agendado",
+      operationalStatus: "scheduled",
       patient: "",
       responsible: "",
       observations: "",
@@ -587,7 +593,7 @@ export default function App() {
         time: payload.time,
         professional: payload.professional || (professionals[0] || ""),
         specialty: specialtyLabel,
-        operationalStatus: "pre_agendado",
+        operationalStatus: "scheduled",
         patient: "",
         responsible: "",
         observations: "",
@@ -600,18 +606,16 @@ export default function App() {
     openEditModal(payload);
   };
 
-  // ========== FILTROS + SORT ==========
-  const filteredAppointments = React.useMemo(() => {
-    console.log(`[filteredAppointments] Total appointments: ${appointments?.length}, preAppointments: ${preAppointments?.length}, filterDate: ${filters.filterDate}, activeSpecialty: ${activeSpecialty}`);
-    
-    // 🆕 Converter pré-agendamentos para o formato da agenda e combinar com appointments
-    const mappedPreAppointments = (preAppointments || []).map(pre => ({
+  // ========== DERIVED LISTS (separação de pipelines) ==========
+  const mappedPreAppointments = React.useMemo(() => {
+    return (preAppointments || []).map(pre => ({
       id: pre._id || pre.id,
       _id: pre._id || pre.id,
-      date: pre.preferredDate || pre.date,
+      date: pre.preferredDate || (typeof pre.date === 'string' ? pre.date.substring(0,10) : new Date(pre.date).toISOString().substring(0,10)),
       time: pre.preferredTime || pre.time,
       patient: pre.patientInfo?.fullName || pre.patientName,
       patientName: pre.patientInfo?.fullName || pre.patientName,
+      patientId: pre.patient?._id?.toString?.() || pre.patient?.toString?.() || pre.patientId || null,
       phone: pre.patientInfo?.phone,
       birthDate: pre.patientInfo?.birthDate,
       email: pre.patientInfo?.email,
@@ -620,18 +624,25 @@ export default function App() {
       operationalStatus: 'pre_agendado',
       status: 'Pré-agendado',
       observations: pre.notes || pre.observations,
-      __isPreAgendamento: true,
       originalData: pre,
       source: pre.metadata?.origin?.source || 'crm'
     }));
-    
-    const allAppointments = [...(appointments || []), ...mappedPreAppointments];
-    
-    const weeks = getWeeksInMonth(currentYear, currentMonth);
+  }, [preAppointments]);
 
-    // 1. Filtrar agendamentos reais (Data/Semana/Especialidade)
-    let base = allAppointments.filter((appointment) => {
-      // Se tiver especialidade ativa, filtra por ela
+  // Pipeline para Calendar / Weekly (tudo que cai no mês)
+  const calendarAppointments = React.useMemo(() => {
+    return [...(appointments || []), ...mappedPreAppointments];
+  }, [appointments, mappedPreAppointments]);
+
+  // Pipeline para List View (appointments filtrados + todos os pré-agendamentos pendentes)
+  const filteredAppointments = React.useMemo(() => {
+    console.log(`[filteredAppointments] appointments: ${appointments?.length}, pre: ${mappedPreAppointments?.length}, filterDate: ${filters.filterDate}, activeSpecialty: ${activeSpecialty}`);
+
+    const weeks = getWeeksInMonth(currentYear, currentMonth);
+    const isPreAgendamento = (appt) => appt?.operationalStatus === 'pre_agendado';
+
+    // 1. Filtrar appointments REAIS por data/semana/especialidade
+    let filteredReals = (appointments || []).filter((appointment) => {
       if (activeSpecialty && activeSpecialty !== "todas") {
         if (resolveSpecialtyKey(appointment) !== activeSpecialty) return false;
       }
@@ -643,83 +654,63 @@ export default function App() {
           if (!appointment.date) return false;
           const [y, m, d] = appointment.date.split("-").map(Number);
           const dateObj = new Date(y, m - 1, d);
-          const jsDay = dateObj.getDay();
-          const targetDay = Number(filters.filterDay);
-          if (jsDay !== targetDay) return false;
+          if (dateObj.getDay() !== Number(filters.filterDay)) return false;
         }
-
         if (filters.filterWeek !== null && filters.filterWeek !== undefined) {
           const w = weeks[filters.filterWeek];
           if (!w) return false;
-          const toKey = (v) => {
-            if (typeof v === "string") return v.replaceAll("-", "");
-            return formatDateLocal(v).replaceAll("-", "");
-          };
+          const toKey = (v) => (typeof v === "string" ? v.replaceAll("-", "") : formatDateLocal(v).replaceAll("-", ""));
           const dKey = toKey(appointment.date);
-          const startKey = toKey(w.start);
-          const endKey = toKey(w.end);
-          if (!(dKey >= startKey && dKey <= endKey)) return false;
+          if (!(dKey >= toKey(w.start) && dKey <= toKey(w.end))) return false;
         }
       }
       return true;
     });
 
-    // 🎯 Helper para identificar pré-agendamento (antigo ou novo formato)
-    const isPreAgendamento = (appt) => appt.__isPreAgendamento || appt.operationalStatus === 'pre_agendado';
+    // 2. Filtrar pré-agendamentos por especialidade (ignora data — são fila operacional)
+    let filteredPres = mappedPreAppointments.filter((appointment) => {
+      if (activeSpecialty && activeSpecialty !== "todas") {
+        if (resolveSpecialtyKey(appointment) !== activeSpecialty) return false;
+      }
+      return true;
+    });
 
-    // 2. Remover pré-agendamentos descartados/cancelados (não mostrar na agenda)
-    base = base.filter(appointment => {
-      if (!isPreAgendamento(appointment)) return true; // Mantém agendamentos reais
-      // Filtra pré-agendamentos descartados, desistidos ou cancelados (não mostrar na agenda)
-      // O status real está em metadata.preAgendamentoStatus ou originalData.status
+    // 3. Remover pré-agendamentos descartados/cancelados
+    filteredPres = filteredPres.filter(appointment => {
       const realStatus = appointment.metadata?.preAgendamentoStatus || appointment.originalData?.status;
-      if (realStatus === 'desistiu' || realStatus === 'descartado') { // 'cancelado' aparece no histórico
+      if (realStatus === 'desistiu' || realStatus === 'descartado') {
         console.log(`[filteredAppointments] Filtrando pré-agendamento finalizado: ${appointment.id} (${appointment.patientName}, status: ${realStatus})`);
         return false;
       }
       return true;
     });
 
-    // 3. Remover pré-agendamentos duplicados (quando existe agendamento real para mesma data/hora/profissional)
-    // Isso acontece quando o backend não remove o pré-agendamento após criar o agendamento real
-    // 🎯 NOTA: Incluímos TODOS os agendamentos reais (incluindo cancelados) para deduplicação
-    // pois um pré-agendamento convertido e depois cancelado ainda deve ser considerado duplicado
-    const realAppointments = base.filter(a => !isPreAgendamento(a));
-    base = base.filter(appointment => {
-      if (!isPreAgendamento(appointment)) return true; // Mantém agendamentos reais
-      
-      // Para pré-agendamentos, verifica se existe um agendamento real para mesma data/hora/profissional
+    // 4. Dedup de pré-agendamentos contra TODOS os appointments reais do mês (não só os filtrados)
+    filteredPres = filteredPres.filter(appointment => {
       const patientName = (appointment.patientName || appointment.patient?.fullName || '').toLowerCase().trim();
-      const hasRealAppointment = realAppointments.some(real => {
+      const hasRealAppointment = (appointments || []).some(real => {
+        if (isPreAgendamento(real)) return false;
         const realPatientName = (real.patientName || real.patient?.fullName || '').toLowerCase().trim();
-        // Comparação flexível: verifica se um nome contém o outro ou se têm palavras em comum
         let samePatient = false;
         if (patientName && realPatientName) {
-          // Verifica se um contém o outro
           samePatient = patientName.includes(realPatientName) || realPatientName.includes(patientName);
-          // Se não, verifica se têm pelo menos 2 palavras em comum (ex: "Gabriel Alves" e "Gabriel Alves Leite")
           if (!samePatient) {
             const preWords = patientName.split(/\s+/).filter(w => w.length > 2);
             const realWords = realPatientName.split(/\s+/).filter(w => w.length > 2);
-            const commonWords = preWords.filter(w => realWords.includes(w));
-            samePatient = commonWords.length >= 2; // Pelo menos 2 palavras em comum
+            samePatient = preWords.filter(w => realWords.includes(w)).length >= 2;
           }
         }
-        const sameDate = real.date === appointment.date;
-        const sameTime = real.time === appointment.time;
-        const sameProfessional = real.professional === appointment.professional;
-        return samePatient && sameDate && sameTime && sameProfessional;
+        return samePatient && real.date === appointment.date && real.time === appointment.time && real.professional === appointment.professional;
       });
-      
       if (hasRealAppointment) {
         console.log(`[filteredAppointments] Filtrando pré-agendamento duplicado: ${appointment.id} (${appointment.patientName})`);
-        return false; // Remove pré-agendamento duplicado
+        return false;
       }
-      return true; // Mantém pré-agendamento único
+      return true;
     });
 
-    // 3. Filtros Secundários (Profissional e Status) aplicados na lista unificada
-    base = base.filter(appointment => {
+    // 5. Filtros secundários (profissional / status) aplicados em ambos
+    const applySecondaryFilters = (list) => list.filter(appointment => {
       if (filters.filterProfessional) {
         if (filters.filterProfessional.toLowerCase() === "livre") {
           const pName = appointment.patient?.fullName || appointment.patient || "";
@@ -732,22 +723,20 @@ export default function App() {
           return false;
         }
       }
-
-      if (filters.filterStatus && appointment.status !== filters.filterStatus) {
-        return false;
-      }
+      if (filters.filterStatus && appointment.status !== filters.filterStatus) return false;
       return true;
     });
 
-    // 4. Injeção de Slots Virtuais (Fase 4)
-    // 🆕 Atualizado para suportar novo formato com metadados (available, reason, label)
+    filteredReals = applySecondaryFilters(filteredReals);
+    filteredPres = applySecondaryFilters(filteredPres);
+
+    // 6. Merge
+    let base = [...filteredReals, ...filteredPres];
+
+    // 7. Slots virtuais (só quando filtro profissional + data ativo)
     if (filters.filterProfessional && filters.filterDate && availableSlots.length > 0) {
       const virtualAppointments = availableSlots
-        .filter(slot => {
-          // 🆕 Filtra apenas slots disponíveis (suporta formato antigo string e novo objeto)
-          const isAvailable = typeof slot === 'string' ? true : slot.available;
-          return isAvailable;
-        })
+        .filter(slot => (typeof slot === 'string' ? true : slot.available))
         .map(slot => {
           const time = typeof slot === 'string' ? slot : slot.time;
           return {
@@ -760,15 +749,12 @@ export default function App() {
             __isVirtual: true
           };
         });
-
-      // Evita duplicatas visuais se já houver um agendamento real ou pré-agendamento no mesmo horário
       const realTimes = new Set(base.map(a => `${a.time}|${a.professional}`));
       const uniqueVirtuals = virtualAppointments.filter(v => !realTimes.has(`${v.time}|${v.professional}`));
-
       base = [...base, ...uniqueVirtuals];
     }
 
-    // 5. Remover duplicados por ID (proteção extra contra bugs do backend)
+    // 8. Dedup final por ID
     const seenIds = new Set();
     base = base.filter(appointment => {
       if (seenIds.has(appointment.id)) {
@@ -782,7 +768,7 @@ export default function App() {
     base = sortAppointmentsByDateTimeAsc(base);
     console.log(`[filteredAppointments] Resultado final: ${base.length} agendamentos`);
     return base;
-  }, [appointments, preAppointments, activeSpecialty, filters, currentYear, currentMonth, availableSlots]);
+  }, [appointments, mappedPreAppointments, activeSpecialty, filters, currentYear, currentMonth, availableSlots]);
 
   // ========== PROFESSIONALS ==========
   const onOpenProfessionals = () => {
@@ -901,7 +887,7 @@ export default function App() {
         {view === "calendar" && (
           <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-4 sm:p-6 animate-fadeIn">
             <CalendarView
-              appointments={appointments}
+              appointments={calendarAppointments}
               professionals={professionals}
               currentMonth={currentMonth}
               currentYear={currentYear}
@@ -917,7 +903,7 @@ export default function App() {
         {view === "weekly" && (
           <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-4 sm:p-6 animate-fadeIn">
             <WeeklyView
-              appointments={appointments}
+              appointments={calendarAppointments}
               professionals={professionals}
               activeSpecialtyLabel={activeSpecialtyLabel}
               currentYear={currentYear}

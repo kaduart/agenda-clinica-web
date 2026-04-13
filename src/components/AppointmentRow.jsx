@@ -101,7 +101,7 @@ export default function AppointmentRow({ appointment, onEdit, onDelete, onRemind
     }
   };
 
-  const isPre = !!appointment.__isPreAgendamento || appointment.operationalStatus === 'pre_agendado';
+  const isPre = appointment.operationalStatus === 'pre_agendado';
   const preStatus = appointment.metadata?.preAgendamentoStatus || appointment.status;
   const source = appointment.source || appointment.metadata?.origin?.source;
 
