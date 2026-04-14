@@ -135,8 +135,11 @@ export default function App() {
   
   // Função global para forçar refresh da lista de appointments
   const forceRefreshAppointments = React.useCallback(() => {
-    console.log('🔄 [App.jsx] Forçando refresh da lista de appointments');
-    setRefreshTrigger(prev => prev + 1);
+    console.log('🔄 [forceRefresh] chamado de:', new Error().stack?.split('\n')[2]?.trim());
+    setRefreshTrigger(prev => {
+      console.log(`🔄 [forceRefresh] refreshTrigger: ${prev} → ${prev + 1}`);
+      return prev + 1;
+    });
   }, []);
 
   // ========== DISPONIBILIDADE REAL (Slots Virtuais) ==========
@@ -216,16 +219,16 @@ export default function App() {
       specificDate = filters.filterDate; // Passa a data específica para busca otimizada
     }
 
-    console.log(`👂 [App.jsx] Listener de appointments: ${targetYear}/${targetMonth + 1}${specificDate ? ' (data: ' + specificDate + ')' : ''}`);
+    console.log(`👂 [listener:appointments] MONTANDO — ${targetYear}/${targetMonth + 1}${specificDate ? ' data=' + specificDate : ''}`);
     const unsub = listenAppointmentsForMonth(targetYear, targetMonth, (data) => {
-      console.log("👂 [App.jsx] Appointments recebidos:", data.length);
+      console.log(`👂 [listener:appointments] snapshot recebido — ${data.length} registros`);
       setAppointments(data);
     }, specificDate);
     return () => {
-      console.log("👂 [App.jsx] Listener de appointments desmontado");
+      console.log(`👂 [listener:appointments] DESMONTANDO — ${targetYear}/${targetMonth + 1}`);
       unsub();
     };
-  }, [currentYear, currentMonth, filters.filterDate, refreshTrigger]);
+  }, [currentYear, currentMonth, filters.filterDate]);
 
   // 🆕 Buscar pré-agendamentos (pre_agendado) para exibir na agenda
   useEffect(() => {
@@ -517,20 +520,26 @@ export default function App() {
     }
 
     try {
-      console.log("🔥 Enviando para API...");
+      console.log(`🔥 [saveAppointment] enviando — modo: ${isEditing ? 'EDIÇÃO' : 'CRIAÇÃO'} id=${appointmentId || 'novo'}`);
       const result = await upsertAppointment({
         editingAppointment: isEditing ? { id: appointmentId } : null,
         appointmentData: candidate
       });
 
-      console.log("🔥 Resultado API:", result);
+      console.log("🔥 [saveAppointment] API ok:", result);
       toast.success(isEditing ? "Agendamento atualizado!" : "Agendamento criado!");
 
       setIsModalOpen(false);
       setEditingAppointment(null);
-      
-      // Force refresh imediato para atualizar a lista sem esperar o socket
-      forceRefreshAppointments();
+
+      // Só força refresh para criação (pré-agendamentos precisam recarregar).
+      // Para edição, o listener Firestore já atualiza o card automaticamente.
+      if (!isEditing) {
+        console.log("🔄 [saveAppointment] criação → forceRefresh para recarregar pré-agendamentos");
+        forceRefreshAppointments();
+      } else {
+        console.log("✅ [saveAppointment] edição → sem forceRefresh, listener Firestore atualiza o card");
+      }
 
     } catch (err) {
       console.error("[saveAppointment] Erro:", err);
@@ -652,10 +661,14 @@ export default function App() {
       return true;
     });
 
-    // 2. Filtrar pré-agendamentos por especialidade (ignora data — são fila operacional)
+    // 2. Filtrar pré-agendamentos por especialidade e por data do agendamento
     let filteredPres = mappedPreAppointments.filter((appointment) => {
       if (activeSpecialty && activeSpecialty !== "todas") {
         if (resolveSpecialtyKey(appointment) !== activeSpecialty) return false;
+      }
+      // Mostrar pré-agendamento apenas no dia da consulta, não no dia da criação
+      if (filters.filterDate) {
+        if (appointment.date !== filters.filterDate) return false;
       }
       return true;
     });
@@ -912,7 +925,6 @@ export default function App() {
             onClose={() => {
               setIsModalOpen(false);
               setEditingAppointment(null);
-              forceRefreshAppointments();
             }}
             onReloadPatients={async () => {
               console.log("🔄 [App.jsx] Recarregando pacientes...");

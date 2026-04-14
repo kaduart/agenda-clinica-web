@@ -73,7 +73,7 @@ export const exportToCRM = async (appointment) => {
         const payload = {
             _id: appointment.id,
             professionalName: appointment.professional,
-            date: appointment.date,
+            date: `${appointment.date}T${appointment.time}:00-03:00`,
             time: appointment.time,
             specialty: appointment.specialtyKey || appointment.specialty || "fonoaudiologia",
             patientInfo: {
@@ -127,7 +127,7 @@ export const autoSendPreAgendamento = async (appointment) => {
             _id: appointment.id,
             professionalName: appointment.professional,
             professionalId: appointment.professionalId,
-            date: appointment.date,
+            date: `${appointment.date}T${appointment.time}:00-03:00`,
             time: appointment.time,
             specialty: appointment.specialtyKey || appointment.specialty || "fonoaudiologia",
             patientInfo: {
