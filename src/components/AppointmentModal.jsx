@@ -527,6 +527,17 @@ export default function AppointmentModal({ appointment, professionals, patients,
             return;
         }
 
+        if (name === "professional") {
+            const selectedProf = (professionals || []).find(p => p.fullName === value);
+            setFormData((prev) => ({
+                ...prev,
+                professional: value,
+                professionalName: value,
+                professionalId: selectedProf?.id || selectedProf?._id || "",
+            }));
+            return;
+        }
+
         if (name.startsWith("crm.")) {
             const key = name.split(".")[1];
             setFormData((prev) => ({

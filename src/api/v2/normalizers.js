@@ -30,7 +30,14 @@ const VALID_SPECIALTIES = [
     'terapia_ocupacional',
     'psicologia',
     'neuropsicologia',
-    'fisioterapia'
+    'fisioterapia',
+    'pediatria',
+    'neuroped',
+    'psicomotricidade',
+    'musicoterapia',
+    'psicopedagogia',
+    'tongue_tie_test',
+    'neuropsych_evaluation'
 ];
 
 const SERVICE_TO_SPECIALTY = {
@@ -44,7 +51,14 @@ const SERVICE_TO_SPECIALTY = {
     'terapia_ocupacional': 'terapia_ocupacional',
     'psicologia': 'psicologia',
     'neuropsicologia': 'neuropsicologia',
-    'fisioterapia': 'fisioterapia'
+    'fisioterapia': 'fisioterapia',
+    'pediatria': 'pediatria',
+    'neuroped': 'neuroped',
+    'psicomotricidade': 'psicomotricidade',
+    'musicoterapia': 'musicoterapia',
+    'psicopedagogia': 'psicopedagogia',
+    'tongue_tie_test': 'tongue_tie_test',
+    'neuropsych_evaluation': 'neuropsych_evaluation'
 };
 
 export const normalizeSessionType = (value, fallback = 'fonoaudiologia') => {
