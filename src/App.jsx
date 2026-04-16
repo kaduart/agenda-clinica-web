@@ -332,9 +332,14 @@ export default function App() {
 
   // CONFIRMAR pré-agendamento (converter em agendamento real)
   const onConfirmPreAppointment = async (appointmentData) => {
-    const appointmentId = editingAppointment?.id;
-    if (!appointmentId) return;
-    
+    let appointmentId = editingAppointment?.id || editingAppointment?._id || editingAppointment?.preAgendamentoId || editingAppointment?.appointmentId;
+
+    if (!appointmentId) {
+      // Novo agendamento sem ID: salvar normalmente como pre_agendado
+      await saveAppointment(appointmentData);
+      return;
+    }
+
     try {
       console.log("🔥 [onConfirmPreAppointment] Confirmando Pré-Agendamento...");
       console.log("🔥 [onConfirmPreAppointment] appointmentData:", appointmentData);
@@ -564,12 +569,17 @@ export default function App() {
   const openCreateModal = () => {
     console.log("📝 [App.jsx] Abrindo modal de criação");
 
-    const specialtyLabel = SPECIALTIES[activeSpecialty]?.name || "Fonoaudiologia";
+    const firstProf = professionals[0];
+    const profName = firstProf?.fullName || firstProf?.name || "";
+    const profSpecialty = firstProf?.specialty || "fonoaudiologia";
+    const specialtyLabel = activeSpecialty === "todas" 
+      ? (SPECIALTIES[profSpecialty]?.name || "Fonoaudiologia")
+      : (SPECIALTIES[activeSpecialty]?.name || "Fonoaudiologia");
 
     setEditingAppointment({
       date: formatDateLocal(new Date()),
       time: "08:00",
-      professional: professionals[0] || "",
+      professional: profName,
       specialty: specialtyLabel,
       operationalStatus: "pre_agendado",
       patient: "",
@@ -584,12 +594,21 @@ export default function App() {
     console.log("[handleSlotClick]", payload);
 
     if (payload?.__isEmptySlot) {
-      const specialtyLabel = SPECIALTIES[activeSpecialty]?.name || "Fonoaudiologia";
+      const payloadProf = payload.professional;
+      const profName = typeof payloadProf === 'object' && payloadProf !== null
+        ? (payloadProf.fullName || payloadProf.name || "")
+        : (payloadProf || "");
+      const profSpecialty = typeof payloadProf === 'object' && payloadProf !== null
+        ? (payloadProf.specialty || "fonoaudiologia")
+        : "fonoaudiologia";
+      const specialtyLabel = activeSpecialty === "todas"
+        ? (SPECIALTIES[profSpecialty]?.name || "Fonoaudiologia")
+        : (SPECIALTIES[activeSpecialty]?.name || "Fonoaudiologia");
 
       setEditingAppointment({
         date: payload.date,
         time: payload.time,
-        professional: payload.professional || (professionals[0] || ""),
+        professional: profName,
         specialty: specialtyLabel,
         operationalStatus: "pre_agendado",
         patient: "",
@@ -607,8 +626,8 @@ export default function App() {
   // ========== DERIVED LISTS (separação de pipelines) ==========
   const mappedPreAppointments = React.useMemo(() => {
     return (preAppointments || []).map(pre => ({
-      id: pre._id || pre.id,
-      _id: pre._id || pre.id,
+      id: pre._id || pre.id || pre.preAgendamentoId || pre.appointmentId,
+      _id: pre._id || pre.id || pre.preAgendamentoId || pre.appointmentId,
       date: pre.preferredDate || (typeof pre.date === 'string' ? pre.date.substring(0,10) : new Date(pre.date).toISOString().substring(0,10)),
       time: pre.preferredTime || pre.time,
       patient: pre.patientInfo?.fullName || pre.patientName,

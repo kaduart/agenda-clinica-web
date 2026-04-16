@@ -695,7 +695,10 @@ export default function AppointmentModal({ appointment, professionals, patients,
 
     // Handler para confirmar pré-agendamento com loading
     const handleConfirmPre = async () => {
-        if (!onConfirmPre) return;
+        if (!onConfirmPre) {
+            console.error("❌ [handleConfirmPre] onConfirmPre não está definido");
+            return;
+        }
 
         // Se o status foi alterado para cancelado, cancela em vez de confirmar
         if (formData.operationalStatus === 'canceled' || formData.operationalStatus === 'cancelado') {
@@ -717,36 +720,54 @@ export default function AppointmentModal({ appointment, professionals, patients,
         console.log("🚀 [AppointmentModal] patientId:", formData.patientId);
         console.log("🚀 [AppointmentModal] birthDate:", formData.birthDate);
         
-        // Se não tem patientId mas temos patients carregados, tenta buscar
-        if (!formData.patientId && patients && patients.length > 0) {
-            console.log("🔍 [AppointmentModal] Buscando paciente na lista pelo nome...");
-            const foundByName = patients.find(p => 
-                p.fullName.toLowerCase().trim() === formData.patient.toLowerCase().trim()
-            );
-            if (foundByName) {
-                console.log("✅ [AppointmentModal] Paciente encontrado na lista:", foundByName._id);
-                // Atualiza o formData com o patientId encontrado
-                setFormData(prev => ({
-                    ...prev,
-                    patientId: foundByName._id
-                }));
-                // Chama com o patientId atualizado
-                const updatedFormData = { ...formData, patientId: foundByName._id };
-                
-                setIsLoading(true);
-                try {
-                    await onConfirmPre(updatedFormData);
-                } finally {
-                    setIsLoading(false);
-                }
-                return;
-            }
-        }
-        
-        setIsLoading(true);
         try {
-            await onConfirmPre(formData);
-        } finally {
+            // Se não tem patientId mas temos patients carregados, tenta buscar
+            if (!formData.patientId && patients && patients.length > 0) {
+                console.log("🔍 [AppointmentModal] Buscando paciente na lista pelo nome...");
+                const foundByName = patients.find(p => 
+                    p.fullName && p.fullName.toLowerCase().trim() === formData.patient?.toLowerCase?.().trim()
+                );
+                if (foundByName) {
+                    console.log("✅ [AppointmentModal] Paciente encontrado na lista:", foundByName._id);
+                    const updatedFormData = { 
+                        ...formData, 
+                        patientId: foundByName._id,
+                        isNewPatient: false 
+                    };
+                    setFormData(prev => ({
+                        ...prev,
+                        patientId: foundByName._id
+                    }));
+                    
+                    setIsLoading(true);
+                    try {
+                        await onConfirmPre(updatedFormData);
+                    } finally {
+                        setIsLoading(false);
+                    }
+                    return;
+                }
+                console.log("⚠️ [AppointmentModal] Paciente NÃO encontrado na lista pelo nome");
+            }
+            
+            // Determina se é novo paciente (mesma lógica do handleSubmit)
+            const effectiveIsNewPatient = isNewPatient || (!formData.patientId && !!formData.patient?.trim());
+            const dataToSend = { 
+                ...formData, 
+                isNewPatient: effectiveIsNewPatient,
+                patientName: formData.patient || formData.patientName || ""
+            };
+            
+            console.log("🚀 [AppointmentModal] Chamando onConfirmPre com:", dataToSend);
+            setIsLoading(true);
+            try {
+                await onConfirmPre(dataToSend);
+            } finally {
+                setIsLoading(false);
+            }
+        } catch (err) {
+            console.error("❌ [handleConfirmPre] Erro inesperado:", err);
+            alert("Erro inesperado ao confirmar: " + (err.message || "Verifique o console"));
             setIsLoading(false);
         }
     };

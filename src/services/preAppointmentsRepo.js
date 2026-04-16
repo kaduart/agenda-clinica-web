@@ -14,6 +14,20 @@ export const fetchPreAppointments = async (filters = {}) => {
 };
 
 /**
+ * Cria um novo pré-agendamento
+ */
+export const createPreAppointment = async (data) => {
+    try {
+        const response = await v2.createPreAppointment(data);
+        console.log("✅ [preAppointmentsRepo] Pré-agendamento criado:", response);
+        return response;
+    } catch (error) {
+        console.error('❌ [preAppointmentsRepo] Erro ao criar pré-agendamento:', error.response?.data || error.message);
+        throw error;
+    }
+};
+
+/**
  * Importa/Aprova um pré-agendamento, convertendo-o em agendamento real
  */
 export const approvePreAppointment = async (id, data) => {

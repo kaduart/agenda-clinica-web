@@ -69,7 +69,17 @@ export async function confirmPreAppointment(id, rawData) {
         time: rawData?.time,
         sessionValue: Number(rawData?.sessionValue ?? rawData?.crm?.paymentAmount ?? 0),
         paymentMethod: crm.paymentMethod,
-        notes: rawData?.notes || rawData?.observations || ""
+        serviceType: crm.serviceType,
+        notes: rawData?.notes || rawData?.observations || "",
+        // Dados do paciente (obrigatórios quando o backend precisa criar novo paciente)
+        patientId: rawData?.patientId || null,
+        isNewPatient: rawData?.isNewPatient || false,
+        patientName: rawData?.patientName || rawData?.patient || null,
+        birthDate: rawData?.birthDate || null,
+        phone: rawData?.phone || null,
+        email: rawData?.email || null,
+        responsible: rawData?.responsible || null,
+        crm
     };
 
     const response = await api.post(`/api/v2/pre-appointments/${id}/confirm`, payload, {
