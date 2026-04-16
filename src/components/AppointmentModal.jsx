@@ -570,6 +570,13 @@ export default function AppointmentModal({ appointment, professionals, patients,
 
         if (isLoading) return;
 
+        // Se for pré-agendamento existente, redireciona para confirmação
+        if (appointment?.operationalStatus === 'pre_agendado' && appointment?.id) {
+            console.log("🔄 [handleSubmit] Detectado pré-agendamento existente, redirecionando para handleConfirmPre");
+            await handleConfirmPre();
+            return;
+        }
+
         setIsLoading(true);
 
         try {

@@ -444,7 +444,7 @@ export default function App() {
     console.log("🔥 [saveAppointment] START");
     console.log("🔥 [saveAppointment] appointmentData recebido:", JSON.stringify(appointmentData, null, 2));
     
-    const appointmentId = editingAppointment?.id;
+    const appointmentId = editingAppointment?.id || editingAppointment?._id || editingAppointment?.preAgendamentoId || editingAppointment?.appointmentId;
     // 🎯 FONTE ÚNICA DA VERDADE: operationalStatus define se é pré-agendamento
     const isPreEditing = editingAppointment?.operationalStatus === 'pre_agendado';
     const isEditing = !!appointmentId && !isPreEditing;
@@ -456,8 +456,8 @@ export default function App() {
     console.log("🔥 [saveAppointment] appointmentId:", appointmentId);
     console.log("🔥 [saveAppointment] isPreEditing:", isPreEditing);
 
-    // Se for pré-agendamento, verifica se está cancelando ou apenas atualizando
-    if (isPreEditing) {
+    // Se for pré-agendamento EXISTENTE, verifica se está cancelando ou apenas atualizando
+    if (isPreEditing && appointmentId) {
       try {
         console.log("🔍 [saveAppointment] isPre=true, operationalStatus recebido:", appointmentData.operationalStatus);
         console.log("🔍 [saveAppointment] appointmentData completo:", JSON.stringify(appointmentData, null, 2));
