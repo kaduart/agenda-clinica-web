@@ -102,7 +102,7 @@ const mapV2Appointment = (a) => {
         phone: a.patient?.phone || a.patientInfo?.phone || '',
         professional,
         professionalId: (a.doctor && typeof a.doctor === 'object') ? a.doctor._id?.toString() : (a.doctor || null),
-        specialty: a.specialty || a.doctor?.specialty || '',
+        specialty: a.specialty || a.sessionType || '',
         operationalStatus: a.operationalStatus,
         status: translateStatus(a.operationalStatus),
         billingType: a.billingType || 'particular',

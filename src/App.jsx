@@ -122,6 +122,7 @@ export default function App() {
   
   // Estado para forçar refresh da lista após operações (criar, editar, cancelar, deletar)
   const [refreshTrigger, setRefreshTrigger] = React.useState(0);
+  const loadPreAppointmentsRef = React.useRef(null);
 
   const [isModalOpen, setIsModalOpen] = React.useState(false);
   const [editingAppointment, setEditingAppointment] = React.useState(null);
@@ -135,11 +136,13 @@ export default function App() {
   
   // Função global para forçar refresh da lista de appointments
   const forceRefreshAppointments = React.useCallback(() => {
-    console.log('🔄 [forceRefresh] chamado de:', new Error().stack?.split('\n')[2]?.trim());
-    setRefreshTrigger(prev => {
-      console.log(`🔄 [forceRefresh] refreshTrigger: ${prev} → ${prev + 1}`);
-      return prev + 1;
-    });
+    console.log('🔄 [forceRefresh] chamado');
+    // Dispara refresh do useEffect de appointments (listener)
+    setRefreshTrigger(prev => prev + 1);
+    // Dispara refresh imediato dos pré-agendamentos sem recriar o intervalo
+    if (typeof loadPreAppointmentsRef.current === 'function') {
+      loadPreAppointmentsRef.current();
+    }
   }, []);
 
   // ========== DISPONIBILIDADE REAL (Slots Virtuais) ==========
@@ -228,7 +231,7 @@ export default function App() {
       console.log(`👂 [listener:appointments] DESMONTANDO — ${targetYear}/${targetMonth + 1}`);
       unsub();
     };
-  }, [currentYear, currentMonth, filters.filterDate]);
+  }, [currentYear, currentMonth, filters.filterDate, refreshTrigger]);
 
   // 🆕 Buscar pré-agendamentos (pre_agendado) para exibir na agenda
   useEffect(() => {
@@ -245,13 +248,14 @@ export default function App() {
         console.error("❌ [App.jsx] Erro ao buscar pré-agendamentos:", error);
       }
     };
-    
+
+    loadPreAppointmentsRef.current = loadPreAppointments;
     loadPreAppointments();
-    
+
     // Recarregar a cada 30 segundos
     const interval = setInterval(loadPreAppointments, 30000);
     return () => clearInterval(interval);
-  }, [activeSpecialty, refreshTrigger]);
+  }, [activeSpecialty]);
 
   useEffect(() => {
     const unsub = listenReminders((list) => setReminders(list));
