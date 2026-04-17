@@ -114,24 +114,31 @@ export async function getAppointments(params = {}) {
 
 export async function updateAppointment(id, rawData) {
     const crm = normalizeCrmBlock(rawData.crm, rawData.specialty);
+
+    // 🔥 UNIFICAÇÃO: usa patient populado como fonte única de nome
+    const resolvedName = (() => {
+        const name = rawData.patientName || rawData.patient || '';
+        return (name && name !== 'Paciente Desconhecido' && !/^[0-9a-f]{24}$/i.test(name)) ? name : '';
+    })();
+
     const payload = {
+        ...rawData,
         _id: id,
-        patientId: rawData.patientId,
-        patientInfo: normalizePatientInfo(rawData.patientInfo),
-        responsible: rawData.responsible || "",
-        professionalName: rawData.professional || "",
-        doctorId: rawData.professionalId || "",
+        patientInfo: normalizePatientInfo({
+            fullName: resolvedName,
+            phone: rawData.phone || '',
+            birthDate: rawData.birthDate || null,
+            email: rawData.email || null,
+        }),
+        professionalName: rawData.professionalName || rawData.professional || "",
+        doctorId: rawData.professionalId || rawData.doctorId || "",
         specialty: normalizeSessionType(rawData.specialty || crm.sessionType),
-        date: rawData.date,
-        time: rawData.time,
-        operationalStatus: rawData.operationalStatus || "scheduled",
-        observations: rawData.observations || "",
-        billingType: rawData.billingType || "particular",
-        paymentStatus: rawData.paymentStatus || "pending",
-        insuranceProvider: rawData.insuranceProvider || "",
-        insuranceValue: Number(rawData.insuranceValue || 0),
-        authorizationCode: rawData.authorizationCode || "",
-        crm
+        serviceType: crm.serviceType,
+        sessionType: crm.sessionType,
+        paymentMethod: crm.paymentMethod,
+        paymentAmount: crm.paymentAmount,
+        sessionValue: crm.paymentAmount,
+        crm,
     };
 
     const response = await api.put(`/api/v2/appointments/${id}`, payload, {

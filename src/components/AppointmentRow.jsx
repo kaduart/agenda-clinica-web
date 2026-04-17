@@ -50,21 +50,17 @@ export default function AppointmentRow({ appointment, onEdit, onDelete, onRemind
   console.log('  1. appointment.phone:', appointment.phone);
   console.log('  2. appointment.patient?.phone:', appointment.patient?.phone);
   console.log('  3. appointment.patient?.phoneNumber:', appointment.patient?.phoneNumber);
-  console.log('  4. appointment.patientInfo?.phone:', appointment.patientInfo?.phone);
-  console.log('  5. appointment.patientInfo?.phoneNumber:', appointment.patientInfo?.phoneNumber);
-  console.log('  6. appointment.patientPhone:', appointment.patientPhone);
-  console.log('  7. appointment.contactPhone:', appointment.contactPhone);
-  console.log('  8. appointment.whatsapp:', appointment.whatsapp);
+  console.log('  4. appointment.patientPhone:', appointment.patientPhone);
+  console.log('  5. appointment.contactPhone:', appointment.contactPhone);
+  console.log('  6. appointment.whatsapp:', appointment.whatsapp);
   console.log('[AppointmentRow] ---------------------------------------------');
   console.log('[AppointmentRow] OBJETO PATIENT COMPLETO:', appointment.patient);
-  console.log('[AppointmentRow] OBJETO PATIENTINFO COMPLETO:', appointment.patientInfo);
   console.log('[AppointmentRow] ============================================');
   
   // Pegar telefone do PACIENTE primeiro (não do appointment direto)
   // appointment.phone pode vir com número da clínica em integrações
-  const patientPhone = appointment.patient?.phone || 
-                       appointment.patientInfo?.phone || 
-                       appointment.phone || 
+  const patientPhone = appointment.patient?.phone ||
+                       appointment.phone ||
                        "";
   
   const isLivre =

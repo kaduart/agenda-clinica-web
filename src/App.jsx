@@ -541,14 +541,7 @@ export default function App() {
       setIsModalOpen(false);
       setEditingAppointment(null);
 
-      // Só força refresh para criação (pré-agendamentos precisam recarregar).
-      // Para edição, o listener Firestore já atualiza o card automaticamente.
-      if (!isEditing) {
-        console.log("🔄 [saveAppointment] criação → forceRefresh para recarregar pré-agendamentos");
-        forceRefreshAppointments();
-      } else {
-        console.log("✅ [saveAppointment] edição → sem forceRefresh, listener Firestore atualiza o card");
-      }
+      forceRefreshAppointments();
 
     } catch (err) {
       console.error("[saveAppointment] Erro:", err);
@@ -630,12 +623,12 @@ export default function App() {
       _id: pre._id || pre.id || pre.preAgendamentoId || pre.appointmentId,
       date: pre.preferredDate || (typeof pre.date === 'string' ? pre.date.substring(0,10) : new Date(pre.date).toISOString().substring(0,10)),
       time: pre.preferredTime || pre.time,
-      patient: pre.patientInfo?.fullName || pre.patientName,
-      patientName: pre.patientInfo?.fullName || pre.patientName,
+      patient: pre.patient?.fullName || pre.patientName || 'Paciente Desconhecido',
+      patientName: pre.patient?.fullName || pre.patientName || 'Paciente Desconhecido',
       patientId: pre.patient?._id?.toString?.() || pre.patient?.toString?.() || pre.patientId || null,
-      phone: pre.patientInfo?.phone,
-      birthDate: pre.patientInfo?.birthDate,
-      email: pre.patientInfo?.email,
+      phone: pre.patient?.phone || '',
+      birthDate: pre.patient?.dateOfBirth || null,
+      email: pre.patient?.email || null,
       professional: pre.professionalName || (pre.doctor?.fullName),
       specialty: pre.specialty,
       operationalStatus: 'pre_agendado',

@@ -44,11 +44,10 @@ export const listenToNotifications = (onNotification) => {
     };
 };
 
-// Mesmo algoritmo do backend getSafePatientName
+// 🔥 UNIFICAÇÃO: patient populado é a única fonte de verdade
 const resolvePatientName = (a) => {
     const p = a.patient;
     if (p && typeof p === 'object') return p.fullName || p.name || null;
-    if (a.patientInfo?.fullName) return a.patientInfo.fullName;
     if (a.patientName && typeof a.patientName === 'string') return a.patientName;
     return 'Paciente Desconhecido';
 };
@@ -91,6 +90,11 @@ const mapV2Appointment = (a) => {
     const patientName = resolvePatientName(a);
     const professional = resolveProfessionalName(a);
 
+    const patientId = (a.patient && typeof a.patient === 'object') ? a.patient._id?.toString() : (a.patient || null);
+    const phone = a.patient?.phone || '';
+    const birthDate = a.patient?.dateOfBirth || null;
+    const email = a.patient?.email || null;
+
     return {
         id: a._id?.toString() || a.id,
         _id: a._id?.toString() || a.id,
@@ -98,8 +102,10 @@ const mapV2Appointment = (a) => {
         time: a.time,
         patientName,
         patient: patientName,
-        patientId: (a.patient && typeof a.patient === 'object') ? a.patient._id?.toString() : (a.patient || null),
-        phone: a.patient?.phone || a.patientInfo?.phone || '',
+        patientId,
+        phone,
+        birthDate,
+        email,
         professional,
         professionalId: (a.doctor && typeof a.doctor === 'object') ? a.doctor._id?.toString() : (a.doctor || null),
         specialty: a.specialty || a.sessionType || '',
@@ -112,6 +118,13 @@ const mapV2Appointment = (a) => {
         visualFlag: a.visualFlag || null,
         paymentStatus: a.paymentStatus || null,
         metadata: a.metadata || null,
+        crm: a.crm || null,
+        serviceType: a.serviceType || null,
+        sessionValue: a.sessionValue || 0,
+        paymentMethod: a.paymentMethod || null,
+        package: a.package || null,
+        responsible: a.responsible || '',
+        notes: a.notes || '',
     };
 };
 

@@ -7,56 +7,40 @@ import { sendWhatsAppMessage, generateConfirmationMessage, generateReminderMessa
 import { getHolidays, holidaysToMap, isTimeBlockedByHoliday as checkHolidayBlock } from "../services/calendarService";
 
 /**
- * 🔧 UNIFICAÇÃO: Extrai dados do paciente de forma consistente
- * Funciona tanto para agendamentos normais quanto pré-agendamentos
+ * 🔥 UNIFICAÇÃO: patient populado é a única fonte de verdade
+ * Elimina dependência de patientInfo quebrado
  */
 function resolvePatientData(appointment, foundPatient) {
-    // Fontes de dados (em ordem de prioridade)
     const pObj = (typeof appointment?.patient === 'object' && appointment?.patient !== null) ? appointment.patient : {};
-    const patientInfo = appointment?.patientInfo || {}; // Pré-agendamentos
-    const originalDataInfo = appointment?.originalData?.patientInfo || {}; // Pré-agendamentos importados
-    const prePatientInfo = { ...originalDataInfo, ...patientInfo }; // Merge das fontes de pré-agendamento
-    
+    const preObj = appointment?.originalData?.patient || {};
+
     return {
-        // Nome
-        fullName: pObj.fullName || 
-                  appointment?.patientName || 
-                  prePatientInfo.fullName ||
+        fullName: pObj.fullName ||
+                  appointment?.patientName ||
+                  preObj.fullName ||
                   (typeof appointment?.patient === 'string' ? appointment.patient : '') ||
                   '',
-        
-        // Telefone
-        phone: appointment?.phone || 
-               pObj.phone || 
-               prePatientInfo.phone ||
+        phone: appointment?.phone ||
+               pObj.phone ||
+               preObj.phone ||
                foundPatient?.phone ||
                '',
-        
-        // Data de nascimento
-        birthDate: appointment?.birthDate || 
-                   appointment?.patientInfo?.birthDate ||
-                   appointment?.originalData?.patientInfo?.birthDate ||
-                   pObj.dateOfBirth || 
-                   prePatientInfo.birthDate ||
+        birthDate: appointment?.birthDate ||
+                   pObj.dateOfBirth ||
+                   preObj.dateOfBirth ||
                    foundPatient?.dateOfBirth ||
                    '',
-        
-        // Email
-        email: appointment?.email || 
-               pObj.email || 
-               prePatientInfo.email ||
+        email: appointment?.email ||
+               pObj.email ||
+               preObj.email ||
                foundPatient?.email ||
                '',
-        
-        // Responsável
-        responsible: appointment?.responsible || 
-                     foundPatient?.guardianName || 
+        responsible: appointment?.responsible ||
+                     foundPatient?.guardianName ||
                      foundPatient?.responsible ||
                      '',
-        
-        // ID do paciente
-        patientId: pObj._id || 
-                   appointment?.patientId || 
+        patientId: pObj._id ||
+                   appointment?.patientId ||
                    appointment?.originalData?.patientId ||
                    (typeof appointment?.patient === 'string' ? appointment.patient : '') ||
                    ''
