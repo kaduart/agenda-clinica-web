@@ -261,7 +261,7 @@ export default function WeeklyView({
                                                                             ? "bg-pink-200 text-pink-900 border-pink-300 hover:bg-pink-300"
                                                                             : "bg-yellow-200 text-yellow-900 border-yellow-300 hover:bg-yellow-300"
                                                                         }`}
-                                                                    title={(apt.operationalStatus === 'pre_agendado') ? `Interesse: ${apt.patientName || apt.patient?.fullName || apt.patient}` : (apt.patientName || apt.patient?.fullName || apt.patient || "Ocupado")}
+                                                                    title={(apt.operationalStatus === 'pre_agendado') ? `Interesse: ${apt.patientName || apt.patient?.name || apt.patient?.fullName || (typeof apt.patient === 'string' ? apt.patient : '')}` : (apt.patientName || apt.patient?.name || apt.patient?.fullName || (typeof apt.patient === 'string' ? apt.patient : '') || "Ocupado")}
                                                                 >
                                                                     {t}
                                                                 </button>

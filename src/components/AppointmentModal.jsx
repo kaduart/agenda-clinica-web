@@ -15,8 +15,10 @@ function resolvePatientData(appointment, foundPatient) {
     const preObj = appointment?.originalData?.patient || {};
 
     return {
-        fullName: pObj.fullName ||
+        fullName: pObj.name ||
+                  pObj.fullName ||
                   appointment?.patientName ||
+                  preObj.name ||
                   preObj.fullName ||
                   (typeof appointment?.patient === 'string' ? appointment.patient : '') ||
                   '',
@@ -625,7 +627,6 @@ export default function AppointmentModal({ appointment, professionals, patients,
             // Montar payload completo com todos os campos
             const dataToSave = {
                 // Dados do paciente
-                patient: formData.patient,
                 patientName: formData.patient,
                 patientId: effectiveIsNewPatient ? null : formData.patientId,  // Só envia ID se for existente
                 isNewPatient: effectiveIsNewPatient,  // Flag para o backend saber
@@ -722,6 +723,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                     console.log("✅ [AppointmentModal] Paciente encontrado na lista:", foundByName._id);
                     const updatedFormData = { 
                         ...formData, 
+                        appointmentId: appointment?.id || appointment?._id || null,
                         patientId: foundByName._id,
                         isNewPatient: false 
                     };
@@ -745,6 +747,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
             const effectiveIsNewPatient = isNewPatient || (!formData.patientId && !!formData.patient?.trim());
             const dataToSend = { 
                 ...formData, 
+                appointmentId: appointment?.id || appointment?._id || null,
                 isNewPatient: effectiveIsNewPatient,
                 patientName: formData.patient || formData.patientName || ""
             };

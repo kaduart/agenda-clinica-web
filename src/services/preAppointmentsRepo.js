@@ -1,12 +1,15 @@
 import * as v2 from "../api/v2/agendaV2Client";
 
 /**
- * Busca pré-agendamentos filtrados
+ * Busca pré-agendamentos filtrados (operationalStatus = pre_agendado)
+ * Como o backend ainda não filtra por operationalStatus, busca tudo e filtra no frontend.
  */
 export const fetchPreAppointments = async (filters = {}) => {
     try {
-        const data = await v2.listPreAppointments(filters);
-        return data || [];
+        const data = await v2.getAppointments(filters);
+        const appointments = data?.data?.appointments || data?.appointments || [];
+        // Filtra apenas pré-agendamentos no frontend
+        return appointments.filter(a => a.operationalStatus === 'pre_agendado');
     } catch (error) {
         console.error('❌ Erro ao buscar pré-agendamentos:', error);
         return [];
@@ -14,11 +17,15 @@ export const fetchPreAppointments = async (filters = {}) => {
 };
 
 /**
- * Cria um novo pré-agendamento
+ * Cria um novo pré-agendamento como appointment com status pre_agendado
  */
 export const createPreAppointment = async (data) => {
     try {
-        const response = await v2.createPreAppointment(data);
+        const payload = {
+            ...data,
+            operationalStatus: 'pre_agendado',
+        };
+        const response = await v2.createAppointment(payload);
         console.log("✅ [preAppointmentsRepo] Pré-agendamento criado:", response);
         return response;
     } catch (error) {
@@ -28,16 +35,20 @@ export const createPreAppointment = async (data) => {
 };
 
 /**
- * Importa/Aprova um pré-agendamento, convertendo-o em agendamento real
+ * Confirma um pré-agendamento existente, atualizando o MESMO registro para scheduled
  */
 export const approvePreAppointment = async (id, data) => {
-    console.log("📥 [preAppointmentsRepo] approvePreAppointment chamado (V2)");
+    console.log("📥 [preAppointmentsRepo] approvePreAppointment chamado (V2 - appointments-only)");
     console.log("📥 [preAppointmentsRepo] ID:", id);
     console.log("📥 [preAppointmentsRepo] data.patientId:", data.patientId);
     console.log("📥 [preAppointmentsRepo] data.isNewPatient:", data.isNewPatient);
     
     try {
-        const response = await v2.confirmPreAppointment(id, data);
+        const payload = {
+            ...data,
+            operationalStatus: 'scheduled',
+        };
+        const response = await v2.updateAppointment(id, payload);
         console.log("✅ [preAppointmentsRepo] Sucesso:", response);
         return response;
     } catch (error) {
@@ -54,7 +65,7 @@ export const updatePreAppointment = async (id, data) => {
     console.log("📝 [preAppointmentsRepo] ID:", id);
     
     try {
-        const response = await v2.updatePreAppointment(id, data);
+        const response = await v2.updateAppointment(id, data);
         console.log("✅ [preAppointmentsRepo] Atualizado:", response);
         return response;
     } catch (error) {
@@ -64,11 +75,12 @@ export const updatePreAppointment = async (id, data) => {
 };
 
 /**
- * Descarta um pré-agendamento
+ * Descarta um pré-agendamento (hard delete)
  */
 export const discardPreAppointment = async (id, reason) => {
     try {
-        const response = await v2.discardPreAppointment(id, reason);
+        console.log(`[discardPreAppointment] Descartando appointment ${id}. Motivo: ${reason}`);
+        const response = await v2.deleteAppointment(id);
         return response;
     } catch (error) {
         console.error('❌ Erro ao descartar pré-agendamento:', error);
@@ -77,11 +89,11 @@ export const discardPreAppointment = async (id, reason) => {
 };
 
 /**
- * Cancela um pré-agendamento (apenas altera status para 'cancelado')
+ * Cancela um pré-agendamento (altera status para 'cancelado')
  */
 export const cancelPreAppointment = async (id) => {
     try {
-        const response = await v2.cancelPreAppointment(id);
+        const response = await v2.cancelAppointment(id, "Cancelado via Web App");
         return response;
     } catch (error) {
         console.error('❌ Erro ao cancelar pré-agendamento:', error);

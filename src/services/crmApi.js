@@ -60,7 +60,8 @@ export const exportToCRM = async (appointment) => {
         }
 
         const missing = [];
-        if (!appointment.patient) missing.push("Nome do paciente");
+        const patientNameForExport = appointment.patientName || appointment.patient?.name || appointment.patient?.fullName || (typeof appointment.patient === 'string' ? appointment.patient : '') || '';
+        if (!patientNameForExport) missing.push("Nome do paciente");
         if (!appointment.phone) missing.push("Telefone");
         if (!appointment.birthDate) missing.push("Data de nascimento");
         if (!appointment.professional) missing.push("Profissional");
@@ -77,7 +78,7 @@ export const exportToCRM = async (appointment) => {
             time: appointment.time,
             specialty: appointment.specialtyKey || appointment.specialty || "fonoaudiologia",
             patientInfo: {
-                fullName: appointment.patient,
+                fullName: patientNameForExport,
                 phone: (appointment.phone || "").replace(/\D/g, ""),
                 birthDate: appointment.birthDate,
                 email: appointment.email || undefined,
@@ -131,7 +132,7 @@ export const autoSendPreAgendamento = async (appointment) => {
             time: appointment.time,
             specialty: appointment.specialtyKey || appointment.specialty || "fonoaudiologia",
             patientInfo: {
-                fullName: appointment.patient,
+                fullName: patientNameForExport,
                 phone: (appointment.phone || "").replace(/\D/g, ""),
                 birthDate: appointment.birthDate,
                 email: appointment.email,
@@ -252,7 +253,7 @@ export const syncUpdateToCRM = async (appointment, updates) => {
             specialty: updates.specialtyKey || updates.specialty || appointment.specialtyKey || appointment.specialty,
             observations: updates.observations || appointment.observations,
             patientInfo: updates.patientInfo || {
-                fullName: appointment.patient,
+                fullName: appointment.patientName || appointment.patient?.name || appointment.patient?.fullName || (typeof appointment.patient === 'string' ? appointment.patient : '') || '',
                 phone: (appointment.phone || "").replace(/\D/g, ""),
                 birthDate: appointment.birthDate,
                 email: appointment.email,

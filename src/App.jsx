@@ -701,10 +701,10 @@ export default function App() {
 
     // 4. Dedup de pré-agendamentos contra TODOS os appointments reais do mês (não só os filtrados)
     filteredPres = filteredPres.filter(appointment => {
-      const patientName = (appointment.patientName || appointment.patient?.fullName || '').toLowerCase().trim();
+      const patientName = (appointment.patientName || appointment.patient?.name || appointment.patient?.fullName || '').toLowerCase().trim();
       const hasRealAppointment = (appointments || []).some(real => {
         if (isPreAgendamento(real)) return false;
-        const realPatientName = (real.patientName || real.patient?.fullName || '').toLowerCase().trim();
+        const realPatientName = (real.patientName || real.patient?.name || real.patient?.fullName || '').toLowerCase().trim();
         let samePatient = false;
         if (patientName && realPatientName) {
           samePatient = patientName.includes(realPatientName) || realPatientName.includes(patientName);
@@ -727,7 +727,7 @@ export default function App() {
     const applySecondaryFilters = (list) => list.filter(appointment => {
       if (filters.filterProfessional) {
         if (filters.filterProfessional.toLowerCase() === "livre") {
-          const pName = appointment.patient?.fullName || appointment.patient || "";
+          const pName = appointment.patient?.name || appointment.patient?.fullName || (typeof appointment.patient === 'string' ? appointment.patient : '') || "";
           const isLivre =
             (appointment.professional && appointment.professional.toLowerCase().includes("livre")) ||
             (pName.toLowerCase().includes("livre")) ||

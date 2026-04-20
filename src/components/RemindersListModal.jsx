@@ -17,7 +17,7 @@ export default function RemindersListModal({
     const filtered = reminders.filter((r) => {
         if (status !== "all" && r.status !== status) return false;
 
-        const pName = typeof r.patient === 'object' ? r.patient.fullName : (r.patient || "");
+        const pName = typeof r.patient === 'object' ? (r.patient.name || r.patient.fullName || '') : (r.patient || "");
         const dName = typeof r.professional === 'object' ? r.professional.fullName : (r.professional || "");
 
         const hay = `${r.text || ""} ${pName} ${dName} ${r.dueDate || ""}`.toLowerCase();
@@ -178,7 +178,7 @@ export default function RemindersListModal({
                                                     </div>
                                                     <div>
                                                         <h4 className="font-bold text-gray-900">
-                                                            {typeof r.patient === 'object' ? r.patient.fullName : (r.patient || "Paciente")}
+                                                            {(typeof r.patient === 'object' ? (r.patient.name || r.patient.fullName || '') : (r.patient || "")) || "Paciente"}
                                                         </h4>
                                                         <p className="text-sm text-gray-500">
                                                             {typeof r.professional === 'object' ? r.professional.fullName : (r.professional || "Profissional")}

@@ -37,7 +37,7 @@ export default function AppointmentRow({ appointment, onEdit, onDelete, onRemind
 
   const hasReminder = !!(appointment.reminderText && !appointment.reminderDone);
 
-  const patientName = appointment.patientName || appointment.patient?.fullName || appointment.patient || "";
+  const patientName = appointment.patientName || appointment.patient?.name || appointment.patient?.fullName || (typeof appointment.patient === 'string' ? appointment.patient : '') || "";
   
   // 🔍 DEBUG COMPLETO DO AGENDAMENTO
   console.log('[AppointmentRow] ============================================');
@@ -61,6 +61,7 @@ export default function AppointmentRow({ appointment, onEdit, onDelete, onRemind
   // appointment.phone pode vir com número da clínica em integrações
   const patientPhone = appointment.patient?.phone ||
                        appointment.phone ||
+                       appointment.patientPhone ||
                        "";
   
   const isLivre =

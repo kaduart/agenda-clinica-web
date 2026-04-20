@@ -16,6 +16,10 @@ import {
     normalizePhone,
     normalizeSessionType
 } from "./normalizers";
+import {
+    buildAppointmentPayload,
+    buildPreAppointmentPayload
+} from "../../utils/appointmentPayload";
 
 // ===============================
 // 🔒 IDEMPOTENCY (ANTI DUP)
@@ -113,33 +117,7 @@ export async function getAppointments(params = {}) {
 }
 
 export async function updateAppointment(id, rawData) {
-    const crm = normalizeCrmBlock(rawData.crm, rawData.specialty);
-
-    // 🔥 UNIFICAÇÃO: usa patient populado como fonte única de nome
-    const resolvedName = (() => {
-        const name = rawData.patientName || rawData.patient || '';
-        return (name && name !== 'Paciente Desconhecido' && !/^[0-9a-f]{24}$/i.test(name)) ? name : '';
-    })();
-
-    const payload = {
-        ...rawData,
-        _id: id,
-        patientInfo: normalizePatientInfo({
-            fullName: resolvedName,
-            phone: rawData.phone || '',
-            birthDate: rawData.birthDate || null,
-            email: rawData.email || null,
-        }),
-        professionalName: rawData.professionalName || rawData.professional || "",
-        doctorId: rawData.professionalId || rawData.doctorId || "",
-        specialty: normalizeSessionType(rawData.specialty || crm.sessionType),
-        serviceType: crm.serviceType,
-        sessionType: crm.sessionType,
-        paymentMethod: crm.paymentMethod,
-        paymentAmount: crm.paymentAmount,
-        sessionValue: crm.paymentAmount,
-        crm,
-    };
+    const payload = buildAppointmentPayload(rawData, { mode: "update", id });
 
     const response = await api.put(`/api/v2/appointments/${id}`, payload, {
         headers: { "x-client-request-id": getRequestId() },
@@ -172,6 +150,117 @@ export async function getAvailableSlots({ doctorId, date }) {
         params: { doctorId, date }
     });
     return response.data;
+}
+
+export async function createAppointment(rawData) {
+    const payload = buildAppointmentPayload(rawData, { mode: "create" });
+
+    const response = await api.post("/api/v2/appointments", payload, {
+        headers: { "x-client-request-id": getRequestId() },
+        timeout: 30000
+    });
+    return response.data;
+}
+
+export async function rescheduleAppointment(id, rawData) {
+    const payload = buildAppointmentPayload(rawData, { mode: "update", id });
+
+    const response = await api.post(`/api/v2/appointments/${id}/reschedule`, payload, {
+        headers: { "x-client-request-id": getRequestId() },
+        timeout: 30000
+    });
+    return response.data;
+}
+
+// ===============================
+// 📦 PACKAGES
+// ===============================
+
+export async function getPackages(params = {}) {
+    const response = await api.get("/api/v2/packages", { params });
+    return response.data;
+}
+
+export async function deletePackageSession(packageId, sessionId) {
+    const response = await api.delete(`/api/v2/packages/${packageId}/sessions/${sessionId}`);
+    return response.data;
+}
+
+export async function cancelPackageSession(packageId, sessionId, reason = "Cancelado via agenda") {
+    const response = await api.patch(`/api/v2/packages/${packageId}/sessions/${sessionId}/cancel`, { reason });
+    return response.data;
+}
+
+// ===============================
+// 🔄 RESTAURAR APPOINTMENT DE SESSÃO DE PACOTE
+// ===============================
+
+export async function recreateAppointmentFromSession({
+    patientId,
+    patientInfo,
+    doctorId,
+    professionalName,
+    specialty,
+    date,
+    time,
+    sessionValue = 0,
+    observations = "",
+    crm = {}
+}) {
+    const prePayload = {
+        patientId: patientId || null,
+        patientInfo: normalizePatientInfo(patientInfo || {}),
+        preferredDate: date,
+        preferredTime: time,
+        specialty: normalizeSessionType(specialty),
+        notes: observations || "Restaurado via agenda",
+        professionalName: professionalName || "",
+        doctorId: doctorId || ""
+    };
+
+    const preRes = await api.post("/api/v2/pre-appointments", prePayload, {
+        headers: { "x-client-request-id": getRequestId() }
+    });
+    const preData = preRes.data;
+    const preId = preData?.preAgendamentoId || preData?.appointmentId || preData?.data?.preAgendamentoId;
+
+    if (!preId) {
+        throw new Error("Pré-agendamento criado mas ID não retornado");
+    }
+
+    const crmBlock = normalizeCrmBlock(crm, specialty);
+    const confirmPayload = {
+        doctorId,
+        date,
+        time,
+        sessionValue: Number(sessionValue || crmBlock.paymentAmount || 0),
+        paymentMethod: crmBlock.paymentMethod || "pix",
+        serviceType: crmBlock.serviceType || "session",
+        notes: observations || "Restaurado via agenda",
+        patientId: patientId || null,
+        isNewPatient: false,
+        patientName: patientInfo?.fullName || null,
+        birthDate: patientInfo?.birthDate || null,
+        phone: patientInfo?.phone || null,
+        email: patientInfo?.email || null,
+        responsible: patientInfo?.responsible || null,
+        crm: {
+            ...crmBlock,
+            serviceType: crmBlock.serviceType || "session",
+            usePackage: true
+        }
+    };
+
+    const confirmRes = await api.post(`/api/v2/pre-appointments/${preId}/confirm`, confirmPayload, {
+        headers: { "x-client-request-id": getRequestId() }
+    });
+
+    return {
+        success: true,
+        preAgendamentoId: preId,
+        appointmentId: confirmRes.data?.appointmentId || confirmRes.data?.data?.appointmentId,
+        data: confirmRes.data
+    };
 }
 
 // ===============================

@@ -38,7 +38,7 @@ export default function ProfessionalsAvailability({ activeSpecialty, isExpanded,
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
 
-    const specialty = SPECIALTIES[activeSpecialty];
+    const specialty = SPECIALTIES[activeSpecialty]
 
     const specialtyKeyMap = {
         fonoaudiologia: 'fonoaudiologia',
@@ -58,7 +58,8 @@ export default function ProfessionalsAvailability({ activeSpecialty, isExpanded,
         setError(null);
         try {
             const data = await fetchWeeklyAvailability(startDate, apiSpecialty, 7);
-            setAvailability(data);
+            // 🆕 Backend retorna { success, count, availability: [...] }
+            setAvailability(data?.availability || []);
         } catch (err) {
             setError(err.message);
         } finally {
@@ -103,15 +104,9 @@ export default function ProfessionalsAvailability({ activeSpecialty, isExpanded,
                     <span className="font-semibold">
                         Ver Horários Livres - {specialty?.name}
                     </span>
-                    {availability?.daysWithAvailability > 0 && (
+                    {availability?.length > 0 && (
                         <span className="text-xs bg-white/20 px-2 py-1 rounded-full">
-                            {availability.daysWithAvailability} dias com vaga
-                        </span>
-                    )}
-                    {/* 🆕 Mostra contador de feriados se houver */}
-                    {availability?.days?.some(d => d.isHoliday) && (
-                        <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded-full ml-2">
-                            🗓️ {availability.days.filter(d => d.isHoliday).length} feriado(s)
+                            {availability.length} dias carregados
                         </span>
                     )}
                 </div>
@@ -179,94 +174,71 @@ export default function ProfessionalsAvailability({ activeSpecialty, isExpanded,
                         )}
 
                         {/* Grid de disponibilidade */}
-                        {!loading && !error && availability?.days?.length > 0 && (
+                        {!loading && !error && availability?.length > 0 && (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                                {availability.days.map((day) => (
+                                {availability.map((day) => (
                                     <div key={day.date} className="bg-white rounded-lg border border-gray-200 p-3">
                                         {/* Header do dia */}
                                         <div className="flex items-center gap-2 mb-2 pb-2 border-b border-gray-100">
                                             <span className={`text-xs font-bold px-2 py-1 rounded ${specialty?.bgColor} text-white`}>
-                                                {DAY_LABELS[day.dayOfWeek]}
+                                                {DAY_LABELS[day.dayOfWeek] || day.dayLabel}
                                             </span>
                                             <span className="text-sm text-gray-600">
                                                 {formatDateDisplay(day.date)}
                                             </span>
-                                            {/* 🆕 Badge de feriado no dia */}
-                                            {day.isHoliday && (
-                                                <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full ml-auto">
-                                                    🗓️ {day.holidayName || 'Feriado'}
-                                                </span>
-                                            )}
                                         </div>
 
-                                        {/* Profissionais */}
-                                        <div className="space-y-2">
-                                            {day.professionals.map((prof) => (
-                                                <div key={prof.doctorId} className="text-sm">
-                                                    <div className="flex items-center justify-between mb-1">
-                                                        <span className="font-medium text-gray-800">
-                                                            {prof.name.split(' ')[0]}
-                                                        </span>
-                                                        {/* 🆕 Badge de feriado ou vagas disponíveis */}
-                                                        {prof.isHoliday ? (
-                                                            <span className="text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded" title={prof.holidayName}>
-                                                                🗓️ {prof.holidayName || 'Feriado'}
-                                                            </span>
-                                                        ) : (
-                                                            <span className="text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded">
-                                                                {prof.availableSlots.length} vagas
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                    {/* 🆕 Mostra slots indisponíveis (feriado) de forma diferente */}
-                                                    {prof.isHoliday && prof.allSlots ? (
-                                                        <div className="flex flex-wrap gap-1">
-                                                            {prof.allSlots.slice(0, 5).map((slot) => (
-                                                                <span
-                                                                    key={typeof slot === 'string' ? slot : slot.time}
-                                                                    className={`text-xs px-1.5 py-0.5 rounded ${
-                                                                        slot.available 
-                                                                            ? 'bg-gray-100 text-gray-700' 
-                                                                            : 'bg-gray-200 text-gray-400 line-through'
-                                                                    }`}
-                                                                    title={slot.label || ''}
-                                                                >
-                                                                    {typeof slot === 'string' ? slot : slot.time}
-                                                                </span>
-                                                            ))}
-                                                            {prof.allSlots.length > 5 && (
-                                                                <span className="text-xs text-gray-500">
-                                                                    +{prof.allSlots.length - 5}
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                    ) : (
-                                                        <div className="flex flex-wrap gap-1">
-                                                            {prof.availableSlots.slice(0, 5).map((slot) => (
-                                                                <span
-                                                                    key={slot}
-                                                                    className="text-xs px-1.5 py-0.5 bg-gray-100 text-gray-700 rounded"
-                                                                >
-                                                                    {slot}
-                                                                </span>
-                                                            ))}
-                                                            {prof.availableSlots.length > 5 && (
-                                                                <span className="text-xs text-gray-500">
-                                                                    +{prof.availableSlots.length - 5}
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            ))}
-                                        </div>
+                                        {/* Profissionais com vagas disponíveis */}
+                                        {day.professionals.filter(p => p.slots?.some(s => s.available)).length === 0 ? (
+                                            <div className="text-center py-4 text-gray-400">
+                                                <i className="fas fa-calendar-xmark text-lg mb-1 opacity-50"></i>
+                                                <p className="text-xs">
+                                                    {day.message || 'Nenhum horário disponível para este dia'}
+                                                </p>
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-2">
+                                                {day.professionals
+                                                    .filter(p => p.slots?.some(s => s.available))
+                                                    .map((prof) => {
+                                                        const availableSlots = prof.slots?.filter(s => s.available) || [];
+                                                        return (
+                                                            <div key={prof.professionalId} className="text-sm">
+                                                                <div className="flex items-center justify-between mb-1">
+                                                                    <span className="font-medium text-gray-800">
+                                                                        {prof.professionalName?.split(' ')[0]}
+                                                                    </span>
+                                                                    <span className="text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded">
+                                                                        {availableSlots.length} vagas
+                                                                    </span>
+                                                                </div>
+                                                                <div className="flex flex-wrap gap-1">
+                                                                    {availableSlots.slice(0, 5).map((slot) => (
+                                                                        <span
+                                                                            key={slot.time}
+                                                                            className="text-xs px-1.5 py-0.5 bg-gray-100 text-gray-700 rounded"
+                                                                        >
+                                                                            {slot.time}
+                                                                        </span>
+                                                                    ))}
+                                                                    {availableSlots.length > 5 && (
+                                                                        <span className="text-xs text-gray-500">
+                                                                            +{availableSlots.length - 5}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                            </div>
+                                        )}
                                     </div>
                                 ))}
                             </div>
                         )}
 
                         {/* Vazio */}
-                        {!loading && !error && availability?.days?.length === 0 && (
+                        {!loading && !error && availability?.length === 0 && (
                             <div className="text-center py-6 text-gray-500">
                                 <i className="fas fa-calendar-xmark text-2xl mb-2 opacity-50"></i>
                                 <p className="text-sm">Nenhum horário livre encontrado</p>

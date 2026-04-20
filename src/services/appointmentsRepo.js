@@ -2,6 +2,8 @@
 import io from 'socket.io-client';
 import { formatDateLocal } from "../utils/date";
 import * as v2 from "../api/v2/agendaV2Client";
+import { mapAppointmentResponseDTO, mapAppointmentListResponseDTO } from "../api/v2/appointment.response.dto";
+// mapV2Appointment mantido para compatibilidade legada — use mapAppointmentResponseDTO preferencialmente
 
 // Gerenciamento de Socket
 let socket;
@@ -73,6 +75,9 @@ const translateStatus = (status) => {
     return statusMap[status] || status;
 };
 
+// NOTA: O backend V2 unificado NÃO retorna mais estados transitórios internos
+// (ex: 'converted') no GET /appointments. O frontend não precisa filtrar.
+
 // Mesmo algoritmo do backend getSafeProfessionalName
 const resolveProfessionalName = (a) => {
     const d = a.doctor;
@@ -125,6 +130,11 @@ const mapV2Appointment = (a) => {
         package: a.package || null,
         responsible: a.responsible || '',
         notes: a.notes || '',
+        originalAppointmentId: a.originalAppointmentId || null,
+        rescheduleReason: a.rescheduleReason || '',
+        rescheduledAt: a.rescheduledAt || null,
+        canceledAt: a.canceledAt || null,
+        cancelReason: a.cancelReason || '',
     };
 };
 
@@ -147,7 +157,7 @@ export const listenAppointmentsForMonth = (year, month, onData, specificDate = n
         try {
             console.log(`[fetchAppointments] Buscando V2 + pré-agendamentos: ${startDate} a ${endDate}`);
             const merged = await v2.getCalendarData({ startDate, endDate, limit: 500, page: 1 });
-            const list = merged.map(mapV2Appointment);
+            const list = mapAppointmentListResponseDTO(merged || []);
             console.log(`[fetchAppointments] Recebidos ${list.length} agendamentos (merge V2 + pré-agendamentos)`);
             onData(list);
         } catch (error) {
@@ -211,6 +221,24 @@ export const updateAppointmentDirect = async (appointmentId, appointmentData) =>
     return { mode: "update", id: appointmentId, data };
 };
 
+export const rescheduleAppointmentDirect = async (appointmentId, appointmentData) => {
+    console.log("📝 [appointmentsRepo] rescheduleAppointmentDirect - ID original:", appointmentId);
+    try {
+        const data = await v2.rescheduleAppointment(appointmentId, appointmentData);
+        console.log('[rescheduleAppointmentDirect] ✅ Sucesso:', data);
+        // Backend pode retornar novo appointment com ID diferente (cadeia de remarcação)
+        const newId = data?.data?.appointment?._id || data?.data?.appointment?.id || data?.data?._id || data?._id || appointmentId;
+        return { mode: "reschedule", id: newId, originalId: appointmentId, data };
+    } catch (err) {
+        // Fallback: se backend ainda não tem endpoint /reschedule, usa update normal
+        if (err.response?.status === 404) {
+            console.warn("⚠️ [rescheduleAppointmentDirect] Endpoint /reschedule não encontrado. Fallback para update.");
+            return updateAppointmentDirect(appointmentId, appointmentData);
+        }
+        throw err;
+    }
+};
+
 export const upsertAppointment = async ({ editingAppointment, appointmentData }) => {
     console.log("📝 [appointmentsRepo] upsertAppointment chamado");
     
@@ -225,37 +253,23 @@ export const upsertAppointment = async ({ editingAppointment, appointmentData })
         return updateAppointmentDirect(appointmentId, appointmentData);
     }
 
-    const payload = {
-        patientId: appointmentData.patientId,
-        isNewPatient: appointmentData.isNewPatient,
-        patientInfo: {
-            fullName: appointmentData.patientName || appointmentData.patient,
-            phone: appointmentData.phone,
-            birthDate: appointmentData.birthDate,
-            email: appointmentData.email
-        },
-        responsible: appointmentData.responsible,
-        professionalName: appointmentData.professional,
-        doctorId: appointmentData.professionalId,
-        specialty: appointmentData.specialtyKey || appointmentData.specialty,
-        date: appointmentData.date,
-        time: appointmentData.time,
-        operationalStatus: appointmentData.operationalStatus || "scheduled",
-        observations: appointmentData.observations,
-        crm: appointmentData.crm,
-    };
+    console.log("[upsertAppointment] Criando appointment direto via API V2...");
+    const res = await v2.createAppointment(appointmentData);
 
-    console.log("[upsertAppointment] Enviando para API V2 (adapter)...");
-    const preRes = await v2.createPreAppointment(payload);
+    const createdId = res?.data?._id || res?.data?.id || res?._id || res?.id;
+    console.log(`[upsertAppointment] ✅ Appointment criado: ${createdId}`);
 
-    if (!preRes.success) {
-        throw new Error(preRes.error || "Erro ao criar pré-agendamento");
-    }
+    return { mode: "create", id: createdId, status: res?.data?.operationalStatus || "pre_agendado" };
+};
 
-    const preId = preRes.preAgendamentoId || preRes.appointmentId;
-    console.log(`[upsertAppointment] ✅ Pré-Agendamento criado: ${preId}`);
-
-    return { mode: "create", id: preId, status: "pending_confirmation" };
+export const confirmAppointment = async (appointmentId, appointmentData) => {
+    console.log("✅ [appointmentsRepo] confirmAppointment chamado:", appointmentId);
+    const res = await v2.updateAppointment(appointmentId, {
+        ...appointmentData,
+        operationalStatus: "scheduled",
+    });
+    console.log(`[confirmAppointment] ✅ Confirmado: ${appointmentId}`);
+    return { mode: "confirm", id: appointmentId, data: res };
 };
 
 export const cancelAppointment = async (id, reason = "Cancelado via Web App", options = {}) => {
@@ -278,7 +292,7 @@ export const fetchAvailableSlots = async (doctorId, date) => {
 
 export const fetchAppointmentsInRange = async (startDate, endDate) => {
     const data = await v2.getCalendarData({ startDate, endDate, limit: 500, page: 1 });
-    return data.map(mapV2Appointment);
+    return mapAppointmentListResponseDTO(data || []);
 };
 
 export const generateCycleAppointments = async (baseAppointment, payload, opts = {}) => {
@@ -331,21 +345,79 @@ export const deleteCycle = async (cycleId) => {
 };
 
 // ===========================================================
+// 🔁 SINCRONIZAÇÃO: Remove sessão do pacote ao excluir appointment
+// ===========================================================
+export const syncDeleteWithPackage = async (appointmentId, patientId) => {
+    if (!patientId) return { synced: false, reason: 'no_patient_id' };
+    try {
+        const packagesRes = await v2.getPackages({ patientId, limit: 100 });
+        const packages = packagesRes?.data?.packages || packagesRes?.packages || [];
+        if (!packages.length) return { synced: false, reason: 'no_packages' };
+
+        for (const pkg of packages) {
+            const session = (pkg.sessions || []).find(s => s.appointmentId === appointmentId);
+            if (session && session.sessionId) {
+                console.log(`[syncDeleteWithPackage] Removendo sessão ${session.sessionId} do pacote ${pkg._id || pkg.packageId}`);
+                try {
+                    await v2.deletePackageSession(pkg._id || pkg.packageId, session.sessionId);
+                    return { synced: true, packageId: pkg._id || pkg.packageId, sessionId: session.sessionId };
+                } catch (deleteErr) {
+                    console.warn(`[syncDeleteWithPackage] Falha ao deletar sessão, tentando cancelar:`, deleteErr.message);
+                    try {
+                        await v2.cancelPackageSession(pkg._id || pkg.packageId, session.sessionId);
+                        return { synced: true, packageId: pkg._id || pkg.packageId, sessionId: session.sessionId, mode: 'cancel' };
+                    } catch (cancelErr) {
+                        console.error(`[syncDeleteWithPackage] Falha ao cancelar sessão:`, cancelErr.message);
+                        return { synced: false, reason: 'delete_and_cancel_failed' };
+                    }
+                }
+            }
+        }
+        return { synced: false, reason: 'session_not_found' };
+    } catch (error) {
+        console.error("[syncDeleteWithPackage] Erro:", error);
+        return { synced: false, reason: 'error', error: error.message };
+    }
+};
+
+// ===========================================================
+// 🔄 RESTAURAR APPOINTMENT DE SESSÃO DE PACOTE
+// ===========================================================
+export const restoreAppointmentFromSession = async (sessionData) => {
+    console.log("[restoreAppointmentFromSession] Restaurando appointment:", sessionData);
+    return v2.recreateAppointmentFromSession(sessionData);
+};
+
+// ===========================================================
+// 🛡️ PROTEÇÃO: Impede exclusão do primeiro ponto de um pacote
+// ===========================================================
+export const isFirstPackagePoint = async (appointmentId, patientId) => {
+    if (!patientId) return false;
+    try {
+        const res = await v2.getAppointments({ patientId, limit: 500 });
+        const patientAppointments = res?.data?.appointments || [];
+        const packageAppointments = patientAppointments.filter(a => a.package);
+
+        packageAppointments.sort((a, b) => {
+            const dateA = new Date(`${a.date || a.preferredDate || '1970-01-01'}T${a.time || a.preferredTime || '00:00'}`);
+            const dateB = new Date(`${b.date || b.preferredDate || '1970-01-01'}T${b.time || b.preferredTime || '00:00'}`);
+            return dateA - dateB;
+        });
+
+        if (packageAppointments.length === 0) return false;
+        const firstId = packageAppointments[0]._id?.toString() || packageAppointments[0].id;
+        return firstId === appointmentId;
+    } catch (error) {
+        console.error("[isFirstPackagePoint] Erro ao verificar:", error);
+        return false;
+    }
+};
+
+// ===========================================================
 // ✅ CONFIRMATIONS (ADAPTER V2)
 // ===========================================================
-
-export const confirmAppointment = async (preAgendamentoId) => {
-    console.log(`[confirmAppointment] Confirmando PreAgendamento: ${preAgendamentoId}`);
-    if (!preAgendamentoId) throw new Error("ID do pré-agendamento ausente.");
-    return v2.confirmPreAppointment(preAgendamentoId);
-};
 
 export const confirmPresence = async (id) => {
     console.log(`[confirmPresence] Confirmando presença/manual para: ${id}`);
     return v2.confirmAppointmentPresence(id);
-};
-
-export const discardPreAppointment = async (id, reason) => {
-    console.log(`[discardPreAppointment] Descartando: ${id}`);
-    return v2.discardPreAppointment(id, reason);
 };

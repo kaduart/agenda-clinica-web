@@ -81,7 +81,7 @@ export default function ReminderList() {
         <div key={l.id} className="border p-3 mb-2 rounded bg-yellow-50">
           <div className="flex justify-between items-start">
             <div>
-              <p className="font-semibold">{l.patientName || l.patient?.fullName}</p>
+              <p className="font-semibold">{l.patientName || l.patient?.name || l.patient?.fullName || (typeof l.patient === 'string' ? l.patient : '')}</p>
               <p className="text-sm text-gray-600">
                 Consulta: {l.date ? format(parseISO(l.date), 'dd/MM HH:mm', { locale: ptBR }) : 'N/A'}
               </p>

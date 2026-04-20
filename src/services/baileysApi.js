@@ -63,7 +63,7 @@ export async function disconnect() {
  * Gera mensagem de confirmação
  */
 export function generateConfirmationMessage(paciente) {
-  const nome = (paciente.fullName || paciente.patient || 'Paciente').split(' ')[0];
+  const nome = (paciente.name || paciente.fullName || paciente.patient || 'Paciente').split(' ')[0];
   const data = paciente.date 
     ? new Date(paciente.date + 'T12:00:00').toLocaleDateString('pt-BR')
     : '';
@@ -89,7 +89,7 @@ Até o dia e horário combinados! 😊💚`;
  * Gera mensagem de lembrete
  */
 export function generateReminderMessage(paciente) {
-  const nome = (paciente.fullName || paciente.patient || 'Paciente').split(' ')[0];
+  const nome = (paciente.name || paciente.fullName || paciente.patient || 'Paciente').split(' ')[0];
   const data = paciente.date
     ? new Date(paciente.date + 'T12:00:00').toLocaleDateString('pt-BR')
     : '';

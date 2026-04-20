@@ -48,7 +48,7 @@ export default function ReminderModal({ appointment, onSave, onClose }) {
                 dueDate: form.reminderDate,
                 dueTime: form.reminderTime || "",
                 appointmentId: appointment?.id || null,
-                patient: appointment?.patient || "",
+                patient: appointment?.patientName || appointment?.patient?.name || appointment?.patient?.fullName || (typeof appointment?.patient === 'string' ? appointment.patient : '') || "",
                 professional: appointment?.professional || "",
             });
 
