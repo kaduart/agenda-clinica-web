@@ -75,11 +75,23 @@ export default function AppointmentModal({ appointment, professionals, patients,
         authorizationCode: "",
         package: null,
         crm: {
-            serviceType: appointment?.crm?.serviceType || "individual_session",
+            serviceType: appointment?.crm?.serviceType ||
+                (appointment?.serviceType === 'evaluation' ? 'individual_session' :
+                    appointment?.serviceType === 'session' ? 'package_session' :
+                        appointment?.package ? "package_session" : "individual_session"),
             sessionType: appointment?.crm?.sessionType || resolveSpecialtyKey(appointment),
-            paymentMethod: appointment?.crm?.paymentMethod || "pix",
-            paymentAmount: Number(appointment?.crm?.paymentAmount || appointment?.suggestedValue || 0),
-            usePackage: !!appointment?.crm?.usePackage,
+            paymentMethod: appointment?.crm?.paymentMethod ||
+                appointment?.paymentMethod || "pix",
+            paymentAmount: Number(
+                appointment?.crm?.paymentAmount ||
+                appointment?.sessionValue ||
+                appointment?.suggestedValue ||
+                appointment?.package?.sessionValue ||
+                0
+            ),
+            usePackage: !!appointment?.crm?.usePackage ||
+                !!appointment?.package ||
+                appointment?.serviceType === 'session',
         },
         visualFlag: "",
         metadata: null,
@@ -264,7 +276,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                 metadata: null,
             });
         }
-    }, [appointment, professionals, patients]);
+    }, [appointment]);
 
     // Quando patients carregar ou appointment mudar, busca dados do paciente
     React.useEffect(() => {
@@ -394,7 +406,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
         };
 
         fetchDetailsIfNeeded();
-    }, [appointment?.id]);
+    }, []); // 🩹 Sempre busca na montagem — dados da lista podem estar desatualizados
 
     const [isLoading, setIsLoading] = React.useState(false);
     const [showSuggestions, setShowSuggestions] = React.useState(false);
@@ -654,6 +666,12 @@ export default function AppointmentModal({ appointment, professionals, patients,
                 insuranceValue: Number(formData.insuranceValue || 0),
                 authorizationCode: formData.authorizationCode,
                 package: formData.package,
+
+                // 🩹 SEMPRE envia sessionValue = paymentAmount do CRM
+                // O backend usa sessionValue como fonte de verdade do valor
+                sessionValue: Number(formData.crm?.paymentAmount ?? formData.paymentAmount ?? 0),
+                paymentMethod: formData.crm?.paymentMethod || formData.paymentMethod,
+                paymentAmount: Number(formData.crm?.paymentAmount ?? formData.paymentAmount ?? 0),
 
                 // Dados CRM
                 crm: formData.crm,
