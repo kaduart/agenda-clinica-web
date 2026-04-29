@@ -367,6 +367,9 @@ export default function App() {
         phone: appointmentData.phone,
         email: appointmentData.email,
         responsible: appointmentData.responsible,
+        // ESPECIALIDADE — garante que a especialidade selecionada no modal seja respeitada
+        specialty: appointmentData.specialty,
+        specialtyKey: appointmentData.specialtyKey,
         // CRM cru — o adapter V2 normaliza antes de enviar
         crm: appointmentData.crm
       };
@@ -564,16 +567,16 @@ export default function App() {
 
     const firstProf = professionals[0];
     const profName = firstProf?.fullName || firstProf?.name || "";
-    const profSpecialty = firstProf?.specialty || "fonoaudiologia";
-    const specialtyLabel = activeSpecialty === "todas" 
-      ? (SPECIALTIES[profSpecialty]?.name || "Fonoaudiologia")
-      : (SPECIALTIES[activeSpecialty]?.name || "Fonoaudiologia");
+    const specialtyKey = activeSpecialty === "todas" 
+      ? "fonoaudiologia"
+      : activeSpecialty;
 
     setEditingAppointment({
       date: formatDateLocal(new Date()),
       time: "08:00",
       professional: profName,
-      specialty: specialtyLabel,
+      specialty: specialtyKey,
+      specialtyKey: specialtyKey,
       operationalStatus: "pre_agendado",
       patient: "",
       responsible: "",
@@ -591,18 +594,16 @@ export default function App() {
       const profName = typeof payloadProf === 'object' && payloadProf !== null
         ? (payloadProf.fullName || payloadProf.name || "")
         : (payloadProf || "");
-      const profSpecialty = typeof payloadProf === 'object' && payloadProf !== null
-        ? (payloadProf.specialty || "fonoaudiologia")
-        : "fonoaudiologia";
-      const specialtyLabel = activeSpecialty === "todas"
-        ? (SPECIALTIES[profSpecialty]?.name || "Fonoaudiologia")
-        : (SPECIALTIES[activeSpecialty]?.name || "Fonoaudiologia");
+      const specialtyKey = activeSpecialty === "todas"
+        ? "fonoaudiologia"
+        : activeSpecialty;
 
       setEditingAppointment({
         date: payload.date,
         time: payload.time,
         professional: profName,
-        specialty: specialtyLabel,
+        specialty: specialtyKey,
+        specialtyKey: specialtyKey,
         operationalStatus: "pre_agendado",
         patient: "",
         responsible: "",
@@ -630,10 +631,25 @@ export default function App() {
       birthDate: pre.patient?.dateOfBirth || null,
       email: pre.patient?.email || null,
       professional: pre.professionalName || (pre.doctor?.fullName),
+      professionalId: pre.doctorId || pre.professionalId || (pre.doctor?._id || pre.doctor?.id),
       specialty: pre.specialty,
+      specialtyKey: pre.specialtyKey || pre.specialty,
       operationalStatus: 'pre_agendado',
       status: 'Pré-agendado',
       observations: pre.notes || pre.observations,
+      duration: pre.duration || 40,
+      paymentStatus: pre.paymentStatus || 'pending',
+      billingType: pre.billingType || 'particular',
+      insuranceProvider: pre.insuranceProvider || '',
+      insuranceValue: pre.insuranceValue || 0,
+      authorizationCode: pre.authorizationCode || '',
+      package: pre.package || null,
+      sessionValue: pre.sessionValue || 0,
+      paymentMethod: pre.paymentMethod || 'pix',
+      crm: pre.crm || null,
+      serviceType: pre.serviceType || null,
+      responsible: pre.responsible || '',
+      notes: pre.notes || '',
       originalData: pre,
       source: pre.metadata?.origin?.source || 'crm'
     }));

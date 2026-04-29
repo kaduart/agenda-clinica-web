@@ -50,6 +50,8 @@ function resolvePatientData(appointment, foundPatient) {
 }
 
 export default function AppointmentModal({ appointment, professionals, patients, onSave, onConfirmPre, onClose, onReloadPatients, authError }) {
+    // 🎯 Estado inicial LIMPO — sempre começa como novo pré-agendamento Fono
+    // O useEffect principal abaixo sobrescreve quando estiver editando um existente
     const [formData, setFormData] = React.useState({
         patient: "",
         phone: "",
@@ -62,12 +64,12 @@ export default function AppointmentModal({ appointment, professionals, patients,
         professional: "",
         professionalName: "",
         professionalId: "",
-        specialty: appointment?.specialty || "Fonoaudiologia",
-        specialtyKey: appointment?.specialtyKey || resolveSpecialtyKey(appointment?.specialty || "Fonoaudiologia"),
-        operationalStatus: appointment?.operationalStatus || "pre_agendado",
+        specialty: "fonoaudiologia",
+        specialtyKey: "fonoaudiologia",
+        operationalStatus: "pre_agendado",
         status: "",
         observations: "",
-        createdAt: appointment?.createdAt || null,
+        createdAt: null,
         paymentStatus: "pending",
         billingType: "particular",
         insuranceProvider: "",
@@ -75,23 +77,11 @@ export default function AppointmentModal({ appointment, professionals, patients,
         authorizationCode: "",
         package: null,
         crm: {
-            serviceType: appointment?.crm?.serviceType ||
-                (appointment?.serviceType === 'evaluation' ? 'individual_session' :
-                    appointment?.serviceType === 'session' ? 'package_session' :
-                        appointment?.package ? "package_session" : "individual_session"),
-            sessionType: appointment?.crm?.sessionType || resolveSpecialtyKey(appointment),
-            paymentMethod: appointment?.crm?.paymentMethod ||
-                appointment?.paymentMethod || "pix",
-            paymentAmount: Number(
-                appointment?.crm?.paymentAmount ||
-                appointment?.sessionValue ||
-                appointment?.suggestedValue ||
-                appointment?.package?.sessionValue ||
-                0
-            ),
-            usePackage: !!appointment?.crm?.usePackage ||
-                !!appointment?.package ||
-                appointment?.serviceType === 'session',
+            serviceType: "individual_session",
+            sessionType: "fonoaudiologia",
+            paymentMethod: "pix",
+            paymentAmount: 0,
+            usePackage: false,
         },
         visualFlag: "",
         metadata: null,
@@ -192,10 +182,8 @@ export default function AppointmentModal({ appointment, professionals, patients,
                 professional: resolvedProfName || "",
                 professionalName: resolvedProfName || "",  // alias para o backend
                 professionalId: resolvedProfId || "",
-                specialty: appointment.specialty || "Fonoaudiologia",
-                specialtyKey:
-                    appointment.specialtyKey ||
-                    resolveSpecialtyKey(appointment.specialty || "Fonoaudiologia"),
+                specialty: resolveSpecialtyKey(appointment) || "fonoaudiologia",
+                specialtyKey: resolveSpecialtyKey(appointment) || "fonoaudiologia",
                 operationalStatus: appointment.operationalStatus || "scheduled",
                 status: appointment.status || "",
                 observations: appointment.observations || "",
@@ -216,7 +204,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                         (appointment.serviceType === 'evaluation' ? 'individual_session' :
                             appointment.serviceType === 'session' ? 'package_session' :
                                 appointment.package ? "package_session" : "individual_session"),
-                    sessionType: appointment.crm?.sessionType || resolveSpecialtyKey(appointment),
+                    sessionType: resolveSpecialtyKey(appointment) || appointment.crm?.sessionType,
                     paymentMethod: appointment.crm?.paymentMethod ||
                         appointment.paymentMethod || "pix",
                     paymentAmount: Number(
@@ -253,8 +241,8 @@ export default function AppointmentModal({ appointment, professionals, patients,
                 time: "08:00",
                 professional: "",
                 professionalId: "",
-                specialty: "Fonoaudiologia",
-                specialtyKey: resolveSpecialtyKey("Fonoaudiologia"),
+                specialty: "fonoaudiologia",
+                specialtyKey: "fonoaudiologia",
                 operationalStatus: "pre_agendado",
                 status: "",
                 observations: "",
@@ -517,10 +505,15 @@ export default function AppointmentModal({ appointment, professionals, patients,
         }
 
         if (name === "specialty") {
+            const newKey = resolveSpecialtyKey(value);
             setFormData((prev) => ({
                 ...prev,
                 specialty: value,
-                specialtyKey: resolveSpecialtyKey(value),
+                specialtyKey: newKey,
+                crm: {
+                    ...prev.crm,
+                    sessionType: newKey,
+                },
             }));
             return;
         }
@@ -568,8 +561,8 @@ export default function AppointmentModal({ appointment, professionals, patients,
 
         if (isLoading) return;
 
-        // Se for pré-agendamento existente, redireciona para confirmação
-        if (appointment?.operationalStatus === 'pre_agendado' && appointment?.id) {
+        // Se for pré-agendamento EXISTENTE (com id), redireciona para confirmação
+        if (isPreExisting) {
             console.log("🔄 [handleSubmit] Detectado pré-agendamento existente, redirecionando para handleConfirmPre");
             await handleConfirmPre();
             return;
@@ -701,6 +694,8 @@ export default function AppointmentModal({ appointment, professionals, patients,
     // isPre = pré-agendamentos (operationalStatus === 'pre_agendado')
     const isPre = appointment?.operationalStatus === 'pre_agendado';
     const isEdit = !!appointment?.id;
+    const isPreExisting = isPre && isEdit;
+    const isPreNew = isPre && !isEdit;
     const source = appointment?.source || appointment?.metadata?.origin?.source || appointment?.originalData?.source;
 
     // Handler para confirmar pré-agendamento com loading
@@ -792,7 +787,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                 <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 z-10 flex justify-between items-center">
                     <div>
                         <h3 className="text-lg font-semibold text-gray-900">
-                            {isPre ? "Confirmar Pré-Agendamento" : isEdit ? "Editar Agendamento" : "Novo Agendamento"}
+                            {isPreExisting ? "Confirmar Pré-Agendamento" : isPreNew ? "Novo Pré-Agendamento" : isEdit ? "Editar Agendamento" : "Novo Agendamento"}
                         </h3>
                         {source && (
                             <p className="text-xs text-indigo-600 font-medium mt-0.5">
@@ -1483,8 +1478,8 @@ export default function AppointmentModal({ appointment, professionals, patients,
                             Cancelar
                         </button>
                         
-                        {isPre ? (
-                            // Pré-agendamento: botão único que confirma (já envia dados atualizados)
+                        {isPreExisting ? (
+                            // Pré-agendamento EXISTENTE: botão que confirma/converte
                             <button
                                 type="button"
                                 onClick={handleConfirmPre}
@@ -1505,7 +1500,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                 ) : "✅ Confirmar Agendamento"}
                             </button>
                         ) : (
-                            // Botão normal para agendamentos
+                            // Novo pré-agendamento, novo agendamento ou edição
                             <button
                                 type="submit"
                                 disabled={isLoading}
@@ -1522,9 +1517,11 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                 )}
                                 {isLoading
                                     ? "Processando..."
-                                    : isEdit
-                                        ? "Atualizar Agendamento"
-                                        : "Criar Agendamento"}
+                                    : isPreNew
+                                        ? "⭐ Criar Pré-Agendamento"
+                                        : isEdit
+                                            ? "Atualizar Agendamento"
+                                            : "Criar Agendamento"}
                             </button>
                         )}
                     </div>
