@@ -12,18 +12,21 @@ import { openWhatsAppQRModal } from '../components/WhatsAppQRGlobal.jsx';
  * Envia mensagem (usa VPS se disponível, senão API Meta Business)
  */
 export async function sendViaExtension(phone, message) {
+  let needsReconnect = false;
+
   try {
     // 🟢 Tenta WhatsApp Web nativo primeiro (chip comum / Business)
     const response = await api.post('/api/whatsapp-web/send', { 
       phone, 
       message 
     });
-    return response.data;
+    return { ...response.data, needsReconnect: false };
   } catch (err) {
     const error = err.response?.data?.error || '';
     
-    // Se WhatsApp Web não estiver conectado, tenta VPS externo
-    if (err.response?.status === 404 || error.includes('conectar') || error.includes('desconectado') || error.includes('não configurado')) {
+    // Se WhatsApp Web não estiver conectado, marca para reconectar e tenta fallback
+    if (err.response?.status === 404 || error.includes('conectado') || error.includes('desconectado') || error.includes('não configurado') || error.includes('QR')) {
+      needsReconnect = true;
       console.log('[WhatsApp] Web local indisponível, tentando VPS externo...');
       
       try {
@@ -31,7 +34,7 @@ export async function sendViaExtension(phone, message) {
           phone, 
           message 
         });
-        return response.data;
+        return { ...response.data, needsReconnect: true };
       } catch (vpsErr) {
         const vpsError = vpsErr.response?.data?.error || '';
         
@@ -44,18 +47,18 @@ export async function sendViaExtension(phone, message) {
               phone, 
               text: message 
             });
-            return response.data;
+            return { ...response.data, needsReconnect: true };
           } catch (metaErr) {
             const metaError = metaErr.response?.data?.error || metaErr.message;
-            return { success: false, error: metaError };
+            return { success: false, error: metaError, needsReconnect: true };
           }
         }
         
-        return { success: false, error: vpsError };
+        return { success: false, error: vpsError, needsReconnect: true };
       }
     }
     
-    return { success: false, error };
+    return { success: false, error, needsReconnect: false };
   }
 }
 

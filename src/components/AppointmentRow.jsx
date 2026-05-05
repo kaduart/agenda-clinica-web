@@ -171,7 +171,12 @@ export default function AppointmentRow({ appointment, onEdit, onDelete, onRemind
     
     if (result.success) {
       showToast(`✅ ${type === 'confirm' ? 'Confirmado' : 'Lembrete'} enviado!`, 'success');
-    } else if (result.error?.includes('conectado') || result.error?.includes('QR') || result.error?.includes('desconectado')) {
+      // Se usou fallback (Meta API/VPS), avisa que precisa conectar o WhatsApp Web nativo
+      if (result.needsReconnect) {
+        window.dispatchEvent(new CustomEvent('open-whatsapp-connect'));
+        showToast('Mensagem enviada pela Meta API. Conecte o WhatsApp Web nativo para usar chip comum.', 'warning');
+      }
+    } else if (result.error?.includes('conectado') || result.error?.includes('QR') || result.error?.includes('desconectado') || result.needsReconnect) {
       // Abre modal de conexão automaticamente
       window.dispatchEvent(new CustomEvent('open-whatsapp-connect'));
       showToast('WhatsApp desconectado. Escaneie o QR code.', 'error');

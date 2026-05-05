@@ -5,18 +5,43 @@
 import api from "./api";
 
 /**
- * Envia mensagem de texto
+ * Envia mensagem de texto (tenta Baileys → WhatsApp Web → VPS → Meta API)
  */
 export async function sendWhatsAppMessage(phone, message) {
+  // 1. Tenta Baileys
   try {
-    const response = await api.post("/api/baileys/send", {
-      phone,
-      message,
-    });
+    const response = await api.post("/api/baileys/send", { phone, message });
     return response.data;
-  } catch (error) {
-    console.error("[Baileys API] Erro ao enviar:", error);
-    throw error.response?.data || error;
+  } catch (err) {
+    const error = err.response?.data?.error || '';
+    console.log('[Baileys] Falhou, tentando WhatsApp Web...', error);
+
+    // 2. Tenta WhatsApp Web nativo
+    try {
+      const response = await api.post('/api/whatsapp-web/send', { phone, message });
+      return response.data;
+    } catch (err2) {
+      const error2 = err2.response?.data?.error || '';
+      console.log('[WhatsApp Web] Falhou, tentando VPS...', error2);
+
+      // 3. Tenta VPS
+      try {
+        const response = await api.post('/api/whatsapp-vps/send', { phone, message });
+        return response.data;
+      } catch (err3) {
+        const error3 = err3.response?.data?.error || '';
+        console.log('[VPS] Falhou, tentando Meta API...', error3);
+
+        // 4. Fallback Meta API
+        try {
+          const response = await api.post('/api/whatsapp/send-text', { phone, text: message });
+          return response.data;
+        } catch (metaErr) {
+          const metaError = metaErr.response?.data?.error || metaErr.message;
+          return { success: false, error: metaError };
+        }
+      }
+    }
   }
 }
 
