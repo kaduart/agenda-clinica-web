@@ -1,4 +1,15 @@
+import { useEffect, useState } from 'react';
+import WhatsAppConnectModal from './WhatsAppConnectModal';
+
 export default function Header({ view, setView, remindersPendingCount = 0, onOpenReminders }) {
+    const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false);
+
+    useEffect(() => {
+        const handler = () => setIsWhatsAppModalOpen(true);
+        window.addEventListener('open-whatsapp-connect', handler);
+        return () => window.removeEventListener('open-whatsapp-connect', handler);
+    }, []);
+
     return (
         <header className="bg-teal-600 border-b border-gray-200 py-4 px-6">
             <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -40,6 +51,18 @@ export default function Header({ view, setView, remindersPendingCount = 0, onOpe
                         )}
                     </button>
 
+                    {/* Botão WhatsApp Connect */}
+                    <button
+                        onClick={() => setIsWhatsAppModalOpen(true)}
+                        className="relative group p-2 bg-white/10 hover:bg-white/20 rounded-full transition-all duration-300"
+                        title="Conectar WhatsApp"
+                    >
+                        <i className="fab fa-whatsapp text-white text-xl"></i>
+                        <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                            <span className="relative inline-flex rounded-full h-3 w-3 bg-green-400"></span>
+                        </span>
+                    </button>
+
                     <div className="h-8 w-px bg-white/20 mx-1"></div>
 
                     <div className="flex gap-2">
@@ -78,6 +101,11 @@ export default function Header({ view, setView, remindersPendingCount = 0, onOpe
                     </div>
                 </div>
             </div>
+
+            <WhatsAppConnectModal
+                isOpen={isWhatsAppModalOpen}
+                onClose={() => setIsWhatsAppModalOpen(false)}
+            />
         </header>
     );
 }

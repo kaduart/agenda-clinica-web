@@ -7,6 +7,7 @@ import { sendViaExtension, generateConfirmationMessage, generateReminderMessage 
 export default function AppointmentRow({ appointment, onEdit, onDelete, onReminder, onGenerateCycle, onCancel }) {
   
   const [showMenu, setShowMenu] = useState(false);
+  const [sendingWhatsApp, setSendingWhatsApp] = useState(null); // 'confirm' | 'reminder' | null
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -145,13 +146,11 @@ export default function AppointmentRow({ appointment, onEdit, onDelete, onRemind
     console.log('[WhatsApp] Nome:', patientName);
     console.log('[WhatsApp] ============================================');
     if (!patientPhone) {
-      const toast = document.createElement('div');
-      toast.className = 'fixed bottom-4 right-4 bg-red-500 text-white px-4 py-2 rounded-lg text-sm z-50 shadow-lg';
-      toast.innerHTML = '<i class="fas fa-exclamation-circle mr-2"></i> Paciente sem telefone cadastrado';
-      document.body.appendChild(toast);
-      setTimeout(() => toast.remove(), 3000);
+      showToast('Paciente sem telefone cadastrado', 'error');
       return;
     }
+
+    setSendingWhatsApp(type);
 
     const message = type === 'confirm' 
       ? generateConfirmationMessage({
@@ -168,22 +167,31 @@ export default function AppointmentRow({ appointment, onEdit, onDelete, onRemind
     
     console.log('[WhatsApp] Resultado:', result);
     
-    // O modal já abre automaticamente no service se não conectado
-    // Só mostra toast de sucesso ou erro
-    const toast = document.createElement('div');
+    setSendingWhatsApp(null);
+    
     if (result.success) {
-      toast.className = `fixed bottom-4 right-4 ${type === 'confirm' ? 'bg-emerald-500' : 'bg-amber-500'} text-white px-4 py-2 rounded-lg text-sm z-50 shadow-lg`;
-      toast.innerHTML = `<i class="fab fa-whatsapp mr-2"></i> ✅ ${type === 'confirm' ? 'Confirmado' : 'Lembrete'} enviado!`;
-      document.body.appendChild(toast);
-      setTimeout(() => toast.remove(), 3000);
-    } else if (!result.error?.includes('conectado') && !result.error?.includes('QR')) {
-      // Só mostra erro se NÃO for erro de conexão (o modal já abre nesse caso)
-      toast.className = 'fixed bottom-4 right-4 bg-red-500 text-white px-4 py-2 rounded-lg text-sm z-50 shadow-lg';
-      toast.innerHTML = `<i class="fas fa-exclamation-circle mr-2"></i> ${result.error || 'Erro ao enviar'}`;
-      document.body.appendChild(toast);
-      setTimeout(() => toast.remove(), 6000);
+      showToast(`✅ ${type === 'confirm' ? 'Confirmado' : 'Lembrete'} enviado!`, 'success');
+    } else if (result.error?.includes('conectado') || result.error?.includes('QR') || result.error?.includes('desconectado')) {
+      // Abre modal de conexão automaticamente
+      window.dispatchEvent(new CustomEvent('open-whatsapp-connect'));
+      showToast('WhatsApp desconectado. Escaneie o QR code.', 'error');
+    } else {
+      showToast(result.error || 'Erro ao enviar', 'error');
     }
   };
+
+  function showToast(msg, variant = 'success') {
+    const toast = document.createElement('div');
+    const colors = {
+      success: 'bg-emerald-500',
+      error: 'bg-red-500',
+      warning: 'bg-amber-500'
+    };
+    toast.className = `fixed bottom-4 right-4 ${colors[variant] || colors.success} text-white px-4 py-2 rounded-lg text-sm z-50 shadow-lg`;
+    toast.innerHTML = `<i class="fab fa-whatsapp mr-2"></i> ${msg}`;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 4000);
+  }
 
   return (
     <tr className={`border-b border-gray-200 transition-colors ${rowAccent}`}>
@@ -259,11 +267,16 @@ export default function AppointmentRow({ appointment, onEdit, onDelete, onRemind
           {patientPhone && (
             <button
               type="button"
-              className="p-2 text-amber-600 hover:text-amber-800 hover:bg-amber-100 rounded-lg"
+              className="p-2 text-amber-600 hover:text-amber-800 hover:bg-amber-100 rounded-lg disabled:opacity-50"
               onClick={() => handleWhatsAppSend('reminder')}
+              disabled={sendingWhatsApp === 'reminder'}
               title="Enviar lembrete via WhatsApp"
             >
-              <i className="fas fa-bell"></i>
+              {sendingWhatsApp === 'reminder' ? (
+                <i className="fas fa-spinner fa-spin"></i>
+              ) : (
+                <i className="fas fa-bell"></i>
+              )}
             </button>
           )}
           
