@@ -38,8 +38,9 @@ export default function WhatsAppConnectModal({ isOpen, onClose }) {
 
   const statusConfig = {
     ready: { label: 'Conectado', color: 'text-emerald-600', bg: 'bg-emerald-100' },
-    qr: { label: 'Aguardando QR Code', color: 'text-amber-600', bg: 'bg-amber-100' },
-    initializing: { label: 'Inicializando', color: 'text-blue-600', bg: 'bg-blue-100' },
+    qr: { label: status.qrCode ? 'Escaneie o QR Code' : 'Aguardando QR Code...', color: 'text-amber-600', bg: 'bg-amber-100' },
+    connecting: { label: 'QR escaneado — conectando...', color: 'text-blue-600', bg: 'bg-blue-100' },
+    initializing: { label: 'Inicializando...', color: 'text-blue-600', bg: 'bg-blue-100' },
     error: { label: 'Erro', color: 'text-red-600', bg: 'bg-red-100' },
     disconnected: { label: 'Desconectado', color: 'text-gray-600', bg: 'bg-gray-100' },
     loading: { label: 'Carregando...', color: 'text-gray-600', bg: 'bg-gray-100' },
@@ -64,6 +65,14 @@ export default function WhatsAppConnectModal({ isOpen, onClose }) {
           {current.label}
           {status.error && <div className="text-xs mt-1 opacity-80">{status.error}</div>}
         </div>
+
+        {status.status === 'connecting' && (
+          <div className="flex flex-col items-center mb-4 py-6">
+            <i className="fas fa-spinner fa-spin text-blue-500 text-4xl mb-3"></i>
+            <p className="text-sm text-gray-600 text-center">Estabelecendo conexão com o WhatsApp...</p>
+            <p className="text-xs text-gray-400 mt-1 text-center">Isso pode levar até 30 segundos</p>
+          </div>
+        )}
 
         {status.status === 'qr' && status.qrCode && (
           <div className="flex flex-col items-center mb-4">

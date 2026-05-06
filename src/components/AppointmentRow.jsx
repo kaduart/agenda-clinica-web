@@ -333,8 +333,8 @@ export default function AppointmentRow({ appointment, onEdit, onDelete, onRemind
                       </button>
                     )}
                     
-                    {/* Excluir */}
-                    <button
+                    {/* Excluir - INATIVADO para evitar corrupção de pacotes e fraude de caixa */}
+                    {/* <button
                       type="button"
                       className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-red-50 hover:text-red-800 flex items-center gap-2"
                       onClick={() => {
@@ -344,7 +344,7 @@ export default function AppointmentRow({ appointment, onEdit, onDelete, onRemind
                     >
                       <i className="fas fa-trash text-red-600"></i>
                       Excluir permanentemente
-                    </button>
+                    </button> */}
                     
                     {/* Separador */}
                     <div className="border-t border-gray-100 my-1"></div>

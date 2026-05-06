@@ -343,7 +343,8 @@ export default function AppointmentModal({ appointment, professionals, patients,
                 setIsLoadingDetails(true);
                 try {
                     const response = await api.get(`/api/v2/appointments/${appointment.id}`);
-                    const data = response.data.data || response.data;
+                    const payload = response.data.data || response.data;
+                    const data = payload.appointment || payload;
 
                     console.log("🔍 [AppointmentModal] Detalhes completos recebidos:", {
                         serviceType: data.serviceType,
@@ -375,13 +376,21 @@ export default function AppointmentModal({ appointment, professionals, patients,
                             // Dados CRM
                             crm: {
                                 ...prev.crm,
-                                serviceType: data.serviceType === 'evaluation' ? 'individual_session' :
-                                    data.serviceType === 'session' ? 'package_session' :
-                                        prev.crm.serviceType,
+                                serviceType: data.crm?.serviceType ||
+                                    (data.serviceType === 'evaluation' ? 'individual_session' :
+                                        data.serviceType === 'session' || data.serviceType === 'package_session' ? 'package_session' :
+                                            prev.crm.serviceType || 'individual_session'),
                                 sessionType: prev.specialtyKey || resolveSpecialtyKey(prev.specialty),
                                 paymentMethod: data.paymentMethod || prev.crm.paymentMethod,
-                                paymentAmount: Number(data.sessionValue ?? prev.crm.paymentAmount),
-                                usePackage: data.serviceType === 'session' || !!data.package,
+                                paymentAmount: Number(
+                                    data.crm?.paymentAmount ||
+                                    data.sessionValue ||
+                                    data.suggestedValue ||
+                                    data.package?.sessionValue ||
+                                    prev.crm.paymentAmount ||
+                                    0
+                                ),
+                                usePackage: data.serviceType === 'session' || data.serviceType === 'package_session' || !!data.package,
                             }
                         };
                     });
@@ -561,6 +570,12 @@ export default function AppointmentModal({ appointment, professionals, patients,
 
         if (isLoading) return;
 
+        // Agendamento de pacote: bloqueia edição nesta tela
+        if (isPackagePreAgendado) {
+            alert('Este agendamento pertence a um pacote de sessões e deve ser gerenciado pelo CRM.\n\nAcesse o CRM → paciente → pacote para editar ou usar esta sessão.');
+            return;
+        }
+
         // Se for pré-agendamento EXISTENTE (com id), redireciona para confirmação
         if (isPreExisting) {
             console.log("🔄 [handleSubmit] Detectado pré-agendamento existente, redirecionando para handleConfirmPre");
@@ -697,6 +712,8 @@ export default function AppointmentModal({ appointment, professionals, patients,
     const isPreExisting = isPre && isEdit;
     const isPreNew = isPre && !isEdit;
     const source = appointment?.source || appointment?.metadata?.origin?.source || appointment?.originalData?.source;
+    // Agendamento de pacote: bloqueado nesta tela, deve ser gerenciado pelo CRM
+    const isPackagePreAgendado = isPre && isEdit && !!(appointment?.package || formData.package);
 
     // Handler para confirmar pré-agendamento com loading
     const handleConfirmPre = async () => {
@@ -825,6 +842,16 @@ export default function AppointmentModal({ appointment, professionals, patients,
                 )}
 
                 <form onSubmit={handleSubmit} className="px-6 py-4">
+                    {/* Banner: agendamento de pacote — somente leitura nesta tela */}
+                    {isPackagePreAgendado && (
+                        <div className="mb-4 flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 p-4">
+                            <span className="text-amber-500 text-lg leading-none">⚠️</span>
+                            <div>
+                                <p className="text-sm font-semibold text-amber-800">Agendamento de pacote — gerenciado pelo CRM</p>
+                                <p className="text-xs text-amber-700 mt-0.5">Este horário está vinculado a um pacote de sessões. Para editar ou registrar o atendimento, acesse o <strong>CRM → paciente → pacote</strong>.</p>
+                            </div>
+                        </div>
+                    )}
                     {/* Bloco: Dados do Paciente */}
                     <div className="bg-blue-50/30 rounded-lg p-4 border border-blue-100">
                         <h4 className="text-sm font-semibold text-blue-800 mb-3 flex items-center gap-2">
@@ -1233,7 +1260,8 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                         setIsLoadingDetails(true);
                                         try {
                                             const response = await api.get(`/api/v2/appointments/${appointment.id}`);
-                                            const data = response.data.data || response.data;
+                                            const payload = response.data.data || response.data;
+                                            const data = payload.appointment || payload;
                                             setFormData(prev => ({
                                                 ...prev,
                                                 paymentStatus: data.paymentStatus || prev.paymentStatus,
@@ -1242,12 +1270,21 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                                 insuranceValue: data.insuranceValue ?? prev.insuranceValue,
                                                 authorizationCode: data.authorizationCode || prev.authorizationCode,
                                                 crm: {
-                                                    serviceType: data.serviceType === 'evaluation' ? 'individual_session' :
-                                                        data.serviceType === 'session' ? 'package_session' : prev.crm.serviceType,
+                                                    serviceType: data.crm?.serviceType ||
+                                                        (data.serviceType === 'evaluation' ? 'individual_session' :
+                                                            data.serviceType === 'session' || data.serviceType === 'package_session' ? 'package_session' :
+                                                                prev.crm.serviceType || 'individual_session'),
                                                     sessionType: prev.specialtyKey || resolveSpecialtyKey(prev.specialty),
                                                     paymentMethod: data.paymentMethod || prev.crm.paymentMethod,
-                                                    paymentAmount: Number(data.sessionValue ?? prev.crm.paymentAmount),
-                                                    usePackage: data.serviceType === 'session' || !!data.package,
+                                                    paymentAmount: Number(
+                                                        data.crm?.paymentAmount ||
+                                                        data.sessionValue ||
+                                                        data.suggestedValue ||
+                                                        data.package?.sessionValue ||
+                                                        prev.crm.paymentAmount ||
+                                                        0
+                                                    ),
+                                                    usePackage: data.serviceType === 'session' || data.serviceType === 'package_session' || !!data.package,
                                                 }
                                             }));
                                             alert("Dados recarregados do servidor!");
@@ -1503,8 +1540,8 @@ export default function AppointmentModal({ appointment, professionals, patients,
                             // Novo pré-agendamento, novo agendamento ou edição
                             <button
                                 type="submit"
-                                disabled={isLoading}
-                                className={`px-5 py-2 rounded-lg font-semibold flex items-center justify-center gap-2 ${isLoading
+                                disabled={isLoading || isPackagePreAgendado}
+                                className={`px-5 py-2 rounded-lg font-semibold flex items-center justify-center gap-2 ${isLoading || isPackagePreAgendado
                                         ? "bg-gray-400 cursor-not-allowed text-white"
                                         : "bg-teal-600 hover:bg-teal-700 text-white shadow-sm"
                                     }`}
