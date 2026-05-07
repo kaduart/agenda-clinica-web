@@ -5,6 +5,7 @@ export default function WhatsAppConnectModal({ isOpen, onClose }) {
   const [status, setStatus] = useState({ status: 'loading', ready: false, qrCode: null, qrTimestamp: null, error: null });
   const [loading, setLoading] = useState(false);
   const [qrAge, setQrAge] = useState(0);
+  const [connectingAge, setConnectingAge] = useState(0);
   const abortControllerRef = React.useRef(null);
 
   async function fetchStatus() {
@@ -68,6 +69,19 @@ export default function WhatsAppConnectModal({ isOpen, onClose }) {
     return () => clearInterval(interval);
   }, [status.status, status.qrTimestamp]);
 
+  // Contador de tempo no status connecting (sync)
+  useEffect(() => {
+    if (status.status !== 'connecting') {
+      setConnectingAge(0);
+      return;
+    }
+    const start = Date.now();
+    const interval = setInterval(() => {
+      setConnectingAge(Math.floor((Date.now() - start) / 1000));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [status.status]);
+
   if (!isOpen) return null;
 
   const statusConfig = {
@@ -102,9 +116,31 @@ export default function WhatsAppConnectModal({ isOpen, onClose }) {
 
         {status.status === 'connecting' && (
           <div className="flex flex-col items-center mb-4 py-6">
-            <i className="fas fa-spinner fa-spin text-blue-500 text-4xl mb-3"></i>
-            <p className="text-sm text-gray-600 text-center">Estabelecendo conexão com o WhatsApp...</p>
-            <p className="text-xs text-gray-400 mt-1 text-center">Isso pode levar até 30 segundos</p>
+            <div className="relative mb-4">
+              <i className="fas fa-circle-notch fa-spin text-blue-500 text-5xl"></i>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <i className="fab fa-whatsapp text-white text-2xl"></i>
+              </div>
+            </div>
+            <p className="text-base font-semibold text-gray-800 text-center mb-1">
+              Sincronizando WhatsApp...
+            </p>
+            <p className="text-sm text-gray-500 text-center max-w-xs">
+              {connectingAge < 30
+                ? 'Autenticando sessão...'
+                : connectingAge < 120
+                ? 'Baixando dados da conta... isso pode levar alguns minutos no primeiro acesso.'
+                : 'Finalizando sincronização... quase pronto! Não feche esta janela.'}
+            </p>
+            <div className="mt-4 w-64 h-2 bg-gray-200 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-blue-500 rounded-full transition-all duration-1000"
+                style={{ width: `${Math.min(100, 10 + connectingAge * 0.3)}%` }}
+              />
+            </div>
+            <p className="text-xs text-gray-400 mt-2 text-center">
+              {Math.floor(connectingAge / 60)}:{String(connectingAge % 60).padStart(2, '0')} processando
+            </p>
           </div>
         )}
 
