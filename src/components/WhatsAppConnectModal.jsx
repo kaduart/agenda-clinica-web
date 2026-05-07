@@ -5,21 +5,35 @@ export default function WhatsAppConnectModal({ isOpen, onClose }) {
   const [status, setStatus] = useState({ status: 'loading', ready: false, qrCode: null, qrTimestamp: null, error: null });
   const [loading, setLoading] = useState(false);
   const [qrAge, setQrAge] = useState(0);
+  const abortControllerRef = React.useRef(null);
 
   async function fetchStatus() {
+    // Cancela requisição anterior se ainda estiver pendente
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    abortControllerRef.current = new AbortController();
+
     try {
-      const response = await api.get('/api/whatsapp-web/status');
+      const response = await api.get('/api/whatsapp-web/status', {
+        signal: abortControllerRef.current.signal,
+        timeout: 8000, // timeout curto: se o backend congelou, falha rápido
+      });
       setStatus(response.data);
     } catch (err) {
+      if (err.name === 'AbortError' || err.code === 'ERR_CANCELED') {
+        // Requisição cancelada intencionalmente — ignora
+        return;
+      }
       console.error('[WhatsAppConnect] Erro ao buscar status:', err.message);
-      setStatus(prev => ({ ...prev, status: 'error', error: 'Servidor offline' }));
+      setStatus(prev => ({ ...prev, status: 'error', error: 'Servidor offline ou sobrecarregado' }));
     }
   }
 
   async function handleReconnect() {
     setLoading(true);
     try {
-      await api.post('/api/whatsapp-web/reconnect');
+      await api.post('/api/whatsapp-web/reconnect', null, { timeout: 15000 });
       await fetchStatus();
     } catch (err) {
       console.error('[WhatsAppConnect] Erro ao reconectar:', err.message);
@@ -31,9 +45,16 @@ export default function WhatsAppConnectModal({ isOpen, onClose }) {
   useEffect(() => {
     if (!isOpen) return;
     fetchStatus();
-    const interval = setInterval(fetchStatus, 3000);
-    return () => clearInterval(interval);
-  }, [isOpen]);
+    // Intervalo MAIOR quando em QR/connecting (10s) para não sobrecarregar o backend
+    const intervalMs = (status.status === 'qr' || status.status === 'connecting') ? 10000 : 3000;
+    const interval = setInterval(fetchStatus, intervalMs);
+    return () => {
+      clearInterval(interval);
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, [isOpen, status.status]);
 
   // Contador de idade do QR code
   useEffect(() => {
@@ -104,7 +125,7 @@ export default function WhatsAppConnectModal({ isOpen, onClose }) {
             )}
             <div className="bg-white p-4 rounded-xl shadow-inner border border-gray-200">
               <img
-                src={`${status.qrCode}${status.qrTimestamp ? `?t=${status.qrTimestamp}` : ''}`}
+                src={status.qrCode}
                 alt="QR Code WhatsApp"
                 className="w-48 h-48"
                 key={status.qrTimestamp || 'qr'}
