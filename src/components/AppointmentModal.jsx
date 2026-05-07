@@ -1449,22 +1449,22 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                     name="crm.paymentAmount"
                                     value={formData.crm.paymentAmount}
                                     onChange={handleChange}
-                                    disabled={formData.paymentStatus === 'paid'}
-                                    className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 ${formData.paymentStatus === 'paid'
+                                    disabled={formData.paymentStatus === 'paid' || !!formData.package}
+                                    className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 ${
+                                        formData.paymentStatus === 'paid' || !!formData.package
                                             ? 'bg-gray-100 text-gray-500 cursor-not-allowed border-gray-300'
                                             : 'border-gray-300'
-                                        }`}
+                                    }`}
                                     min="0"
                                     step="0.01"
                                     placeholder="0,00"
                                 />
-                                {formData.package?.sessionValue && formData.crm.paymentAmount != formData.package.sessionValue && (
-                                    <p className="text-xs text-amber-600 mt-1">
-                                        <i className="fas fa-exclamation-triangle mr-1"></i>
-                                        Valor diferente do pacote (R$ {formData.package.sessionValue})
+                                {!!formData.package && (
+                                    <p className="text-xs text-amber-700 mt-1 font-medium">
+                                        🔒 Sessão de pacote — valor controlado pelo pacote (R$ {formData.package?.sessionValue ?? formData.crm.paymentAmount}). Para alterar, acesse o CRM → paciente → pacote.
                                     </p>
                                 )}
-                                {formData.crm.paymentAmount === 0 && (formData.paymentStatus === 'paid' || formData.paymentStatus === 'pending_receipt') && !formData.package && (
+                                {!formData.package && formData.crm.paymentAmount === 0 && (formData.paymentStatus === 'paid' || formData.paymentStatus === 'pending_receipt') && (
                                     <p className="text-xs text-red-500 mt-1 font-semibold">
                                         <i className="fas fa-exclamation-circle mr-1"></i>
                                         Atenção: Valor zerado mas status é '{formData.paymentStatus}'. Verifique se o valor foi carregado corretamente do banco.

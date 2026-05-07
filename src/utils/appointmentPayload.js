@@ -82,7 +82,11 @@ export function buildAppointmentPayload(raw, options = {}) {
     const paymentAmount = Number(raw.paymentAmount ?? crm.paymentAmount ?? 0);
 
     // --- Pacote ---
-    const packageInfo = raw.package || null;
+    // Envia só o ObjectId — backend não aceita objeto populado no campo package
+    const rawPkg = raw.package;
+    const packageInfo = rawPkg
+        ? (typeof rawPkg === 'string' ? rawPkg : rawPkg._id || rawPkg.id || null)
+        : null;
 
     // --- Responsável ---
     const responsible = raw.responsible || "";
@@ -137,12 +141,8 @@ export function buildAppointmentPayload(raw, options = {}) {
         payload.rescheduleReason = raw.rescheduleReason;
     }
 
-    // --- Campos específicos por modo ---
-    if (mode === "update") {
-        const updateId = id || raw.id || raw._id || "";
-        payload._id = updateId;
-        payload.id = updateId;   // compatibilidade com backends que esperam id (sem underscore)
-    }
+    // Para update: ID já está na URL — não envia no body para evitar
+    // erro de campo imutável do Mongoose (_id não pode ser sobrescrito)
 
     // Remove campos undefined/null desnecessários (mas mantém null quando faz sentido)
     // Nota: não removemos null de patientId porque null é válido (paciente novo)
