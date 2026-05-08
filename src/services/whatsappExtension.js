@@ -137,9 +137,16 @@ export function generateReminderMessage(paciente) {
   const profissional = paciente.professional || paciente.doctor?.fullName || '';
   const especialidade = paciente.specialty || paciente.sessionType || '';
   
-  // Verifica se é hoje ou amanhã
-  const hoje = new Date().toISOString().split('T')[0];
-  const ehHoje = dateStr === hoje;
+  // Verifica se é hoje, amanhã ou outro dia
+  const hoje = new Date();
+  const hojeStr = hoje.toISOString().split('T')[0];
+  
+  const amanha = new Date(hoje);
+  amanha.setDate(amanha.getDate() + 1);
+  const amanhaStr = amanha.toISOString().split('T')[0];
+  
+  const ehHoje = dateStr === hojeStr;
+  const ehAmanha = dateStr === amanhaStr;
   
   if (ehHoje) {
     const saudacao = responsavel 
@@ -173,8 +180,17 @@ export function generateReminderMessage(paciente) {
   };
   const tipoAtendimento = serviceTypeMap[paciente.serviceType] || 'o atendimento';
   
+  // Define o texto da data (amanhã, dia da semana, ou data)
+  let dataTexto;
+  if (ehAmanha) {
+    dataTexto = 'de amanhã';
+  } else {
+    const diaSemana = dateObj ? dateObj.toLocaleDateString('pt-BR', { weekday: 'long' }) : '';
+    dataTexto = 'de ' + diaSemana;
+  }
+  
   return saudacao + '\n\u200B\n' +
-    'Estou passando para confirmar ' + tipoAtendimento + ' de amanhã 😊' + '\n\u200B\n' +
+    'Estou passando para confirmar ' + tipoAtendimento + ' ' + dataTexto + ' 😊' + '\n\u200B\n' +
     '👶 Paciente: ' + nomePaciente + '\n' +
     '📅 Data: ' + data + '\n' +
     '⏰ Horário: ' + hora + '\n' +
