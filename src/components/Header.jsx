@@ -1,14 +1,34 @@
 import { useEffect, useState } from 'react';
 import WhatsAppConnectModal from './WhatsAppConnectModal';
+import api from '../services/api.js';
 
 export default function Header({ view, setView, remindersPendingCount = 0, onOpenReminders }) {
     const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false);
+    const [whatsAppStatus, setWhatsAppStatus] = useState({ ready: false, status: 'unknown' });
 
     useEffect(() => {
         const handler = () => setIsWhatsAppModalOpen(true);
         window.addEventListener('open-whatsapp-connect', handler);
         return () => window.removeEventListener('open-whatsapp-connect', handler);
     }, []);
+
+    // Poll status do WhatsApp a cada 10s
+    useEffect(() => {
+        async function checkStatus() {
+            try {
+                const res = await api.get('/api/whatsapp-web/status', { timeout: 5000 });
+                setWhatsAppStatus(res.data);
+            } catch {
+                setWhatsAppStatus({ ready: false, status: 'error' });
+            }
+        }
+        checkStatus();
+        const interval = setInterval(checkStatus, 10000);
+        return () => clearInterval(interval);
+    }, []);
+
+    const isConnected = whatsAppStatus.ready;
+    const statusColor = isConnected ? 'bg-emerald-400' : 'bg-red-400';
 
     return (
         <header className="bg-teal-600 border-b border-gray-200 py-4 px-6">
@@ -55,11 +75,11 @@ export default function Header({ view, setView, remindersPendingCount = 0, onOpe
                     <button
                         onClick={() => setIsWhatsAppModalOpen(true)}
                         className="relative group p-2 bg-white/10 hover:bg-white/20 rounded-full transition-all duration-300"
-                        title="Conectar WhatsApp"
+                        title={isConnected ? 'WhatsApp conectado' : 'Conectar WhatsApp'}
                     >
-                        <i className="fab fa-whatsapp text-white text-xl"></i>
+                        <i className={`fab fa-whatsapp text-xl ${isConnected ? 'text-emerald-300' : 'text-white'}`}></i>
                         <span className="absolute -top-1 -right-1 flex h-3 w-3">
-                            <span className="relative inline-flex rounded-full h-3 w-3 bg-green-400"></span>
+                            <span className={`relative inline-flex rounded-full h-3 w-3 ${statusColor}`}></span>
                         </span>
                     </button>
 

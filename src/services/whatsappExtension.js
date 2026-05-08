@@ -15,6 +15,12 @@ export async function sendViaExtension(phone, message) {
   let needsReconnect = false;
 
   try {
+    // 🟢 Verifica se WhatsApp está conectado antes de enviar
+    const statusRes = await api.get('/api/whatsapp-web/status', { timeout: 5000 });
+    if (!statusRes.data.ready) {
+      return { success: false, error: 'WhatsApp não está conectado', needsReconnect: true };
+    }
+
     // 🟢 Tenta WhatsApp Web nativo primeiro (chip comum / Business)
     const response = await api.post('/api/whatsapp-web/send', { 
       phone, 
@@ -22,7 +28,7 @@ export async function sendViaExtension(phone, message) {
     });
     return { ...response.data, needsReconnect: false };
   } catch (err) {
-    const error = err.response?.data?.error || '';
+    const error = err.response?.data?.error || err.message || '';
     
     // Se WhatsApp Web não estiver conectado, marca para reconectar e tenta fallback
     if (err.response?.status === 404 || error.includes('conectado') || error.includes('desconectado') || error.includes('não configurado') || error.includes('QR')) {
