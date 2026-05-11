@@ -262,7 +262,7 @@ export default function AppointmentRow({ appointment, onEdit, onDelete, onRemind
               type="button"
               className="p-2 text-emerald-600 hover:text-emerald-800 hover:bg-emerald-100 rounded-lg"
               onClick={() => handleWhatsAppSend('confirm')}
-              title="Confirmar via WhatsApp"
+              title="Confirmar agendamento (WhatsApp)"
             >
               <i className="fab fa-whatsapp text-lg"></i>
             </button>
@@ -275,7 +275,7 @@ export default function AppointmentRow({ appointment, onEdit, onDelete, onRemind
               className="p-2 text-amber-600 hover:text-amber-800 hover:bg-amber-100 rounded-lg disabled:opacity-50"
               onClick={() => handleWhatsAppSend('reminder')}
               disabled={sendingWhatsApp === 'reminder'}
-              title="Enviar lembrete via WhatsApp"
+              title="Lembrar consulta (WhatsApp)"
             >
               {sendingWhatsApp === 'reminder' ? (
                 <i className="fas fa-spinner fa-spin"></i>

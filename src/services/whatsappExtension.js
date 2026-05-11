@@ -181,11 +181,11 @@ export function generateConfirmationMessage(paciente) {
   const hora = paciente.time || '';
 
   return saudacao + '\n\u200B\n' +
-    'O agendamento de *' + nomePaciente + '* está confirmado para a avaliação inicial no dia *' + data + ' (' + diaSemana + ')* às *' + hora + '*.' + '\n\u200B\n' +
-    'Ficamos muito felizes em recebê-los e preparar tudo com carinho ✨' + '\n\u200B\n' +
-    'Qualquer dúvida antes da consulta, pode contar com a gente.' + '\n\u200B\n' +
-    '📲 No dia anterior, vamos te enviar uma mensagem para confirmar, combinado?' + '\n\u200B\n' +
-    'Até o dia e horário combinados! 😊💛';
+    'Tudo certo! O agendamento do *' + nomePaciente + '* está confirmado para a *avaliação inicial* no dia *' + data + ' (' + diaSemana + ')* às *' + hora + '* 💚' + '\n\u200B\n' +
+    'Ficamos muito felizes em receber vocês e preparar tudo com carinho ✨' + '\n\u200B\n' +
+    'Se surgir qualquer dúvida antes do dia, é só chamar aqui.' + '\n\u200B\n' +
+    '📲 Um dia antes, enviamos outra mensagem para confirmar, combinado?' + '\n\u200B\n' +
+    'Te espero no dia e horário marcados! 😊';
 }
 
 /**
@@ -225,19 +225,18 @@ export function generateReminderMessage(paciente) {
       ? getSaudacao() + ', ' + responsavel + '! Tudo bem? 😊' 
       : getSaudacao() + '! Tudo bem? 😊';
     return saudacao + '\n\u200B\n' +
-      'Passando para lembrar que hoje (' + dataCompleta + ') temos ' + tipoAtendimento + ' agendado na Clínica Fono Inova:' + '\n\u200B\n' +
-      '👶 Paciente: ' + nomePaciente + '\n' +
-      '🕒 ' + hora + ' – ' + especialidade + '\n\u200B\n' +
-      'Posso confirmar sua presença?' + '\n' +
-      'Qualquer dúvida, estamos à disposição.' + '\n' +
-      'Até mais 😊';
+      'Só passando para lembrar que *hoje* (' + dataCompleta + ') temos ' + tipoAtendimento + ' do *' + nomePaciente + '* agendado na Clínica Fono Inova 🥰' + '\n\u200B\n' +
+      '🕒 Horário: ' + hora + '\n' +
+      '👨‍⚕️ Profissional: ' + profissional + '\n\u200B\n' +
+      'Você consegue comparecer? Me confirma aqui, por favor!' + '\n\u200B\n' +
+      '✅ SIM para confirmar' + '\n' +
+      '🔄 NÃO para remarcar' + '\n\u200B\n' +
+      'Qualquer dúvida, estamos por aqui.';
   }
   
   const saudacao = responsavel 
     ? '👋 ' + getSaudacao() + ', ' + responsavel + '!' 
     : '👋 ' + getSaudacao() + '!';
-  
-  const tipoAtendimento = resolveTipoAtendimento(paciente);
   
   // Define o texto da data (amanhã, dia da semana, ou data)
   let dataTexto;
@@ -249,13 +248,12 @@ export function generateReminderMessage(paciente) {
   }
   
   return saudacao + '\n\u200B\n' +
-    'Estou passando para confirmar ' + tipoAtendimento + ' ' + dataTexto + ' 😊' + '\n\u200B\n' +
-    '👶 Paciente: ' + nomePaciente + '\n' +
+    'Só confirmando: temos ' + tipoAtendimento + ' do *' + nomePaciente + '* ' + dataTexto + ' 😊' + '\n\u200B\n' +
     '📅 Data: ' + data + '\n' +
     '⏰ Horário: ' + hora + '\n' +
     '👨‍⚕️ Profissional: ' + profissional + '\n\u200B\n' +
-    'Você consegue comparecer?' + '\n\u200B\n' +
-    'Responda:' + '\n' +
-    '✅ SIM para confirmar' + '\n' +
-    '🔄 NÃO para remarcar';
+    'Você consegue comparecer? Me responde aqui:' + '\n\u200B\n' +
+    '✅ *SIM* — para confirmar' + '\n' +
+    '🔄 *NÃO* — para remarcar' + '\n\u200B\n' +
+    'Se precisar de algo, é só chamar!';
 }
