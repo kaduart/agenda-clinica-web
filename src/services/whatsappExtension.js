@@ -69,6 +69,16 @@ export async function sendViaExtension(phone, message) {
 }
 
 /**
+ * Retorna saudação baseada no horário atual
+ */
+function getSaudacao() {
+  const hora = new Date().getHours();
+  if (hora >= 5 && hora < 12) return 'Bom dia';
+  if (hora >= 12 && hora < 18) return 'Boa tarde';
+  return 'Boa noite';
+}
+
+/**
  * Extrai a data string (YYYY-MM-DD) independente do formato de entrada
  */
 function extractDateString(dateInput) {
@@ -100,8 +110,8 @@ export function generateConfirmationMessage(paciente) {
     || paciente.patientInfo?.guardianName?.split(' ')[0]
     || null;
   const saudacao = responsavel 
-    ? `Oi, ${responsavel}, tudo certinho! 💚` 
-    : 'Oi, tudo certinho! 💚';
+    ? `${getSaudacao()}, ${responsavel}! Tudo certinho? 💚` 
+    : `${getSaudacao()}! Tudo certinho? 💚`;
   const nomePaciente = paciente.patientName || paciente.patient?.fullName || paciente.patient?.name || paciente.fullName || paciente.name || 'Paciente';
 
   const dateStr = extractDateString(paciente.date);
@@ -150,8 +160,8 @@ export function generateReminderMessage(paciente) {
   
   if (ehHoje) {
     const saudacao = responsavel 
-      ? 'Bom dia, ' + responsavel + '! Tudo bem? 😊' 
-      : 'Bom dia! Tudo bem? 😊';
+      ? getSaudacao() + ', ' + responsavel + '! Tudo bem? 😊' 
+      : getSaudacao() + '! Tudo bem? 😊';
     return saudacao + '\n\u200B\n' +
       'Passando para lembrar que hoje (' + dataCompleta + ') temos atendimento agendado na Clínica Fono Inova:' + '\n\u200B\n' +
       '👶 Paciente: ' + nomePaciente + '\n' +
@@ -162,8 +172,8 @@ export function generateReminderMessage(paciente) {
   }
   
   const saudacao = responsavel 
-    ? '👋 Olá, ' + responsavel + '!' 
-    : '👋 Olá!';
+    ? '👋 ' + getSaudacao() + ', ' + responsavel + '!' 
+    : '👋 ' + getSaudacao() + '!';
   
   // Mapeia serviceType para nome do atendimento
   const serviceTypeMap = {
