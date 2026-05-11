@@ -180,10 +180,8 @@ export function generateConfirmationMessage(paciente) {
   const diaSemana = dateObj ? dateObj.toLocaleDateString('pt-BR', { weekday: 'long' }) : '';
   const hora = paciente.time || '';
 
-  const tipoAtendimento = resolveTipoAtendimento(paciente);
-  
   return saudacao + '\n\u200B\n' +
-    'O agendamento de *' + nomePaciente + '* está confirmado para ' + tipoAtendimento + ' no dia *' + data + ' (' + diaSemana + ')* às *' + hora + '*.' + '\n\u200B\n' +
+    'O agendamento de *' + nomePaciente + '* está confirmado para a avaliação inicial no dia *' + data + ' (' + diaSemana + ')* às *' + hora + '*.' + '\n\u200B\n' +
     'Ficamos muito felizes em recebê-los e preparar tudo com carinho ✨' + '\n\u200B\n' +
     'Qualquer dúvida antes da consulta, pode contar com a gente.' + '\n\u200B\n' +
     '📲 No dia anterior, vamos te enviar uma mensagem para confirmar, combinado?' + '\n\u200B\n' +
@@ -220,12 +218,14 @@ export function generateReminderMessage(paciente) {
   const ehHoje = dateStr === hojeStr;
   const ehAmanha = dateStr === amanhaStr;
   
+  const tipoAtendimento = resolveTipoAtendimento(paciente);
+  
   if (ehHoje) {
     const saudacao = responsavel 
       ? getSaudacao() + ', ' + responsavel + '! Tudo bem? 😊' 
       : getSaudacao() + '! Tudo bem? 😊';
     return saudacao + '\n\u200B\n' +
-      'Passando para lembrar que hoje (' + dataCompleta + ') temos atendimento agendado na Clínica Fono Inova:' + '\n\u200B\n' +
+      'Passando para lembrar que hoje (' + dataCompleta + ') temos ' + tipoAtendimento + ' agendado na Clínica Fono Inova:' + '\n\u200B\n' +
       '👶 Paciente: ' + nomePaciente + '\n' +
       '🕒 ' + hora + ' – ' + especialidade + '\n\u200B\n' +
       'Posso confirmar sua presença?' + '\n' +
