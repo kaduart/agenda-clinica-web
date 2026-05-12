@@ -239,6 +239,11 @@ export default function AppointmentRow({ appointment, onEdit, onDelete, onRemind
 
       <td className="px-4 py-3">
         <div className="text-gray-900 font-semibold break-words">{appointment.specialty || "-"}</div>
+        {(appointment.serviceType === 'return' || appointment.crm?.serviceType === 'return') && (
+          <span className="mt-1 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-sky-100 text-sky-700">
+            Retorno
+          </span>
+        )}
       </td>
 
       <td className="px-4 py-3">

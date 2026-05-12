@@ -69,15 +69,15 @@ export function buildAppointmentPayload(raw, options = {}) {
     const notes = raw.observations || raw.notes || "";
 
     // --- Financeiro ---
-    const paymentStatus = raw.paymentStatus || "pending";
+    const isRetorno = (crm.serviceType || raw.serviceType) === 'return';
+    const paymentStatus = isRetorno ? 'not_applicable' : (raw.paymentStatus || "pending");
     const billingType = raw.billingType || "particular";
     const insuranceProvider = raw.insuranceProvider || "";
     const insuranceValue = Number(raw.insuranceValue) || 0;
     const authorizationCode = raw.authorizationCode || "";
-    // 🩹 sessionValue: se vier 0 mas tiver paymentAmount > 0, usa paymentAmount
     const rawSessionValue = Number(raw.sessionValue ?? 0);
     const rawPaymentAmount = Number(raw.paymentAmount ?? crm.paymentAmount ?? 0);
-    const sessionValue = rawSessionValue > 0 ? rawSessionValue : rawPaymentAmount;
+    const sessionValue = isRetorno ? 0 : (rawSessionValue > 0 ? rawSessionValue : rawPaymentAmount);
     const paymentMethod = raw.paymentMethod || crm.paymentMethod || "pix";
     const paymentAmount = Number(raw.paymentAmount ?? crm.paymentAmount ?? 0);
 

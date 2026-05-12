@@ -222,16 +222,14 @@ export function generateReminderMessage(paciente) {
   
   if (ehHoje) {
     const saudacao = responsavel 
-      ? getSaudacao() + ', ' + responsavel + '! Tudo bem? 😊' 
-      : getSaudacao() + '! Tudo bem? 😊';
+      ? '👋 ' + getSaudacao() + ', ' + responsavel + '!' 
+      : '👋 ' + getSaudacao() + '!';
     return saudacao + '\n\u200B\n' +
-      'Só passando para lembrar que *hoje* (' + dataCompleta + ') temos ' + tipoAtendimento + ' do *' + nomePaciente + '* agendado na Clínica Fono Inova 🥰' + '\n\u200B\n' +
-      '🕒 Horário: ' + hora + '\n' +
-      '👨‍⚕️ Profissional: ' + profissional + '\n\u200B\n' +
-      'Você consegue comparecer? Me confirma aqui, por favor!' + '\n\u200B\n' +
-      '✅ SIM para confirmar' + '\n' +
-      '🔄 NÃO para remarcar' + '\n\u200B\n' +
-      'Qualquer dúvida, estamos por aqui.';
+      'Passando para lembrar que *hoje* temos ' + tipoAtendimento + ' agendado na Clínica Fono Inova:' + '\n\u200B\n' +
+      '👶 Paciente: *' + nomePaciente + '*' + '\n' +
+      '🕓 *' + hora + '* *' + profissional + '*' + '\n\u200B\n' +
+      'Posso confirmar sua presença?' + '\n\u200B\n' +
+      'Até mais 😊';
   }
   
   const saudacao = responsavel 
@@ -241,19 +239,15 @@ export function generateReminderMessage(paciente) {
   // Define o texto da data (amanhã, dia da semana, ou data)
   let dataTexto;
   if (ehAmanha) {
-    dataTexto = 'de amanhã';
+    dataTexto = 'amanhã (' + dataCompleta + ')';
   } else {
-    const diaSemana = dateObj ? dateObj.toLocaleDateString('pt-BR', { weekday: 'long' }) : '';
-    dataTexto = 'de ' + diaSemana;
+    dataTexto = dataCompleta;
   }
   
   return saudacao + '\n\u200B\n' +
-    'Só confirmando: temos ' + tipoAtendimento + ' do *' + nomePaciente + '* ' + dataTexto + ' 😊' + '\n\u200B\n' +
-    '📅 Data: ' + data + '\n' +
-    '⏰ Horário: ' + hora + '\n' +
-    '👨‍⚕️ Profissional: ' + profissional + '\n\u200B\n' +
-    'Você consegue comparecer? Me responde aqui:' + '\n\u200B\n' +
-    '✅ *SIM* — para confirmar' + '\n' +
-    '🔄 *NÃO* — para remarcar' + '\n\u200B\n' +
-    'Se precisar de algo, é só chamar!';
+    'Passando para lembrar que *' + dataTexto + '* temos ' + tipoAtendimento + ' agendado na Clínica Fono Inova:' + '\n\u200B\n' +
+    '👶 Paciente: *' + nomePaciente + '*' + '\n' +
+    '🕓 *' + hora + '* *' + profissional + '*' + '\n\u200B\n' +
+    'Posso confirmar sua presença?' + '\n\u200B\n' +
+    'Até mais 😊';
 }

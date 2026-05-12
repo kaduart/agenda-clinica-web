@@ -73,19 +73,22 @@ export const normalizeSessionType = (value, fallback = 'fonoaudiologia') => {
 };
 
 // ─── SERVICE TYPE ────────────────────────────────────────────
-// Backend V2 espera: 'evaluation' ou 'session'
+// Backend V2 espera: 'evaluation', 'session', 'package_session', 'sessao_avulsa' ou 'retorno'
 export const normalizeServiceType = (value) => {
     if (!value) return 'evaluation';
     const normalized = value.toLowerCase().trim();
-    
+
+    if (normalized === 'retorno' || normalized === 'return') return 'return';
+    if (normalized === 'sessao_avulsa') return 'individual_session';
+
     if (normalized === 'package_session' || normalized === 'sessao' || normalized === 'session') {
         return 'session';
     }
-    
+
     if (normalized === 'individual_session' || normalized === 'avaliacao' || normalized === 'evaluation') {
         return 'evaluation';
     }
-    
+
     return 'evaluation';
 };
 
