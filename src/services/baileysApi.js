@@ -107,6 +107,50 @@ function extractDateString(dateInput) {
 }
 
 /**
+ * Retorna saudação baseada no horário atual
+ */
+function getSaudacao() {
+  const hora = new Date().getHours();
+  if (hora >= 5 && hora < 12) return 'Bom dia';
+  if (hora >= 12 && hora < 18) return 'Boa tarde';
+  return 'Boa noite';
+}
+
+/**
+ * Resolve o tipo de atendimento baseado em serviceType ou specialty
+ */
+function resolveTipoAtendimento(paciente) {
+  const serviceTypeMap = {
+    'evaluation': 'a avaliação',
+    'session': 'a sessão',
+    'package_session': 'a sessão do pacote',
+    'individual_session': 'a sessão individual',
+    'meet': 'a reunião',
+    'alignment': 'o alinhamento',
+    'return': 'o retorno',
+    'tongue_tie_test': 'o teste da linguinha',
+    'neuropsych_evaluation': 'a avaliação neuropsicológica',
+    'convenio_session': 'a sessão de convênio'
+  };
+  if (paciente.serviceType && serviceTypeMap[paciente.serviceType]) {
+    return serviceTypeMap[paciente.serviceType];
+  }
+  const specialty = (paciente.specialty || '').toLowerCase();
+  if (specialty.includes('teste da linguinha') || specialty.includes('tongue')) return 'o teste da linguinha';
+  if (specialty.includes('avaliação neuropsicológica') || specialty.includes('neuropsic')) return 'a avaliação neuropsicológica';
+  if (specialty.includes('avaliação')) return 'a avaliação';
+  if (specialty.includes('psicologia')) return 'a sessão de psicologia';
+  if (specialty.includes('fonoaudiologia')) return 'a sessão de fonoaudiologia';
+  if (specialty.includes('fisioterapia')) return 'a sessão de fisioterapia';
+  if (specialty.includes('pediatria')) return 'a consulta de pediatria';
+  if (specialty.includes('psicomotricidade')) return 'a sessão de psicomotricidade';
+  if (specialty.includes('psicopedagogia')) return 'a sessão de psicopedagogia';
+  if (specialty.includes('terapia ocupacional')) return 'a sessão de terapia ocupacional';
+  if (specialty.includes('musicoterapia')) return 'a sessão de musicoterapia';
+  return 'o atendimento';
+}
+
+/**
  * Gera mensagem de confirmação
  */
 export function generateConfirmationMessage(paciente) {
@@ -147,55 +191,47 @@ export function generateReminderMessage(paciente) {
 
   const dateStr = extractDateString(paciente.date);
   const dateObj = dateStr ? new Date(dateStr + 'T12:00:00') : null;
-  const data = dateObj ? dateObj.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : '';
   const dataCompleta = dateObj ? dateObj.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '';
   const hora = paciente.time || '';
   const profissional = paciente.professional || paciente.doctor?.fullName || '';
-  const especialidade = paciente.specialty || paciente.sessionType || '';
 
-  // Verifica se é hoje ou amanhã
-  const hoje = new Date().toISOString().split('T')[0];
-  const ehHoje = dateStr === hoje;
+  // Verifica se é hoje, amanhã ou outro dia
+  const hoje = new Date();
+  const hojeStr = hoje.toISOString().split('T')[0];
+  const amanha = new Date(hoje);
+  amanha.setDate(amanha.getDate() + 1);
+  const amanhaStr = amanha.toISOString().split('T')[0];
+  const ehHoje = dateStr === hojeStr;
+  const ehAmanha = dateStr === amanhaStr;
+  const tipoAtendimento = resolveTipoAtendimento(paciente);
 
   if (ehHoje) {
     const saudacao = responsavel 
-      ? 'Bom dia, ' + responsavel + '! Tudo bem? 😊' 
-      : 'Bom dia! Tudo bem? 😊';
+      ? '👋 ' + getSaudacao() + ', ' + responsavel + '!' 
+      : '👋 ' + getSaudacao() + '!';
     return saudacao + '\n\u200B\n' +
-      'Passando para lembrar que hoje (' + dataCompleta + ') temos atendimento agendado na Clínica Fono Inova:' + '\n\u200B\n' +
-      '👶 Paciente: ' + nomePaciente + '\n' +
-      '🕒 ' + hora + ' – ' + especialidade + '\n\u200B\n' +
-      'Posso confirmar sua presença?' + '\n' +
-      'Qualquer dúvida, estamos à disposição.' + '\n' +
+      'Passando para lembrar que *hoje* temos ' + tipoAtendimento + ' agendado na Clínica Fono Inova:' + '\n\u200B\n' +
+      '👶 Paciente: *' + nomePaciente + '*' + '\n' +
+      '🕓 *' + hora + '* *' + profissional + '*' + '\n\u200B\n' +
+      'Posso confirmar sua presença?' + '\n\u200B\n' +
       'Até mais 😊';
   }
 
   const saudacao = responsavel 
-    ? '👋 Olá, ' + responsavel + '!' 
-    : '👋 Olá!';
+    ? '👋 ' + getSaudacao() + ', ' + responsavel + '!' 
+    : '👋 ' + getSaudacao() + '!';
 
-  const serviceTypeMap = {
-    'evaluation': 'a avaliação',
-    'session': 'a sessão',
-    'package_session': 'a sessão do pacote',
-    'individual_session': 'a sessão individual',
-    'meet': 'a reunião',
-    'alignment': 'o alinhamento',
-    'return': 'o retorno',
-    'tongue_tie_test': 'o teste da língua',
-    'neuropsych_evaluation': 'a avaliação neuropsicológica',
-    'convenio_session': 'a sessão de convênio'
-  };
-  const tipoAtendimento = serviceTypeMap[paciente.serviceType] || 'o atendimento';
+  let dataTexto;
+  if (ehAmanha) {
+    dataTexto = 'amanhã (' + dataCompleta + ')';
+  } else {
+    dataTexto = dataCompleta;
+  }
 
   return saudacao + '\n\u200B\n' +
-    'Estou passando para confirmar ' + tipoAtendimento + ' de amanhã 😊' + '\n\u200B\n' +
-    '👶 Paciente: ' + nomePaciente + '\n' +
-    '📅 Data: ' + data + '\n' +
-    '⏰ Horário: ' + hora + '\n' +
-    '👨‍⚕️ Profissional: ' + profissional + '\n\u200B\n' +
-    'Você consegue comparecer?' + '\n\u200B\n' +
-    'Responda:' + '\n' +
-    '✅ SIM para confirmar' + '\n' +
-    '🔄 NÃO para remarcar';
+    'Passando para lembrar que *' + dataTexto + '* temos ' + tipoAtendimento + ' agendado na Clínica Fono Inova:' + '\n\u200B\n' +
+    '👶 Paciente: *' + nomePaciente + '*' + '\n' +
+    '🕓 *' + hora + '* *' + profissional + '*' + '\n\u200B\n' +
+    'Posso confirmar sua presença?' + '\n\u200B\n' +
+    'Até mais 😊';
 }
