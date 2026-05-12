@@ -245,7 +245,7 @@ export function generateReminderMessage(paciente) {
   }
   
   return saudacao + '\n\u200B\n' +
-    'Passando para lembrar que *' + dataTexto + '* temos ' + tipoAtendimento + ' agendado na Clínica Fono Inova:' + '\n\u200B\n' +
+    'Passando para lembrar que *' + dataTexto + '* temos atendimento agendado na Clínica Fono Inova:' + '\n\u200B\n' +
     '👶 Paciente: *' + nomePaciente + '*' + '\n' +
     '🕓 *' + hora + '* *' + profissional + '*' + '\n\u200B\n' +
     'Posso confirmar sua presença?' + '\n\u200B\n' +
