@@ -202,6 +202,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                 crm: {
                     serviceType: appointment.crm?.serviceType ||
                         (appointment.serviceType === 'return' ? 'retorno' :
+                        appointment.serviceType === 'consultation' ? 'consultation' :
                         appointment.serviceType === 'evaluation' ? 'individual_session' :
                             appointment.serviceType === 'session' ? 'package_session' :
                                 appointment.package ? "package_session" : "individual_session"),
@@ -379,6 +380,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                 ...prev.crm,
                                 serviceType: data.crm?.serviceType ||
                                     (data.serviceType === 'return' ? 'retorno' :
+                                    data.serviceType === 'consultation' ? 'consultation' :
                                     data.serviceType === 'evaluation' ? 'individual_session' :
                                         data.serviceType === 'session' || data.serviceType === 'package_session' ? 'package_session' :
                                             prev.crm.serviceType || 'individual_session'),
@@ -517,6 +519,9 @@ export default function AppointmentModal({ appointment, professionals, patients,
 
         if (name === "specialty") {
             const newKey = resolveSpecialtyKey(value);
+            // 🧠 Regra contextual: especialidades médicas defaultam para 'consultation'
+            const isMedicalSpecialty = newKey === 'neuroped' || newKey === 'pediatria';
+            const nextServiceType = isMedicalSpecialty ? 'consultation' : (prev.crm?.serviceType || 'individual_session');
             setFormData((prev) => ({
                 ...prev,
                 specialty: value,
@@ -524,6 +529,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                 crm: {
                     ...prev.crm,
                     sessionType: newKey,
+                    serviceType: nextServiceType,
                 },
             }));
             return;
@@ -1274,6 +1280,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                                 crm: {
                                                     serviceType: data.crm?.serviceType ||
                                                         (data.serviceType === 'return' ? 'retorno' :
+                                                        data.serviceType === 'consultation' ? 'consultation' :
                                                         data.serviceType === 'evaluation' ? 'individual_session' :
                                                             data.serviceType === 'session' || data.serviceType === 'package_session' ? 'package_session' :
                                                                 prev.crm.serviceType || 'individual_session'),
@@ -1437,6 +1444,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                     }}
                                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                                 >
+                                    <option value="consultation">Consulta</option>
                                     <option value="individual_session">Avaliação</option>
                                     <option value="package_session">Sessão (Pacote)</option>
                                     <option value="sessao_avulsa">Sessão Avulsa</option>

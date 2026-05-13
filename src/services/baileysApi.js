@@ -117,40 +117,6 @@ function getSaudacao() {
 }
 
 /**
- * Resolve o tipo de atendimento baseado em serviceType ou specialty
- */
-function resolveTipoAtendimento(paciente) {
-  const serviceTypeMap = {
-    'evaluation': 'a avaliação',
-    'session': 'a sessão',
-    'package_session': 'a sessão do pacote',
-    'individual_session': 'a sessão individual',
-    'meet': 'a reunião',
-    'alignment': 'o alinhamento',
-    'return': 'o retorno',
-    'tongue_tie_test': 'o teste da linguinha',
-    'neuropsych_evaluation': 'a avaliação neuropsicológica',
-    'convenio_session': 'a sessão de convênio'
-  };
-  if (paciente.serviceType && serviceTypeMap[paciente.serviceType]) {
-    return serviceTypeMap[paciente.serviceType];
-  }
-  const specialty = (paciente.specialty || '').toLowerCase();
-  if (specialty.includes('teste da linguinha') || specialty.includes('tongue')) return 'o teste da linguinha';
-  if (specialty.includes('avaliação neuropsicológica') || specialty.includes('neuropsic')) return 'a avaliação neuropsicológica';
-  if (specialty.includes('avaliação')) return 'a avaliação';
-  if (specialty.includes('psicologia')) return 'a sessão de psicologia';
-  if (specialty.includes('fonoaudiologia')) return 'a sessão de fonoaudiologia';
-  if (specialty.includes('fisioterapia')) return 'a sessão de fisioterapia';
-  if (specialty.includes('pediatria')) return 'a consulta de pediatria';
-  if (specialty.includes('psicomotricidade')) return 'a sessão de psicomotricidade';
-  if (specialty.includes('psicopedagogia')) return 'a sessão de psicopedagogia';
-  if (specialty.includes('terapia ocupacional')) return 'a sessão de terapia ocupacional';
-  if (specialty.includes('musicoterapia')) return 'a sessão de musicoterapia';
-  return 'o atendimento';
-}
-
-/**
  * Gera mensagem de confirmação
  */
 export function generateConfirmationMessage(paciente) {
@@ -203,14 +169,12 @@ export function generateReminderMessage(paciente) {
   const amanhaStr = amanha.toISOString().split('T')[0];
   const ehHoje = dateStr === hojeStr;
   const ehAmanha = dateStr === amanhaStr;
-  const tipoAtendimento = resolveTipoAtendimento(paciente);
-
   if (ehHoje) {
     const saudacao = responsavel 
       ? '👋 ' + getSaudacao() + ', ' + responsavel + '!' 
       : '👋 ' + getSaudacao() + '!';
     return saudacao + '\n\u200B\n' +
-      'Passando para lembrar que *hoje* temos ' + tipoAtendimento + ' agendado na Clínica Fono Inova:' + '\n\u200B\n' +
+      'Passando para lembrar que *hoje* temos atendimento agendado na Clínica Fono Inova:' + '\n\u200B\n' +
       '👶 Paciente: *' + nomePaciente + '*' + '\n' +
       '🕓 *' + hora + '* *' + profissional + '*' + '\n\u200B\n' +
       'Posso confirmar sua presença?' + '\n\u200B\n' +

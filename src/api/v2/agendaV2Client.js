@@ -41,6 +41,7 @@ export async function createPreAppointment(rawData) {
         preferredDate: rawData.date,
         preferredTime: rawData.time,
         specialty: normalizeSessionType(rawData.specialty || crm.sessionType),
+        serviceType: crm.serviceType,
         notes: rawData.observations || "",
         professionalName: rawData.professionalName || rawData.professional || "",
         doctorId: rawData.doctorId || rawData.professionalId || ""
