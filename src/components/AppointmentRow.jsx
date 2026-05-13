@@ -238,10 +238,25 @@ export default function AppointmentRow({ appointment, onEdit, onDelete, onRemind
       </td>
 
       <td className="px-4 py-3">
-        <div className="text-gray-900 font-semibold break-words">{appointment.specialty || "-"}</div>
+        <div className="text-gray-900 font-semibold break-words">{SPECIALTIES[specialtyKey]?.name || appointment.specialty || "-"}</div>
         {(appointment.serviceType === 'return' || appointment.crm?.serviceType === 'return') && (
           <span className="mt-1 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-sky-100 text-sky-700">
             Retorno
+          </span>
+        )}
+        {(appointment.serviceType === 'consultation' || appointment.crm?.serviceType === 'consultation') && (
+          <span className="mt-1 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-700">
+            Consulta
+          </span>
+        )}
+        {(appointment.serviceType === 'evaluation' || appointment.crm?.serviceType === 'evaluation') && (
+          <span className="mt-1 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-700">
+            Avaliação
+          </span>
+        )}
+        {(appointment.serviceType === 'package_session' || appointment.crm?.serviceType === 'package_session') && (
+          <span className="mt-1 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-700">
+            Pacote
           </span>
         )}
       </td>
