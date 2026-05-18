@@ -33,7 +33,6 @@ export async function sendViaExtension(phone, message) {
     // Se WhatsApp Web não estiver conectado, marca para reconectar e tenta fallback
     if (err.response?.status === 404 || error.includes('conectado') || error.includes('desconectado') || error.includes('não configurado') || error.includes('QR')) {
       needsReconnect = true;
-      console.log('[WhatsApp] Web local indisponível, tentando VPS externo...');
       
       try {
         const response = await api.post('/api/whatsapp-vps/send', { 
@@ -46,7 +45,6 @@ export async function sendViaExtension(phone, message) {
         
         // Se VPS também não tiver, usa API Meta Business como último recurso
         if (vpsErr.response?.status === 404 || vpsError.includes('não configurado')) {
-          console.log('[WhatsApp] VPS não configurado, usando API Meta Business...');
           
           try {
             const response = await api.post('/api/whatsapp/send-text', { 

@@ -26,7 +26,6 @@ export const createPreAppointment = async (data) => {
             operationalStatus: 'pre_agendado',
         };
         const response = await v2.createAppointment(payload);
-        console.log("✅ [preAppointmentsRepo] Pré-agendamento criado:", response);
         return response;
     } catch (error) {
         console.error('❌ [preAppointmentsRepo] Erro ao criar pré-agendamento:', error.response?.data || error.message);
@@ -38,10 +37,6 @@ export const createPreAppointment = async (data) => {
  * Confirma um pré-agendamento existente, atualizando o MESMO registro para scheduled
  */
 export const approvePreAppointment = async (id, data) => {
-    console.log("📥 [preAppointmentsRepo] approvePreAppointment chamado (V2 - appointments-only)");
-    console.log("📥 [preAppointmentsRepo] ID:", id);
-    console.log("📥 [preAppointmentsRepo] data.patientId:", data.patientId);
-    console.log("📥 [preAppointmentsRepo] data.isNewPatient:", data.isNewPatient);
     
     try {
         const payload = {
@@ -49,7 +44,6 @@ export const approvePreAppointment = async (id, data) => {
             operationalStatus: 'scheduled',
         };
         const response = await v2.updateAppointment(id, payload);
-        console.log("✅ [preAppointmentsRepo] Sucesso:", response);
         return response;
     } catch (error) {
         console.error('❌ [preAppointmentsRepo] Erro ao aprovar pré-agendamento:', error.response?.data || error.message);
@@ -61,12 +55,9 @@ export const approvePreAppointment = async (id, data) => {
  * Atualiza um pré-agendamento existente (sem importar/confirmar)
  */
 export const updatePreAppointment = async (id, data) => {
-    console.log("📝 [preAppointmentsRepo] updatePreAppointment chamado");
-    console.log("📝 [preAppointmentsRepo] ID:", id);
     
     try {
         const response = await v2.updateAppointment(id, data);
-        console.log("✅ [preAppointmentsRepo] Atualizado:", response);
         return response;
     } catch (error) {
         console.error('❌ [preAppointmentsRepo] Erro ao atualizar pré-agendamento:', error.response?.data || error.message);
@@ -79,7 +70,6 @@ export const updatePreAppointment = async (id, data) => {
  */
 export const discardPreAppointment = async (id, reason) => {
     try {
-        console.log(`[discardPreAppointment] Descartando appointment ${id}. Motivo: ${reason}`);
         const response = await v2.deleteAppointment(id);
         return response;
     } catch (error) {

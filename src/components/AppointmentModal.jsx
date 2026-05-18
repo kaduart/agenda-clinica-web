@@ -117,13 +117,9 @@ export default function AppointmentModal({ appointment, professionals, patients,
 
     // Monitora mudanças no operationalStatus
     React.useEffect(() => {
-        console.log("👁️ [AppointmentModal] formData.operationalStatus AGORA É:", formData.operationalStatus);
     }, [formData.operationalStatus]);
 
     React.useEffect(() => {
-        console.log("📝 [AppointmentModal] ========== useEffect PRINCIPAL ==========");
-        console.log("📝 [AppointmentModal] appointment:", JSON.stringify(appointment, null, 2));
-        console.log("📝 [AppointmentModal] patients disponíveis:", patients?.length || 0);
         const today = formatDateLocal(new Date());
 
         if (appointment) {
@@ -135,13 +131,10 @@ export default function AppointmentModal({ appointment, professionals, patients,
             const patientStringId = typeof appointment.patient === 'string' ? appointment.patient : '';
             const foundPatientId = pObj._id || appointment.patientId || prePatientId || patientStringId || "";
             
-            console.log("🔍 [AppointmentModal] Buscando paciente na lista:", { foundPatientId, patientsCount: patients?.length });
             const foundPatient = foundPatientId ? (patients || []).find(p => p._id === foundPatientId) : null;
-            console.log("🔍 [AppointmentModal] Paciente encontrado na lista:", foundPatient ? "SIM" : "NÃO", foundPatient?.fullName);
 
             // 🔧 UNIFICAÇÃO: Extrai dados do paciente de forma consistente
             const patientData = resolvePatientData(appointment, foundPatient);
-            console.log("👤 [AppointmentModal] Dados unificados do paciente:", patientData);
 
             // Extract professional data
             const dObj = (typeof appointment.doctor === 'object' && appointment.doctor !== null)
@@ -225,11 +218,6 @@ export default function AppointmentModal({ appointment, professionals, patients,
                 visualFlag: appointment.visualFlag || "",
                 metadata: appointment.metadata || null,
             };
-            console.log("✅ [AppointmentModal] setFormData PRINCIPAL:", { 
-                patientId: formDataToSet.patientId, 
-                birthDate: formDataToSet.birthDate,
-                phone: formDataToSet.phone 
-            });
             setFormData(formDataToSet);
         } else {
             setFormData({
@@ -270,7 +258,6 @@ export default function AppointmentModal({ appointment, professionals, patients,
 
     // Quando patients carregar ou appointment mudar, busca dados do paciente
     React.useEffect(() => {
-        console.log("🔄 [AppointmentModal] ========== useEffect PATIENTS ==========");
         
         // Tenta pegar patientId de várias fontes
         // appointment.patient pode ser string ID (não populado) ou objeto
@@ -280,46 +267,29 @@ export default function AppointmentModal({ appointment, professionals, patients,
                     (typeof appointment?.patient === 'string' ? appointment.patient : '') ||
                     appointment?.originalData?.patientId;
         
-        console.log("🔍 [AppointmentModal] Verificando:", {
-            formDataPatientId: formData.patientId,
-            appointmentPatientId: appointment?.patientId,
-            appointmentPatientObjId: appointment?.patient?._id,
-            prePatientId: appointment?.originalData?.patientId,
-            finalPid: pid,
-            patientsCount: patients?.length,
-            currentBirthDate: formData.birthDate
-        });
         
         if (!pid) {
-            console.log("⏳ [AppointmentModal] Sem patientId em nenhuma fonte");
             return;
         }
         
         if (!patients || patients.length === 0) {
-            console.log("⏳ [AppointmentModal] Patients ainda não carregou");
             return;
         }
         
         if (formData.birthDate && formData.birthDate !== "") {
-            console.log("✅ [AppointmentModal] Já tem data de nascimento:", formData.birthDate);
             return;
         }
         
         const patientFromList = patients.find(p => p._id === pid);
         if (!patientFromList) {
-            console.log("❌ [AppointmentModal] Paciente não encontrado na lista:", pid);
-            console.log("📋 [AppointmentModal] IDs disponíveis:", patients.slice(0, 5).map(p => p._id));
             return;
         }
         
-        console.log("✅ [AppointmentModal] Paciente encontrado na lista:", patientFromList.fullName, "birthDate:", patientFromList.dateOfBirth);
         
         if (!patientFromList.dateOfBirth) {
-            console.log("⚠️ [AppointmentModal] Paciente encontrado mas sem data de nascimento no cadastro");
             return;
         }
         
-        console.log("🎯 [AppointmentModal] >>>>> Preenchendo data de nascimento:", patientFromList.dateOfBirth);
         
         setFormData(prev => ({
             ...prev,
@@ -341,30 +311,15 @@ export default function AppointmentModal({ appointment, professionals, patients,
             
             // Sempre busca dados atualizados da API para agendamentos existentes
             if (appointment?.id && !appointment.id.startsWith('ext_') && !isPreAgendamento) {
-                console.log("🔍 [AppointmentModal] Buscando detalhes do agendamento no servidor...");
                 setIsLoadingDetails(true);
                 try {
                     const response = await api.get(`/api/v2/appointments/${appointment.id}`);
                     const payload = response.data.data || response.data;
                     const data = payload.appointment || payload;
 
-                    console.log("🔍 [AppointmentModal] Detalhes completos recebidos:", {
-                        serviceType: data.serviceType,
-                        sessionValue: data.sessionValue,
-                        paymentMethod: data.paymentMethod,
-                        package: data.package ? 'Sim' : 'Não',
-                        paymentStatus: data.paymentStatus,
-                        billingType: data.billingType
-                    });
 
                     // Atualiza com os dados recebidos da API
                     setFormData(prev => {
-                        console.log("🔍 [AppointmentModal] Atualizando dados do formulário:", {
-                            sessionValue: data.sessionValue,
-                            serviceType: data.serviceType,
-                            paymentMethod: data.paymentMethod,
-                            hasPackage: !!data.package
-                        });
                         return {
                             ...prev,
                             // Dados do pacote se existir
@@ -441,7 +396,6 @@ export default function AppointmentModal({ appointment, professionals, patients,
     // Sincroniza isNewPatient quando formData.patientId muda (ex: ao carregar pré-agendamento)
     React.useEffect(() => {
         if (formData.patientId && isNewPatient) {
-            console.log("[AppointmentModal] Auto-ajustando isNewPatient para false (patientId detectado)");
             setIsNewPatient(false);
         }
     }, [formData.patientId]);
@@ -466,12 +420,6 @@ export default function AppointmentModal({ appointment, professionals, patients,
     };
 
     const selectPatient = (p) => {
-        console.log("🎯 [AppointmentModal] Paciente SELECIONADO da lista:", {
-            id: p._id,
-            name: p.fullName,
-            phone: p.phone,
-            birthDate: p.dateOfBirth
-        });
         setFormData(prev => ({
             ...prev,
             patient: p.fullName,
@@ -496,14 +444,12 @@ export default function AppointmentModal({ appointment, professionals, patients,
                 p.fullName.toLowerCase().trim() === searchValue.toLowerCase()
             );
             if (exactMatch) {
-                console.log("[AppointmentModal] Auto-selecionando paciente existente:", exactMatch.fullName);
                 selectPatient(exactMatch);
                 return;
             }
 
             // Fallback: se só há 1 sugestão filtrada, auto-seleciona também
             if (filteredPatients.length === 1) {
-                console.log("[AppointmentModal] Auto-selecionando única sugestão:", filteredPatients[0].fullName);
                 selectPatient(filteredPatients[0]);
             }
         }, 200);
@@ -511,10 +457,8 @@ export default function AppointmentModal({ appointment, professionals, patients,
 
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
-        console.log("📝 [AppointmentModal] handleChange - name:", name, "value:", value, "type:", type);
 
         if (name === "operationalStatus") {
-            console.log("🚨 [AppointmentModal] STATUS OPERACIONAL MUDANDO PARA:", value);
         }
 
         if (name === "specialty") {
@@ -568,7 +512,6 @@ export default function AppointmentModal({ appointment, professionals, patients,
 
         setFormData((prev) => {
             const newValue = numericFields.includes(name) ? Number(value || 0) : value;
-            console.log("📝 [AppointmentModal] handleChange - atualizando:", name, "=", newValue);
             return { ...prev, [name]: newValue };
         });
     };
@@ -586,7 +529,6 @@ export default function AppointmentModal({ appointment, professionals, patients,
 
         // Se for pré-agendamento EXISTENTE (com id), redireciona para confirmação
         if (isPreExisting) {
-            console.log("🔄 [handleSubmit] Detectado pré-agendamento existente, redirecionando para handleConfirmPre");
             await handleConfirmPre();
             return;
         }
@@ -594,13 +536,6 @@ export default function AppointmentModal({ appointment, professionals, patients,
         setIsLoading(true);
 
         try {
-            console.log("🚀 [AppointmentModal] SUBMIT iniciado");
-            console.log("🚀 [AppointmentModal] formData.operationalStatus no SUBMIT:", formData.operationalStatus);
-            console.log("🚀 [AppointmentModal] isNewPatient:", isNewPatient);
-            console.log("🚀 [AppointmentModal] formData.patientId:", formData.patientId);
-            console.log("🚀 [AppointmentModal] formData.patient:", formData.patient);
-            console.log("🚀 [AppointmentModal] formData.crm:", formData.crm);
-            console.log("🚀 [AppointmentModal] appointment?.id:", appointment?.id);
 
             // 🆕 Validação: verifica se é feriado
             const holidayCheck = checkHolidayBlock(formData.date, formData.time, holidays);
@@ -696,12 +631,6 @@ export default function AppointmentModal({ appointment, professionals, patients,
                 ...(appointment?.id ? { id: appointment.id } : {})
             };
 
-            console.log("✅ [AppointmentModal] =========================================");
-            console.log("✅ [AppointmentModal] ENVIANDO PARA onSave:");
-            console.log("✅ [AppointmentModal] patientId:", dataToSave.patientId);
-            console.log("✅ [AppointmentModal] effectiveIsNewPatient:", effectiveIsNewPatient, "| original:", isNewPatient);
-            console.log("✅ [AppointmentModal] patientName:", dataToSave.patientName);
-            console.log("✅ [AppointmentModal] Payload completo:", JSON.stringify(dataToSave, null, 2));
             await onSave(dataToSave);
             // Só fecha o modal se deu sucesso (não throwou erro)
             onClose();
@@ -732,7 +661,6 @@ export default function AppointmentModal({ appointment, professionals, patients,
 
         // Se o status foi alterado para cancelado, cancela em vez de confirmar
         if (formData.operationalStatus === 'canceled' || formData.operationalStatus === 'cancelado') {
-            console.log("🚫 [handleConfirmPre] Status=canceled → chamando /cancelar");
             setIsLoading(true);
             try {
                 await cancelPreAppointment(appointment.id);
@@ -745,20 +673,14 @@ export default function AppointmentModal({ appointment, professionals, patients,
             return;
         }
 
-        console.log("🚀 [AppointmentModal] handleConfirmPre - Iniciando...");
-        console.log("🚀 [AppointmentModal] formData:", formData);
-        console.log("🚀 [AppointmentModal] patientId:", formData.patientId);
-        console.log("🚀 [AppointmentModal] birthDate:", formData.birthDate);
         
         try {
             // Se não tem patientId mas temos patients carregados, tenta buscar
             if (!formData.patientId && patients && patients.length > 0) {
-                console.log("🔍 [AppointmentModal] Buscando paciente na lista pelo nome...");
                 const foundByName = patients.find(p => 
                     p.fullName && p.fullName.toLowerCase().trim() === formData.patient?.toLowerCase?.().trim()
                 );
                 if (foundByName) {
-                    console.log("✅ [AppointmentModal] Paciente encontrado na lista:", foundByName._id);
                     const updatedFormData = { 
                         ...formData, 
                         appointmentId: appointment?.id || appointment?._id || null,
@@ -778,7 +700,6 @@ export default function AppointmentModal({ appointment, professionals, patients,
                     }
                     return;
                 }
-                console.log("⚠️ [AppointmentModal] Paciente NÃO encontrado na lista pelo nome");
             }
             
             // Determina se é novo paciente (mesma lógica do handleSubmit)
@@ -790,7 +711,6 @@ export default function AppointmentModal({ appointment, professionals, patients,
                 patientName: formData.patient || formData.patientName || ""
             };
             
-            console.log("🚀 [AppointmentModal] Chamando onConfirmPre com:", dataToSend);
             setIsLoading(true);
             try {
                 await onConfirmPre(dataToSend);
@@ -1242,7 +1162,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                 <select
                                     name="operationalStatus"
                                     value={formData.operationalStatus}
-                                    onChange={(e) => { console.log("🚨 SELECT OPERACIONAL onChange:", e.target.value); handleChange(e); }}
+                                    onChange={(e) => { ; handleChange(e); }}
                                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                                 >
                                     <option value="scheduled">Agendado</option>

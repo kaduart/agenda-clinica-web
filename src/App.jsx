@@ -35,7 +35,7 @@ import { approvePreAppointment, discardPreAppointment, cancelPreAppointment, upd
 
 import {
   addProfessional,
-  deleteProfessionalByName,
+  deleteProfessional,
   listenProfessionals
 } from "./services/professionalsRepo";
 import { fetchPatients } from "./services/patientsRepo";
@@ -55,10 +55,8 @@ import WhatsAppQRGlobal from "./components/WhatsAppQRGlobal";
 
 import { cancelReminder, listenReminders, markReminderDone, snoozeReminderDays } from "./services/remindersRepo";
 import "./styles/app.css";
-console.log("🚀🚀🚀 APP.JSX CARREGADO - VERSÃO MIGRADA API!");
 
 export default function App() {
-  console.log("📱 [App.jsx] Componente App montando - VERSÃO API!");
 
   const [view, setView] = React.useState("list");
   const [appointments, setAppointments] = React.useState([]);
@@ -113,7 +111,6 @@ export default function App() {
       if (filters.filterDate) {
         localStorage.setItem('agendaFilterDate', filters.filterDate);
         localStorage.setItem('agendaFilterDay', filters.filterDay || todayDayOfWeek);
-        console.log("💾 [App.jsx] Data salva no localStorage:", filters.filterDate);
       }
     } catch (e) {
       console.error("[App.jsx] Erro ao salvar localStorage:", e);
@@ -136,7 +133,6 @@ export default function App() {
   
   // Função global para forçar refresh da lista de appointments
   const forceRefreshAppointments = React.useCallback(() => {
-    console.log('🔄 [forceRefresh] chamado');
     // Dispara refresh do useEffect de appointments (listener)
     setRefreshTrigger(prev => prev + 1);
     // Dispara refresh imediato dos pré-agendamentos sem recriar o intervalo
@@ -152,7 +148,6 @@ export default function App() {
       if (filters.filterProfessional && filters.filterDate && filters.filterProfessional.toLowerCase() !== "livre") {
         const doc = (professionals || []).find(p => p.fullName === filters.filterProfessional);
         if (doc?.id) {
-          console.log(`🔍 [App.jsx] Buscando slots para ${doc.fullName} em ${filters.filterDate}`);
           const slots = await fetchAvailableSlots(doc.id, filters.filterDate);
           setAvailableSlots(slots);
         } else {
@@ -186,13 +181,10 @@ export default function App() {
 
   // ========== LISTENERS ==========
   useEffect(() => {
-    console.log("👂 [App.jsx] Listener de profissionais iniciado");
     const unsub = listenProfessionals((data) => {
-      console.log("👂 [App.jsx] Profissionais recebidos:", data.length);
       setProfessionals(data);
     });
     return () => {
-      console.log("👂 [App.jsx] Listener de profissionais desmontado");
       unsub();
     };
   }, []);
@@ -222,13 +214,10 @@ export default function App() {
       specificDate = filters.filterDate; // Passa a data específica para busca otimizada
     }
 
-    console.log(`👂 [listener:appointments] MONTANDO — ${targetYear}/${targetMonth + 1}${specificDate ? ' data=' + specificDate : ''}`);
     const unsub = listenAppointmentsForMonth(targetYear, targetMonth, (data) => {
-      console.log(`👂 [listener:appointments] snapshot recebido — ${data.length} registros`);
       setAppointments(data);
     }, specificDate);
     return () => {
-      console.log(`👂 [listener:appointments] DESMONTANDO — ${targetYear}/${targetMonth + 1}`);
       unsub();
     };
   }, [currentYear, currentMonth, filters.filterDate, refreshTrigger]);
@@ -242,7 +231,6 @@ export default function App() {
           filters.specialty = activeSpecialty;
         }
         const data = await fetchPreAppointments(filters);
-        console.log("👂 [App.jsx] Pré-agendamentos recebidos:", data.length);
         setPreAppointments(data);
       } catch (error) {
         console.error("❌ [App.jsx] Erro ao buscar pré-agendamentos:", error);
@@ -264,7 +252,6 @@ export default function App() {
 
   useEffect(() => {
     const unsub = listenToNotifications((notif) => {
-      console.log("🔔 [App.jsx] Notificação recebida:", notif);
       if (notif.type === 'pre_appointment') {
         // 🛡️ Filtro: Só mostra toast se o interesse foi criado nos últimos 5 minutos
         const createdAt = notif.data?.createdAt ? new Date(notif.data.createdAt) : new Date();
@@ -279,7 +266,6 @@ export default function App() {
             { autoClose: 5000 }
           );
         } else {
-          console.log("⏳ [App.jsx] Notificação ignorada por ser antiga (Toast filtrado)");
         }
         // O listener de appointments já recarrega a lista via socket.
       }
@@ -308,7 +294,6 @@ export default function App() {
     if (!ok) return;
 
     try {
-      console.log("🚀 PROCESSANDO HARD DELETE ID:", id);
       // Para pré-agendamentos, a rota de delete também funciona se for pelo ID do banco
       // Se for um pré-agendamento apenas em memória (sem ID), não dá pra excluir do banco.
 
@@ -341,8 +326,6 @@ export default function App() {
     }
 
     try {
-      console.log("🔥 [onConfirmPreAppointment] Confirmando Pré-Agendamento...");
-      console.log("🔥 [onConfirmPreAppointment] appointmentData:", appointmentData);
       
       const doc = (professionals || []).find(p => p.fullName === appointmentData.professional);
       const resolvedDoctorId = doc?.id || appointmentData.professionalId;
@@ -374,7 +357,6 @@ export default function App() {
         crm: appointmentData.crm
       };
 
-      console.log("📤 [onConfirmPreAppointment] Enviando:", importData);
       await approvePreAppointment(appointmentId, importData);
       toast.success("Agendamento confirmado com sucesso!");
       setIsModalOpen(false);
@@ -392,11 +374,9 @@ export default function App() {
   const onCancel = async (appointment) => {
     // Previne cliques duplos
     if (isCancellingRef.current) {
-      console.log("⏳ [onCancel] Já está processando, ignorando clique duplo");
       return;
     }
     
-    console.log("🔥 [onCancel] INICIANDO:", appointment.id, appointment.patientName || appointment.patient);
     isCancellingRef.current = true;
     
     const isPre = appointment.operationalStatus === 'pre_agendado';
@@ -443,9 +423,6 @@ export default function App() {
 
 
   const saveAppointment = async (appointmentData) => {
-    console.log("🔥🔥🔥 [saveAppointment] =========================================");
-    console.log("🔥 [saveAppointment] START");
-    console.log("🔥 [saveAppointment] appointmentData recebido:", JSON.stringify(appointmentData, null, 2));
     
     const appointmentId = editingAppointment?.id || editingAppointment?._id || editingAppointment?.preAgendamentoId || editingAppointment?.appointmentId;
     // 🎯 FONTE ÚNICA DA VERDADE: operationalStatus define se é pré-agendamento
@@ -453,20 +430,12 @@ export default function App() {
     const isEditing = !!appointmentId && !isPreEditing;
     const isImportingPre = isPreEditing;
     
-    console.log("🔥 [saveAppointment] editingAppointment:", JSON.stringify(editingAppointment, null, 2));
-    console.log("🔥 [saveAppointment] isEditing:", isEditing);
-    console.log("🔥 [saveAppointment] isImportingPre:", isImportingPre);
-    console.log("🔥 [saveAppointment] appointmentId:", appointmentId);
-    console.log("🔥 [saveAppointment] isPreEditing:", isPreEditing);
 
     // Se for pré-agendamento EXISTENTE, verifica se está cancelando ou apenas atualizando
     if (isPreEditing && appointmentId) {
       try {
-        console.log("🔍 [saveAppointment] isPre=true, operationalStatus recebido:", appointmentData.operationalStatus);
-        console.log("🔍 [saveAppointment] appointmentData completo:", JSON.stringify(appointmentData, null, 2));
         // Se o status mudou para cancelado, chama a rota de cancelar
         if (appointmentData.operationalStatus === 'canceled' || appointmentData.operationalStatus === 'cancelado') {
-          console.log("✅ [saveAppointment] Detectado cancelamento de pré-agendamento, chamando /cancelar");
           await cancelPreAppointment(appointmentId);
           toast.success("Pré-agendamento cancelado!");
           setIsModalOpen(false);
@@ -475,7 +444,6 @@ export default function App() {
           return;
         }
 
-        console.log("🔥 [saveAppointment] Atualizando Pré-Agendamento...");
         
         const doc = (professionals || []).find(p => p.fullName === appointmentData.professional);
 
@@ -498,8 +466,6 @@ export default function App() {
           ].filter(Boolean).join('\n')
         };
 
-        console.log("📤 [saveAppointment] Atualizando pré-agendamento:", appointmentId);
-        console.log("📤 [saveAppointment] Payload:", JSON.stringify(updateData, null, 2));
         await updatePreAppointment(appointmentId, updateData);
         toast.success("Pré-agendamento atualizado!");
         setIsModalOpen(false);
@@ -513,8 +479,6 @@ export default function App() {
       }
     }
 
-    console.log("🔍 [App.jsx saveAppointment] appointmentData.operationalStatus:", appointmentData.operationalStatus);
-    console.log("🔍 [App.jsx saveAppointment] editingAppointment?.operationalStatus:", editingAppointment?.operationalStatus);
     
     const candidate = {
       ...(isEditing ? editingAppointment : {}),
@@ -522,7 +486,6 @@ export default function App() {
       operationalStatus: appointmentData.operationalStatus || editingAppointment?.operationalStatus || "scheduled",
     };
     
-    console.log("🔍 [App.jsx saveAppointment] candidate.operationalStatus final:", candidate.operationalStatus);
 
     if (appointmentId && isEditing) candidate.id = appointmentId;
 
@@ -532,13 +495,11 @@ export default function App() {
     }
 
     try {
-      console.log(`🔥 [saveAppointment] enviando — modo: ${isEditing ? 'EDIÇÃO' : 'CRIAÇÃO'} id=${appointmentId || 'novo'}`);
       const result = await upsertAppointment({
         editingAppointment: isEditing ? { id: appointmentId } : null,
         appointmentData: candidate
       });
 
-      console.log("🔥 [saveAppointment] API ok:", result);
       toast.success(isEditing ? "Agendamento atualizado!" : "Agendamento criado!");
 
       setIsModalOpen(false);
@@ -557,13 +518,11 @@ export default function App() {
   // ========== RESTO DAS FUNÇÕES ==========
 
   const openEditModal = (appointment) => {
-    console.log("[openEditModal]", appointment);
     setEditingAppointment(appointment);
     setIsModalOpen(true);
   };
 
   const openCreateModal = () => {
-    console.log("📝 [App.jsx] Abrindo modal de criação");
 
     const firstProf = professionals[0];
     const profName = firstProf?.fullName || firstProf?.name || "";
@@ -587,7 +546,6 @@ export default function App() {
   };
 
   const handleSlotClick = (payload) => {
-    console.log("[handleSlotClick]", payload);
 
     if (payload?.__isEmptySlot) {
       const payloadProf = payload.professional;
@@ -662,7 +620,6 @@ export default function App() {
 
   // Pipeline para List View (appointments filtrados + todos os pré-agendamentos pendentes)
   const filteredAppointments = React.useMemo(() => {
-    console.log(`[filteredAppointments] appointments: ${appointments?.length}, pre: ${mappedPreAppointments?.length}, filterDate: ${filters.filterDate}, activeSpecialty: ${activeSpecialty}`);
 
     const weeks = getWeeksInMonth(currentYear, currentMonth);
     const isPreAgendamento = (appt) => appt?.operationalStatus === 'pre_agendado';
@@ -709,7 +666,6 @@ export default function App() {
     filteredPres = filteredPres.filter(appointment => {
       const realStatus = appointment.metadata?.preAgendamentoStatus || appointment.originalData?.status;
       if (realStatus === 'desistiu' || realStatus === 'descartado') {
-        console.log(`[filteredAppointments] Filtrando pré-agendamento finalizado: ${appointment.id} (${appointment.patientName}, status: ${realStatus})`);
         return false;
       }
       return true;
@@ -733,7 +689,6 @@ export default function App() {
         return samePatient && real.date === appointment.date && real.time === appointment.time && real.professional === appointment.professional;
       });
       if (hasRealAppointment) {
-        console.log(`[filteredAppointments] Filtrando pré-agendamento duplicado: ${appointment.id} (${appointment.patientName})`);
         return false;
       }
       return true;
@@ -753,7 +708,12 @@ export default function App() {
           return false;
         }
       }
-      if (filters.filterStatus && appointment.status !== filters.filterStatus) return false;
+      if (filters.filterStatus) {
+        if (appointment.status !== filters.filterStatus) return false;
+      } else {
+        // Por padrão, oculta agendamentos cancelados (soft-deletes de pacote ficam no banco)
+        if (appointment.operationalStatus === 'canceled' || appointment.status === 'Cancelado') return false;
+      }
       return true;
     });
 
@@ -788,7 +748,6 @@ export default function App() {
     const seenIds = new Set();
     base = base.filter(appointment => {
       if (seenIds.has(appointment.id)) {
-        console.log(`[filteredAppointments] Removendo duplicado por ID: ${appointment.id}`);
         return false;
       }
       seenIds.add(appointment.id);
@@ -796,28 +755,29 @@ export default function App() {
     });
 
     base = sortAppointmentsByDateTimeAsc(base);
-    console.log(`[filteredAppointments] Resultado final: ${base.length} agendamentos`);
     return base;
   }, [appointments, mappedPreAppointments, activeSpecialty, filters, currentYear, currentMonth, availableSlots]);
 
   // ========== PROFESSIONALS ==========
   const onOpenProfessionals = () => {
-    console.log("👤 [App.jsx] Abrindo modal de profissionais");
     setIsProfessionalsModalOpen(true);
   };
 
-  const handleAddProfessional = async (name) => {
+  const handleAddProfessional = async (payload) => {
     try {
-      await addProfessional(name);
-      toast.success(`Profissional "${name}" adicionado!`);
+      await addProfessional(payload);
+      toast.success(`Profissional "${payload.fullName}" adicionado!`);
+      setIsProfessionalsModalOpen(false);
+      // Re-busca a lista para refletir o novo profissional
+      listenProfessionals(setProfessionals);
     } catch (e) {
       console.error("[handleAddProfessional]", e);
-      toast.error("Erro ao adicionar profissional.");
+      toast.error(e?.response?.data?.error?.message || e?.response?.data?.message || "Erro ao adicionar profissional.");
+      throw e; // re-throw para o modal saber que falhou e não resetar o form
     }
   };
 
   const handleResetFilters = () => {
-    console.log("🔄 [App.jsx] Limpando filtros...");
     setFilters({
       filterDate: "",
       filterProfessional: "",
@@ -827,12 +787,12 @@ export default function App() {
     });
   };
 
-  const handleDeleteProfessional = async (name) => {
-    const ok = await confirmToast(`Remover o profissional "${name}"?`, { confirmText: "Remover", confirmColor: "red" });
+  const handleDeleteProfessional = async (prof) => {
+    const ok = await confirmToast(`Remover o profissional "${prof.fullName || prof.name}"?`, { confirmText: "Remover", confirmColor: "red" });
     if (!ok) return;
     try {
-      await deleteProfessionalByName(name);
-      toast.success(`Profissional "${name}" removido!`);
+      await deleteProfessional(prof.id || prof._id);
+      toast.success(`Profissional "${prof.fullName || prof.name}" removido!`);
     } catch (e) {
       console.error("[handleDeleteProfessional]", e);
       toast.error("Erro ao remover profissional.");
@@ -959,10 +919,8 @@ export default function App() {
               setEditingAppointment(null);
             }}
             onReloadPatients={async () => {
-              console.log("🔄 [App.jsx] Recarregando pacientes...");
               try {
                 const data = await fetchPatients();
-                console.log("👥 [App.jsx] Pacientes recarregados:", data?.length || 0);
                 setPatients(data || []);
                 setPatientsError(!data || data.length === 0 ? 'empty' : null);
               } catch (err) {

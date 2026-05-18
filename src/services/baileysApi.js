@@ -14,7 +14,6 @@ export async function sendWhatsAppMessage(phone, message) {
     return response.data;
   } catch (err) {
     const error = err.response?.data?.error || '';
-    console.log('[Baileys] Falhou, tentando WhatsApp Web...', error);
 
     // 2. Tenta WhatsApp Web nativo
     try {
@@ -22,7 +21,6 @@ export async function sendWhatsAppMessage(phone, message) {
       return response.data;
     } catch (err2) {
       const error2 = err2.response?.data?.error || '';
-      console.log('[WhatsApp Web] Falhou, tentando VPS...', error2);
 
       // 3. Tenta VPS
       try {
@@ -30,7 +28,6 @@ export async function sendWhatsAppMessage(phone, message) {
         return response.data;
       } catch (err3) {
         const error3 = err3.response?.data?.error || '';
-        console.log('[VPS] Falhou, tentando Meta API...', error3);
 
         // 4. Fallback Meta API
         try {

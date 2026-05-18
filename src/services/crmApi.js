@@ -208,7 +208,6 @@ export const syncCancelToCRM = async (appointment, reason = "Cancelado via agend
     const hasExport = localCache.get(`export_${appointment.id}`)?.status === 'success';
 
     if (!hasPre && !hasExport) {
-        console.log("[syncCancelToCRM] Nunca foi exportado, ignorando");
         return { success: true, skipped: true };
     }
 
@@ -280,7 +279,6 @@ export const syncUpdateToCRM = async (appointment, updates) => {
  */
 export const syncDeleteToCRM = async (appointmentId, reason = "Excluído via agenda externa") => {
     try {
-        console.log(`[syncDeleteToCRM] Excluindo ${appointmentId}. Motivo: ${reason}`);
         const data = await v2.deleteAppointment(appointmentId);
         localCache.delete(`pre_${appointmentId}`);
         localCache.delete(`export_${appointmentId}`);
@@ -297,7 +295,6 @@ export const syncDeleteToCRM = async (appointmentId, reason = "Excluído via age
  * @deprecated Use appointmentsRepo diretamente
  */
 export const syncIfNeeded = async (oldAppointment, newAppointment) => {
-    console.log("[syncIfNeeded] ==========================================");
     
     const changes = {};
     if (oldAppointment.date !== newAppointment.date) changes.date = newAppointment.date;

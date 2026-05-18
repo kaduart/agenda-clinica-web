@@ -7,14 +7,12 @@ import api from "./api";
  */
 export const fetchPatients = async () => {
     try {
-        console.log("👥 [patientsRepo] Buscando lista de pacientes...");
         const response = await api.get('/api/patients', {
             params: {
                 limit: 1000 // Busca uma quantidade razoável para o autocomplete
             }
         });
 
-        console.log("👥 [patientsRepo] Pacientes recebidos:", response.data?.length || 0);
         // Retorna a lista de pacientes formatada
         return response.data || [];
     } catch (error) {

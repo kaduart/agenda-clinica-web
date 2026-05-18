@@ -16,7 +16,6 @@ const getSocket = () => {
         });
 
         socket.on('connect', () => {
-            console.log('🔌 Socket conectado:', socket.id);
         });
 
         socket.on('connect_error', (error) => {
@@ -144,21 +143,17 @@ export const listenAppointmentsForMonth = (year, month, onData, specificDate = n
     if (specificDate) {
         startDate = specificDate;
         endDate = specificDate;
-        console.log(`[fetchAppointments] Data específica: ${startDate}`);
     } else {
         const firstDay = new Date(year, month, 1);
         const lastDay = new Date(year, month + 1, 0);
         startDate = formatDateLocal(firstDay);
         endDate = formatDateLocal(lastDay);
-        console.log(`[fetchAppointments] Range mensal: ${startDate} → ${endDate}`);
     }
 
     const fetchData = async () => {
         try {
-            console.log(`[fetchAppointments] Buscando V2 + pré-agendamentos: ${startDate} a ${endDate}`);
             const merged = await v2.getCalendarData({ startDate, endDate, limit: 500, page: 1 });
             const list = mapAppointmentListResponseDTO(merged || []);
-            console.log(`[fetchAppointments] Recebidos ${list.length} agendamentos (merge V2 + pré-agendamentos)`);
             onData(list);
         } catch (error) {
             console.error('[fetchAppointments] Erro:', error);
@@ -171,10 +166,6 @@ export const listenAppointmentsForMonth = (year, month, onData, specificDate = n
     const s = getSocket();
 
     const handleUpdate = (data) => {
-        console.log('📡 Evento Socket recebido:', data);
-        console.log('📡 Tipo de evento:', data?.type || 'desconhecido');
-        console.log('📡 ID afetado:', data?._id || data?.id || 'não informado');
-        console.log('🔄 Recarregando dados devido a evento socket...');
         fetchData();
     };
 
@@ -215,17 +206,13 @@ export const hasConflict = (appointments, candidate, editingId) => {
 // ===========================================================
 
 export const updateAppointmentDirect = async (appointmentId, appointmentData) => {
-    console.log("📝 [appointmentsRepo] updateAppointmentDirect - ID:", appointmentId);
     const data = await v2.updateAppointment(appointmentId, appointmentData);
-    console.log('[updateAppointmentDirect] ✅ Sucesso:', data);
     return { mode: "update", id: appointmentId, data };
 };
 
 export const rescheduleAppointmentDirect = async (appointmentId, appointmentData) => {
-    console.log("📝 [appointmentsRepo] rescheduleAppointmentDirect - ID original:", appointmentId);
     try {
         const data = await v2.rescheduleAppointment(appointmentId, appointmentData);
-        console.log('[rescheduleAppointmentDirect] ✅ Sucesso:', data);
         // Backend pode retornar novo appointment com ID diferente (cadeia de remarcação)
         const newId = data?.data?.appointment?._id || data?.data?.appointment?.id || data?.data?._id || data?._id || appointmentId;
         return { mode: "reschedule", id: newId, originalId: appointmentId, data };
@@ -240,47 +227,37 @@ export const rescheduleAppointmentDirect = async (appointmentId, appointmentData
 };
 
 export const upsertAppointment = async ({ editingAppointment, appointmentData }) => {
-    console.log("📝 [appointmentsRepo] upsertAppointment chamado");
     
     const isEditing = editingAppointment?.id && !editingAppointment.id.startsWith('ext_');
     const appointmentId = isEditing ? editingAppointment.id : null;
     
-    console.log("📝 [appointmentsRepo] isEditing:", isEditing);
-    console.log("📝 [appointmentsRepo] appointmentId:", appointmentId);
 
     if (isEditing) {
-        console.log("📝 [appointmentsRepo] Usando updateAppointmentDirect para edição");
         return updateAppointmentDirect(appointmentId, appointmentData);
     }
 
-    console.log("[upsertAppointment] Criando appointment direto via API V2...");
     const res = await v2.createAppointment(appointmentData);
 
     const createdId = res?.data?._id || res?.data?.id || res?._id || res?.id;
-    console.log(`[upsertAppointment] ✅ Appointment criado: ${createdId}`);
 
     return { mode: "create", id: createdId, status: res?.data?.operationalStatus || "pre_agendado" };
 };
 
 export const confirmAppointment = async (appointmentId, appointmentData) => {
-    console.log("✅ [appointmentsRepo] confirmAppointment chamado:", appointmentId);
     const res = await v2.updateAppointment(appointmentId, {
         ...appointmentData,
         operationalStatus: "scheduled",
     });
-    console.log(`[confirmAppointment] ✅ Confirmado: ${appointmentId}`);
     return { mode: "confirm", id: appointmentId, data: res };
 };
 
 export const cancelAppointment = async (id, reason = "Cancelado via Web App", options = {}) => {
-    console.log(`[cancelAppointment] Cancelando via API V2: ${id}`);
     return v2.cancelAppointment(id, reason, options);
 };
 
 export const deleteAppointment = cancelAppointment;
 
 export const hardDeleteAppointment = async (id) => {
-    console.log(`[hardDeleteAppointment] Excluindo permanentemente: ${id}`);
     return v2.deleteAppointment(id);
 };
 
@@ -357,7 +334,6 @@ export const syncDeleteWithPackage = async (appointmentId, patientId) => {
         for (const pkg of packages) {
             const session = (pkg.sessions || []).find(s => s.appointmentId === appointmentId);
             if (session && session.sessionId) {
-                console.log(`[syncDeleteWithPackage] Removendo sessão ${session.sessionId} do pacote ${pkg._id || pkg.packageId}`);
                 try {
                     await v2.deletePackageSession(pkg._id || pkg.packageId, session.sessionId);
                     return { synced: true, packageId: pkg._id || pkg.packageId, sessionId: session.sessionId };
@@ -384,7 +360,6 @@ export const syncDeleteWithPackage = async (appointmentId, patientId) => {
 // 🔄 RESTAURAR APPOINTMENT DE SESSÃO DE PACOTE
 // ===========================================================
 export const restoreAppointmentFromSession = async (sessionData) => {
-    console.log("[restoreAppointmentFromSession] Restaurando appointment:", sessionData);
     return v2.recreateAppointmentFromSession(sessionData);
 };
 
@@ -418,6 +393,5 @@ export const isFirstPackagePoint = async (appointmentId, patientId) => {
 // ===========================================================
 
 export const confirmPresence = async (id) => {
-    console.log(`[confirmPresence] Confirmando presença/manual para: ${id}`);
     return v2.confirmAppointmentPresence(id);
 };

@@ -40,23 +40,6 @@ export default function AppointmentRow({ appointment, onEdit, onDelete, onRemind
 
   const patientName = appointment.patientName || appointment.patient?.name || appointment.patient?.fullName || (typeof appointment.patient === 'string' ? appointment.patient : '') || "";
   
-  // 🔍 DEBUG COMPLETO DO AGENDAMENTO
-  console.log('[AppointmentRow] ============================================');
-  console.log('[AppointmentRow] AGENDAMENTO COMPLETO:', appointment);
-  console.log('[AppointmentRow] ---------------------------------------------');
-  console.log('[AppointmentRow] ID:', appointment._id || appointment.id);
-  console.log('[AppointmentRow] Nome Paciente:', patientName);
-  console.log('[AppointmentRow] ---------------------------------------------');
-  console.log('[AppointmentRow] CANDIDATOS DE TELEFONE:');
-  console.log('  1. appointment.phone:', appointment.phone);
-  console.log('  2. appointment.patient?.phone:', appointment.patient?.phone);
-  console.log('  3. appointment.patient?.phoneNumber:', appointment.patient?.phoneNumber);
-  console.log('  4. appointment.patientPhone:', appointment.patientPhone);
-  console.log('  5. appointment.contactPhone:', appointment.contactPhone);
-  console.log('  6. appointment.whatsapp:', appointment.whatsapp);
-  console.log('[AppointmentRow] ---------------------------------------------');
-  console.log('[AppointmentRow] OBJETO PATIENT COMPLETO:', appointment.patient);
-  console.log('[AppointmentRow] ============================================');
   
   // Pegar telefone do PACIENTE primeiro (não do appointment direto)
   // appointment.phone pode vir com número da clínica em integrações
@@ -139,12 +122,6 @@ export default function AppointmentRow({ appointment, onEdit, onDelete, onRemind
 
   // Handler para enviar mensagem WhatsApp
   const handleWhatsAppSend = async (type) => {
-    console.log('[WhatsApp] ============================================');
-    console.log('[WhatsApp] TIPO:', type);
-    console.log('[WhatsApp] patientPhone USADO:', patientPhone);
-    console.log('[WhatsApp] patientPhone (clean):', patientPhone.replace(/\D/g, ''));
-    console.log('[WhatsApp] Nome:', patientName);
-    console.log('[WhatsApp] ============================================');
     if (!patientPhone) {
       showToast('Paciente sem telefone cadastrado', 'error');
       return;
@@ -164,8 +141,6 @@ export default function AppointmentRow({ appointment, onEdit, onDelete, onRemind
         });
     
     const result = await sendViaExtension(patientPhone, message);
-    
-    console.log('[WhatsApp] Resultado:', result);
     
     setSendingWhatsApp(null);
     
@@ -233,7 +208,7 @@ export default function AppointmentRow({ appointment, onEdit, onDelete, onRemind
 
       <td className="px-4 py-3">
         <div className="text-gray-900 font-medium break-words">
-          {appointment.doctor?.fullName || appointment.professional || "-"}
+          {appointment.doctor?.fullName || appointment.professional?.fullName || appointment.professional?.name || (typeof appointment.professional === 'string' ? appointment.professional : null) || "-"}
         </div>
       </td>
 
@@ -343,7 +318,6 @@ export default function AppointmentRow({ appointment, onEdit, onDelete, onRemind
                         type="button"
                         className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-amber-50 hover:text-amber-800 flex items-center gap-2"
                         onClick={() => {
-                          console.log("🖱️ [AppointmentRow] Botão CANCELAR clicado:", appointment.id);
                           onCancel?.(appointment);
                           setShowMenu(false);
                         }}

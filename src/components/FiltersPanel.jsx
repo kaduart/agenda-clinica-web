@@ -36,7 +36,7 @@ export default function FiltersPanel({
 
                     <button
                         onClick={onOpenProfessionals}
-                        className="relative z-10 bg-gray-100 hover:bg-gray-200 text-gray-700 px-5 py-3 rounded-xl flex items-center gap-3 font-medium transition-all duration-200"
+                        className="relative z-10 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-5 py-3 rounded-xl flex items-center gap-3 font-medium transition-all duration-200 shadow-md hover:shadow-lg"
                     >
                         <i className="fas fa-user-md"></i> Profissionais
                     </button>
@@ -143,7 +143,6 @@ export default function FiltersPanel({
                         value={filters.filterDate}
                         onChange={(e) => {
                             const selectedDate = e.target.value;
-                            console.log("📅 [FiltersPanel] Data selecionada:", selectedDate);
 
                             // ✅ LÓGICA ORIGINAL
                             setFilters((prev) => ({
@@ -173,7 +172,6 @@ export default function FiltersPanel({
                             className="w-full p-3.5 border-2 border-gray-200 rounded-xl focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all duration-200 appearance-none text-gray-700 bg-white"
                             value={filters.filterProfessional}
                             onChange={(e) => {
-                                console.log("👤 [FiltersPanel] Profissional:", e.target.value);
                                 setFilters((prev) => ({ ...prev, filterProfessional: e.target.value }));
                             }}
                         >
@@ -202,7 +200,6 @@ export default function FiltersPanel({
                             className="w-full p-3.5 border-2 border-gray-200 rounded-xl focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all duration-200 appearance-none text-gray-700 bg-white"
                             value={filters.filterStatus}
                             onChange={(e) => {
-                                console.log("🏷️ [FiltersPanel] Status:", e.target.value);
                                 setFilters((prev) => ({ ...prev, filterStatus: e.target.value }));
                             }}
                         >
@@ -232,7 +229,6 @@ export default function FiltersPanel({
                             value={filters.filterDay}
                             disabled={!!filters.filterDate}
                             onChange={(e) => {
-                                console.log("📆 [FiltersPanel] Dia da semana:", e.target.value);
                                 setFilters((prev) => ({ ...prev, filterDay: e.target.value }));
                             }}
                         >
@@ -276,7 +272,6 @@ export default function FiltersPanel({
                             : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                             } disabled:opacity-50 disabled:cursor-not-allowed`}
                         onClick={() => {
-                            console.log("📅 [FiltersPanel] Semana: Mês Inteiro");
                             setFilters((prev) => ({ ...prev, filterWeek: null }));
                         }}
                     >
@@ -306,7 +301,6 @@ export default function FiltersPanel({
                                         : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                                     } disabled:opacity-50 disabled:cursor-not-allowed`}
                                 onClick={() => {
-                                    console.log(`📅 [FiltersPanel] Semana ${index + 1} selecionada`);
                                     setFilters((prev) => ({ ...prev, filterWeek: index }));
                                 }}
                             >
@@ -340,7 +334,6 @@ export default function FiltersPanel({
                                 } disabled:opacity-50 disabled:cursor-not-allowed`}
                             onClick={() => {
                                 const newDay = filters.filterDay === day ? "" : day;
-                                console.log("📆 [FiltersPanel] Toggle dia:", newDay);
                                 setFilters((prev) => ({ ...prev, filterDay: newDay }));
                             }}
                         >

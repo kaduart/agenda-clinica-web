@@ -70,7 +70,7 @@ export default function ReminderModal({ appointment, onSave, onClose }) {
                         <div>
                             <h3 className="text-lg font-semibold text-gray-900">Lembrete</h3>
                             <p className="text-xs text-gray-600 mt-1">
-                                {appointment.patientName || "-"} • {appointment.date || "-"} • {appointment.time || "-"} • {appointment.professional || "-"}
+                                {appointment.patientName || "-"} • {appointment.date || "-"} • {appointment.time || "-"} • {appointment.professional?.fullName || appointment.professional?.name || (typeof appointment.professional === 'string' ? appointment.professional : null) || "-"}
                             </p>
                         </div>
 
