@@ -7,7 +7,8 @@
     ],
     "additionalDirectories": [
       "/home/user/projetos/crm/back/routes",
-      "/home/user/projetos/crm/back/utils"
+      "/home/user/projetos/crm/back/utils",
+      "/home/user/projetos/crm/back/services"
     ]
   }
 }

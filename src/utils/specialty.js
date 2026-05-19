@@ -15,6 +15,15 @@ export const resolveSpecialtyKey = (aptOrLabel) => {
     // appointment object
     if (typeof aptOrLabel === "object") {
         if (aptOrLabel.specialtyKey) return aptOrLabel.specialtyKey;
+        // Prioriza a especialidade do médico/profissional que atendeu
+        if (aptOrLabel.doctor?.specialty) {
+            const doctorSpecialty = aptOrLabel.doctor.specialty;
+            return (
+                SPECIALTY_KEY_BY_LABEL[doctorSpecialty] ||
+                normalizeSpecialtyKey(doctorSpecialty) ||
+                "fonoaudiologia"
+            );
+        }
         const label = aptOrLabel.specialty;
         return (
             SPECIALTY_KEY_BY_LABEL[label] ||

@@ -465,17 +465,19 @@ export default function AppointmentModal({ appointment, professionals, patients,
             const newKey = resolveSpecialtyKey(value);
             // 🧠 Regra contextual: especialidades médicas defaultam para 'consultation'
             const isMedicalSpecialty = newKey === 'neuroped' || newKey === 'pediatria';
-            const nextServiceType = isMedicalSpecialty ? 'consultation' : (prev.crm?.serviceType || 'individual_session');
-            setFormData((prev) => ({
-                ...prev,
-                specialty: value,
-                specialtyKey: newKey,
-                crm: {
-                    ...prev.crm,
-                    sessionType: newKey,
-                    serviceType: nextServiceType,
-                },
-            }));
+            setFormData((prev) => {
+                const nextServiceType = isMedicalSpecialty ? 'consultation' : (prev.crm?.serviceType || 'individual_session');
+                return {
+                    ...prev,
+                    specialty: value,
+                    specialtyKey: newKey,
+                    crm: {
+                        ...prev.crm,
+                        sessionType: newKey,
+                        serviceType: nextServiceType,
+                    },
+                };
+            });
             return;
         }
 
