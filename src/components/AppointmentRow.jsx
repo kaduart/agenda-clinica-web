@@ -202,8 +202,8 @@ export default function AppointmentRow({ appointment, onEdit, onDelete, onRemind
       </td>
 
       <td className="px-4 py-3">
-        <div className="text-gray-900 whitespace-nowrap">{formatDateDisplay(appointment.date)}</div>
-        <div className="text-sm text-gray-700 mt-1 font-bold">{appointment.time || "-"}</div>
+        <div className="text-gray-900 font-bold">{appointment.time || "-"}</div>
+        <div className="text-sm text-gray-500 mt-1 whitespace-nowrap">{formatDateDisplay(appointment.date)}</div>
       </td>
 
       <td className="px-4 py-3">
