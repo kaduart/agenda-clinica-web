@@ -458,9 +458,6 @@ export default function AppointmentModal({ appointment, professionals, patients,
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
 
-        if (name === "operationalStatus") {
-        }
-
         if (name === "specialty") {
             const newKey = resolveSpecialtyKey(value);
             // 🧠 Regra contextual: especialidades médicas defaultam para 'consultation'
