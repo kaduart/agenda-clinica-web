@@ -49,7 +49,7 @@ function resolvePatientData(appointment, foundPatient) {
     };
 }
 
-export default function AppointmentModal({ appointment, professionals, patients, onSave, onConfirmPre, onClose, onReloadPatients, authError }) {
+export default function AppointmentModal({ appointment, professionals, patients, appointments, onSave, onConfirmPre, onClose, onReloadPatients, authError }) {
     // 🎯 Estado inicial LIMPO — sempre começa como novo pré-agendamento Fono
     // O useEffect principal abaixo sobrescreve quando estiver editando um existente
     const [formData, setFormData] = React.useState({
@@ -419,16 +419,27 @@ export default function AppointmentModal({ appointment, professionals, patients,
         }
     };
 
-    const selectPatient = (p) => {
+    const selectPatient = async (p) => {
+        setShowSuggestions(false);
         setFormData(prev => ({
             ...prev,
             patient: p.fullName,
-            patientId: p._id,  // Guarda o ID do paciente existente
+            patientId: p._id,
             phone: p.phone || prev.phone,
             birthDate: p.dateOfBirth ? p.dateOfBirth.split('T')[0] : prev.birthDate,
             email: p.email || prev.email,
         }));
-        setShowSuggestions(false);
+        try {
+            const res = await api.get('/api/v2/appointments', { params: { patientId: p._id, limit: 4 } });
+            const appts = res.data?.data?.appointments || [];
+            const sorted = [...appts].sort((a, b) => new Date(b.date) - new Date(a.date));
+            const responsible = sorted.find(a => a.responsible?.trim())?.responsible?.trim()
+                || sorted.find(a => a.patientInfo?.responsible?.trim())?.patientInfo?.responsible?.trim()
+                || '';
+            if (responsible) setFormData(prev => ({ ...prev, responsible }));
+        } catch (e) {
+            console.error('[selectPatient] erro:', e);
+        }
     };
 
     // Auto-seleciona paciente se o usuário digitou o nome completo e saiu do campo

@@ -237,15 +237,15 @@ export default function AppointmentRow({ appointment, onEdit, onDelete, onRemind
       </td>
 
       <td className="px-4 py-3">
-        <span className={`px-3 py-1 inline-flex text-xs font-extrabold rounded-full ${getStatusColor(appointment.operationalStatus)}`}>
-          {isPre ? 'Pré-agendado' : (appointment.status || appointment.operationalStatus || "-")}
-        </span>
-      </td>
-
-      <td className="px-4 py-3">
         <div className="text-sm text-gray-700 truncate" title={appointment.observations || ""}>
           {appointment.observations || "-"}
         </div>
+      </td>
+
+      <td className="px-4 py-3">
+        <span className={`px-3 py-1 inline-flex text-xs font-extrabold rounded-full ${getStatusColor(appointment.operationalStatus)}`}>
+          {isPre ? 'Pré-agendado' : (appointment.status || appointment.operationalStatus || "-")}
+        </span>
       </td>
 
       <td className="px-4 py-3">

@@ -122,13 +122,13 @@ export default function AppointmentTable({
                             <table className="w-full table-fixed">
                                 <thead className="bg-gray-50 border-b border-gray-200">
                                     <tr>
-                                        <th className="w-[17%] px-4 py-3 text-left">
+                                        <th className="w-[20%] px-4 py-3 text-left">
                                             <div className="flex items-center gap-2">
                                                 <i className="fas fa-user text-xs text-gray-400"></i>
                                                 <span className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Paciente</span>
                                             </div>
                                         </th>
-                                        <th className="w-[11%] px-4 py-3 text-left">
+                                        <th className="w-[10%] px-4 py-3 text-left">
                                             <div className="flex items-center gap-2">
                                                 <i className="fas fa-calendar-day text-xs text-gray-400"></i>
                                                 <span className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Agendamento</span>
@@ -140,25 +140,25 @@ export default function AppointmentTable({
                                                 <span className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Profissional</span>
                                             </div>
                                         </th>
-                                        <th className="w-[9%] px-4 py-3 text-left">
+                                        <th className="w-[10%] px-4 py-3 text-left">
                                             <div className="flex items-center gap-2">
                                                 <i className="fas fa-stethoscope text-xs text-gray-400"></i>
                                                 <span className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Área</span>
                                             </div>
                                         </th>
-                                        <th className="w-[9%] px-4 py-3 text-left">
-                                            <div className="flex items-center gap-2">
-                                                <i className="fas fa-flag text-xs text-gray-400"></i>
-                                                <span className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</span>
-                                            </div>
-                                        </th>
-                                        <th className="w-[17%] px-4 py-3 text-left">
+                                        <th className="w-[16%] px-4 py-3 text-left">
                                             <div className="flex items-center gap-2">
                                                 <i className="fas fa-comment-dots text-xs text-gray-400"></i>
                                                 <span className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Anotações</span>
                                             </div>
                                         </th>
-                                        <th className="w-[20%] px-4 py-3 text-center">
+                                        <th className="w-[11%] px-4 py-3 text-left">
+                                            <div className="flex items-center gap-2">
+                                                <i className="fas fa-flag text-xs text-gray-400"></i>
+                                                <span className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</span>
+                                            </div>
+                                        </th>
+                                        <th className="w-[15%] px-4 py-3 text-center">
                                             <div className="flex items-center justify-center gap-2">
                                                 <i className="fas fa-cogs text-xs text-gray-400"></i>
                                                 <span className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Controles</span>

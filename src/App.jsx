@@ -912,6 +912,7 @@ export default function App() {
             appointment={editingAppointment}
             professionals={professionals}
             patients={patients}
+            appointments={appointments}
             onSave={saveAppointment}
             onConfirmPre={onConfirmPreAppointment}
             onClose={() => {
