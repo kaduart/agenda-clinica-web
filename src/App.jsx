@@ -710,9 +710,6 @@ export default function App() {
       }
       if (filters.filterStatus) {
         if (appointment.status !== filters.filterStatus) return false;
-      } else {
-        // Por padrão, oculta agendamentos cancelados (soft-deletes de pacote ficam no banco)
-        if (appointment.operationalStatus === 'canceled' || appointment.status === 'Cancelado') return false;
       }
       return true;
     });
