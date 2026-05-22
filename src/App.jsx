@@ -577,6 +577,23 @@ export default function App() {
     openEditModal(payload);
   };
 
+  const handleCloseModal = React.useCallback(() => {
+    setIsModalOpen(false);
+    setEditingAppointment(null);
+  }, []);
+
+  const handleReloadPatients = React.useCallback(async () => {
+    try {
+      const data = await fetchPatients();
+      setPatients(data || []);
+      setPatientsError(!data || data.length === 0 ? 'empty' : null);
+    } catch (err) {
+      console.error("❌ [App.jsx] Erro ao recarregar pacientes:", err);
+      setPatientsError('auth');
+      setPatients([]);
+    }
+  }, []);
+
   // ========== DERIVED LISTS (separação de pipelines) ==========
   const mappedPreAppointments = React.useMemo(() => {
     return (preAppointments || []).map(pre => ({
@@ -914,21 +931,8 @@ export default function App() {
             appointments={appointments}
             onSave={saveAppointment}
             onConfirmPre={onConfirmPreAppointment}
-            onClose={() => {
-              setIsModalOpen(false);
-              setEditingAppointment(null);
-            }}
-            onReloadPatients={async () => {
-              try {
-                const data = await fetchPatients();
-                setPatients(data || []);
-                setPatientsError(!data || data.length === 0 ? 'empty' : null);
-              } catch (err) {
-                console.error("❌ [App.jsx] Erro ao recarregar pacientes:", err);
-                setPatientsError('auth');
-                setPatients([]);
-              }
-            }}
+            onClose={handleCloseModal}
+            onReloadPatients={handleReloadPatients}
             authError={patientsError === 'auth'}
           />
         </div>

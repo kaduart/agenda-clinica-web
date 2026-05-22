@@ -299,63 +299,72 @@ export default function AppointmentModal({ appointment, professionals, patients,
 
     // Estado para loading de detalhes (busca da API se necessário)
     const [isLoadingDetails, setIsLoadingDetails] = React.useState(false);
+    const fetchedDetailsForId = React.useRef(null);
+    const hasInteracted = React.useRef(false);
 
     // Busca detalhes completos quando abrir o modal de edição
     React.useEffect(() => {
+        const id = appointment?.id;
+        // NÃO busca se for pré-agendamento da agenda externa (ainda não existe como agendamento real)
+        const isPreAgendamento = appointment?.operationalStatus === 'pre_agendado';
+
+        // Evita buscar o mesmo ID duas vezes
+        if (!id || id.startsWith('ext_') || isPreAgendamento || fetchedDetailsForId.current === id) {
+            return;
+        }
+
+        fetchedDetailsForId.current = id;
+
         const fetchDetailsIfNeeded = async () => {
-            // NÃO busca se for pré-agendamento da agenda externa (ainda não existe como agendamento real)
-            const isPreAgendamento = appointment?.operationalStatus === 'pre_agendado';
-            
-            // Sempre busca dados atualizados da API para agendamentos existentes
-            if (appointment?.id && !appointment.id.startsWith('ext_') && !isPreAgendamento) {
-                setIsLoadingDetails(true);
-                try {
-                    const response = await api.get(`/api/v2/appointments/${appointment.id}`);
-                    const payload = response.data.data || response.data;
-                    const data = payload.appointment || payload;
+            setIsLoadingDetails(true);
+            try {
+                const response = await api.get(`/api/v2/appointments/${id}`);
+                const payload = response.data.data || response.data;
+                const data = payload.appointment || payload;
 
+                // Só atualiza se o usuário ainda não interagiu com o formulário
+                if (hasInteracted.current) return;
 
-                    // Atualiza com os dados recebidos da API
-                    setFormData(prev => {
-                        return {
-                            ...prev,
-                            // Dados do pacote se existir
-                            package: data.package || prev.package,
-                            // Dados de faturamento
-                            paymentStatus: data.paymentStatus || prev.paymentStatus,
-                            billingType: data.billingType || prev.billingType,
-                            insuranceProvider: data.insuranceProvider || prev.insuranceProvider,
-                            insuranceValue: data.insuranceValue ?? prev.insuranceValue,
-                            authorizationCode: data.authorizationCode || prev.authorizationCode,
-                            // Dados CRM
-                            crm: {
-                                ...prev.crm,
-                                serviceType: data.crm?.serviceType ||
-                                    mapBackendServiceType(data.serviceType, !!data.package || !!prev.package),
-                                sessionType: prev.specialtyKey || resolveSpecialtyKey(prev.specialty),
-                                paymentMethod: data.paymentMethod || prev.crm.paymentMethod,
-                                paymentAmount: Number(
-                                    data.crm?.paymentAmount ||
-                                    data.sessionValue ||
-                                    data.suggestedValue ||
-                                    data.package?.sessionValue ||
-                                    prev.crm.paymentAmount ||
-                                    0
-                                ),
-                                usePackage: data.serviceType === 'session' || data.serviceType === 'package_session' || !!data.package,
-                            }
-                        };
-                    });
-                } catch (error) {
-                    console.error("❌ [AppointmentModal] Erro ao buscar detalhes:", error);
-                } finally {
-                    setIsLoadingDetails(false);
-                }
+                // Atualiza com os dados recebidos da API
+                setFormData(prev => {
+                    return {
+                        ...prev,
+                        // Dados do pacote se existir
+                        package: data.package || prev.package,
+                        // Dados de faturamento
+                        paymentStatus: data.paymentStatus || prev.paymentStatus,
+                        billingType: data.billingType || prev.billingType,
+                        insuranceProvider: data.insuranceProvider || prev.insuranceProvider,
+                        insuranceValue: data.insuranceValue ?? prev.insuranceValue,
+                        authorizationCode: data.authorizationCode || prev.authorizationCode,
+                        // Dados CRM
+                        crm: {
+                            ...prev.crm,
+                            serviceType: data.crm?.serviceType ||
+                                mapBackendServiceType(data.serviceType, !!data.package || !!prev.package),
+                            sessionType: prev.specialtyKey || resolveSpecialtyKey(prev.specialty),
+                            paymentMethod: data.paymentMethod || prev.crm.paymentMethod,
+                            paymentAmount: Number(
+                                data.crm?.paymentAmount ||
+                                data.sessionValue ||
+                                data.suggestedValue ||
+                                data.package?.sessionValue ||
+                                prev.crm.paymentAmount ||
+                                0
+                            ),
+                            usePackage: data.serviceType === 'session' || data.serviceType === 'package_session' || !!data.package,
+                        }
+                    };
+                });
+            } catch (error) {
+                console.error("❌ [AppointmentModal] Erro ao buscar detalhes:", error);
+            } finally {
+                setIsLoadingDetails(false);
             }
         };
 
         fetchDetailsIfNeeded();
-    }, []); // 🩹 Sempre busca na montagem — dados da lista podem estar desatualizados
+    }, [appointment?.id, appointment?.operationalStatus]);
 
     const [isLoading, setIsLoading] = React.useState(false);
     const [showSuggestions, setShowSuggestions] = React.useState(false);
@@ -394,6 +403,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
     }, [formData.patientId]);
 
     const handlePatientChange = (value) => {
+        hasInteracted.current = true;
         setFormData(prev => ({
             ...prev,
             patient: value,
@@ -460,6 +470,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
     };
 
     const handleChange = (e) => {
+        hasInteracted.current = true;
         const { name, value, type, checked } = e.target;
 
         if (name === "specialty") {
