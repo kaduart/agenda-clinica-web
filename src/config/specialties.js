@@ -9,7 +9,7 @@ export const SPECIALTIES = {
         metricColor: "bg-gray-50",
     },
     fonoaudiologia: {
-        name: "Fonoaudiologia",
+        name: "Fono",
         icon: "fa-ear-listen",
         bgColor: "bg-teal-600",
         lightBg: "bg-teal-50",
@@ -18,7 +18,7 @@ export const SPECIALTIES = {
         metricColor: "bg-teal-50",
     },
     psicologia: {
-        name: "Psicologia",
+        name: "Psico",
         icon: "fa-brain",
         bgColor: "bg-violet-600",
         lightBg: "bg-violet-50",
@@ -45,7 +45,7 @@ export const SPECIALTIES = {
         metricColor: "bg-cyan-50",
     },
     terapia_ocupacional: {
-        name: "Terapia Ocupacional",
+        name: "Ter. Ocup",
         icon: "fa-hands-holding-child",
         bgColor: "bg-amber-600",
         lightBg: "bg-amber-50",
@@ -54,7 +54,7 @@ export const SPECIALTIES = {
         metricColor: "bg-amber-50",
     },
     fisioterapia: {
-        name: "Fisioterapia",
+        name: "Fisio",
         icon: "fa-person-walking",
         bgColor: "bg-sky-600",
         lightBg: "bg-sky-50",
@@ -72,7 +72,7 @@ export const SPECIALTIES = {
         metricColor: "bg-fuchsia-50",
     },
     neuropsych_evaluation: {
-        name: "Avaliação Neuropsicológica",
+        name: "Av. Neuropsico",
         icon: "fa-brain",
         bgColor: "bg-rose-600",
         lightBg: "bg-rose-50",
@@ -113,13 +113,18 @@ export const SPECIALTIES = {
 export const SPECIALTY_KEY_BY_LABEL = {
     Todas: "todas",
     Fonoaudiologia: "fonoaudiologia",
+    Fono: "fonoaudiologia",
     Psicologia: "psicologia",
+    Psico: "psicologia",
     Psicomotricidade: "psicomotricidade",
     Psicopedagogia: "psicopedagogia",
     "Terapia Ocupacional": "terapia_ocupacional",
+    "Ter. Ocup": "terapia_ocupacional",
     Fisioterapia: "fisioterapia",
+    Fisio: "fisioterapia",
     "Teste da Linguinha": "tongue_tie_test",
     "Avaliação Neuropsicológica": "neuropsych_evaluation",
+    "Av. Neuropsico": "neuropsych_evaluation",
     Pediatria: "pediatria",
     Neuropediatria: "neuroped",
     Musicoterapia: "musicoterapia",

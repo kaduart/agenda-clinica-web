@@ -9,7 +9,6 @@ import 'react-toastify/dist/ReactToastify.css';
 import AppointmentTable from "./components/AppointmentTable";
 import FiltersPanel from "./components/FiltersPanel";
 import Header from "./components/Header";
-import SpecialtyDashboard from "./components/SpecialtyDashboard";
 import SpecialtyTabs from "./components/SpecialtyTabs";
 import ProfessionalsAvailability from "./components/ProfessionalsAvailability";
 
@@ -816,10 +815,6 @@ export default function App() {
       <ToastContainer position="top-center" newestOnTop closeOnClick={false} draggable={false} />
 
       <main className="max-w-screen-2xl mx-auto px-2 sm:px-4 lg:px-6 py-6 space-y-6">
-        <div className="bg-gradient-to-r from-white to-gray-50 rounded-2xl shadow-xl border border-gray-200 p-4 sm:p-6">
-          <SpecialtyDashboard appointments={appointments} activeSpecialty={activeSpecialty} />
-        </div>
-
         <div className="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden">
           <FiltersPanel
             professionals={professionals}

@@ -41,11 +41,11 @@ export default function Header({ view, setView, remindersPendingCount = 0, onOpe
                     />
 
                     <div>
-                        <h1 className="text-2xl sm:text-3xl font-bold leading-tight text-white-900">
+                        <h1 className="text-2xl sm:text-3xl font-bold leading-tight text-white">
                             Agenda Clínica Fono Inova
                         </h1>
 
-                        <p className="text-sm text-white-500">
+                        <p className="text-sm text-white/80">
                             Controle de agendamentos
                         </p>
                     </div>
