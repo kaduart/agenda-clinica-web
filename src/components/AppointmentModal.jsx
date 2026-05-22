@@ -1,6 +1,7 @@
 import React from "react";
 import { formatDateLocal, extractDateForInput } from "../utils/date";
 import { resolveSpecialtyKey } from "../utils/specialty";
+import { SERVICE_TYPE_LABELS, mapBackendServiceType } from "../utils/serviceType";
 import api from "../services/api";
 import { cancelPreAppointment } from "../services/preAppointmentsRepo";
 import { sendWhatsAppMessage, generateConfirmationMessage, generateReminderMessage } from "../services/baileysApi";
@@ -194,11 +195,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                 // Mapeia: serviceType → crm.serviceType, sessionValue → crm.paymentAmount, etc
                 crm: {
                     serviceType: appointment.crm?.serviceType ||
-                        (appointment.serviceType === 'return' ? 'retorno' :
-                        appointment.serviceType === 'consultation' ? 'consultation' :
-                        appointment.serviceType === 'evaluation' ? 'individual_session' :
-                            appointment.serviceType === 'session' ? 'package_session' :
-                                appointment.package ? "package_session" : "individual_session"),
+                        mapBackendServiceType(appointment.serviceType, !!appointment.package),
                     sessionType: resolveSpecialtyKey(appointment) || appointment.crm?.sessionType,
                     paymentMethod: appointment.crm?.paymentMethod ||
                         appointment.paymentMethod || "pix",
@@ -334,11 +331,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                             crm: {
                                 ...prev.crm,
                                 serviceType: data.crm?.serviceType ||
-                                    (data.serviceType === 'return' ? 'retorno' :
-                                    data.serviceType === 'consultation' ? 'consultation' :
-                                    data.serviceType === 'evaluation' ? 'individual_session' :
-                                        data.serviceType === 'session' || data.serviceType === 'package_session' ? 'package_session' :
-                                            prev.crm.serviceType || 'individual_session'),
+                                    mapBackendServiceType(data.serviceType, !!data.package || !!prev.package),
                                 sessionType: prev.specialtyKey || resolveSpecialtyKey(prev.specialty),
                                 paymentMethod: data.paymentMethod || prev.crm.paymentMethod,
                                 paymentAmount: Number(
@@ -1209,11 +1202,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                                 authorizationCode: data.authorizationCode || prev.authorizationCode,
                                                 crm: {
                                                     serviceType: data.crm?.serviceType ||
-                                                        (data.serviceType === 'return' ? 'retorno' :
-                                                        data.serviceType === 'consultation' ? 'consultation' :
-                                                        data.serviceType === 'evaluation' ? 'individual_session' :
-                                                            data.serviceType === 'session' || data.serviceType === 'package_session' ? 'package_session' :
-                                                                prev.crm.serviceType || 'individual_session'),
+                                                        mapBackendServiceType(data.serviceType, !!data.package || !!prev.package),
                                                     sessionType: prev.specialtyKey || resolveSpecialtyKey(prev.specialty),
                                                     paymentMethod: data.paymentMethod || prev.crm.paymentMethod,
                                                     paymentAmount: Number(
@@ -1247,7 +1236,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                             )}
                         </div>
 
-                        {formData.crm.serviceType !== 'retorno' && (
+                        {formData.crm.serviceType !== 'return' && (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Faturamento *</label>
@@ -1336,7 +1325,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                         )}
 
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            {formData.crm.serviceType !== 'retorno' && (
+                            {formData.crm.serviceType !== 'return' && (
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Forma de Pagamento (CRM)</label>
                                 <select
@@ -1362,26 +1351,24 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                         const value = e.target.value;
                                         setFormData(prev => ({
                                             ...prev,
-                                            paymentStatus: value === 'retorno' ? 'not_applicable' : (prev.paymentStatus === 'not_applicable' ? 'pending' : prev.paymentStatus),
+                                            paymentStatus: value === 'return' || value === 'return' ? 'not_applicable' : (prev.paymentStatus === 'not_applicable' ? 'pending' : prev.paymentStatus),
                                             crm: {
                                                 ...prev.crm,
                                                 serviceType: value,
                                                 // sessionType SEMPRE é a especialidade clínica
                                                 sessionType: prev.specialtyKey || resolveSpecialtyKey(prev.specialty),
-                                                usePackage: value === 'package_session' || value === 'sessao'
+                                                usePackage: value === 'package_session' || value === 'session'
                                             }
                                         }));
                                     }}
                                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                                 >
-                                    <option value="consultation">Consulta</option>
-                                    <option value="individual_session">Avaliação</option>
-                                    <option value="package_session">Sessão (Pacote)</option>
-                                    <option value="sessao_avulsa">Sessão Avulsa</option>
-                                    <option value="retorno">Retorno</option>
+                                    {Object.entries(SERVICE_TYPE_LABELS).map(([key, label]) => (
+                                        <option key={key} value={key}>{label}</option>
+                                    ))}
                                 </select>
                             </div>
-                            {formData.crm.serviceType === 'retorno' ? (
+                            {formData.crm.serviceType === 'return' ? (
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Valor da Sessão (R$)</label>
                                     <p className="text-sm text-blue-700 bg-blue-50 border border-blue-200 rounded-lg p-3">
@@ -1428,7 +1415,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                             )}
                         </div>
 
-                        {formData.crm.serviceType !== 'retorno' && (
+                        {formData.crm.serviceType !== 'return' && (
                         <div className="flex items-center gap-2 mt-4">
                             <input
                                 id="usePackage"

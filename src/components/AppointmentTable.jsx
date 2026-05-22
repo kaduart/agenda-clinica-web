@@ -4,7 +4,7 @@ import AppointmentRow from "./AppointmentRow";
 import CycleWizardModal from "./CycleWizardModal";
 
 export default function AppointmentTable({
-    activeSpecialty, appointments,
+    activeSpecialty, appointments, isLoading,
     onEdit, onDelete, onReminder, onCancel,
     onConfirmCycle }) {
 
@@ -99,7 +99,21 @@ export default function AppointmentTable({
             {/* Tabela */}
             <div className="overflow-x-auto">
                 <div className="min-w-[1200px]">
-                    {appointments.length === 0 ? (
+                    {isLoading ? (
+                        <div className="px-6 py-16 text-center">
+                            <div className="max-w-sm mx-auto">
+                                <div className="w-16 h-16 mx-auto bg-blue-50 rounded-full flex items-center justify-center mb-4 animate-pulse">
+                                    <i className="fas fa-spinner fa-spin text-2xl text-blue-500"></i>
+                                </div>
+                                <h4 className="text-base font-semibold text-gray-900 mb-1">
+                                    Carregando agendamentos...
+                                </h4>
+                                <p className="text-sm text-gray-500">
+                                    Buscando dados do servidor.
+                                </p>
+                            </div>
+                        </div>
+                    ) : appointments.length === 0 ? (
                         <div className="px-6 py-16 text-center">
                             <div className="max-w-sm mx-auto">
                                 <div className="w-16 h-16 mx-auto bg-gray-100 rounded-full flex items-center justify-center mb-4">
@@ -122,31 +136,31 @@ export default function AppointmentTable({
                             <table className="w-full table-fixed">
                                 <thead className="bg-gray-50 border-b border-gray-200">
                                     <tr>
-                                        <th className="w-[20%] px-4 py-3 text-left">
+                                        <th className="w-[18%] px-4 py-3 text-left">
                                             <div className="flex items-center gap-2">
                                                 <i className="fas fa-user text-xs text-gray-400"></i>
                                                 <span className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Paciente</span>
                                             </div>
                                         </th>
-                                        <th className="w-[10%] px-4 py-3 text-left">
+                                        <th className="w-[7%] px-4 py-3 text-left">
                                             <div className="flex items-center gap-2">
-                                                <i className="fas fa-calendar-day text-xs text-gray-400"></i>
-                                                <span className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Agendamento</span>
+                                                <i className="fas fa-clock text-xs text-gray-400"></i>
+                                                <span className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Hora</span>
                                             </div>
                                         </th>
-                                        <th className="w-[18%] px-4 py-3 text-left">
+                                        <th className="w-[16%] px-4 py-3 text-left">
                                             <div className="flex items-center gap-2">
                                                 <i className="fas fa-user-md text-xs text-gray-400"></i>
                                                 <span className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Profissional</span>
                                             </div>
                                         </th>
-                                        <th className="w-[10%] px-4 py-3 text-left">
+                                        <th className="w-[14%] px-4 py-3 text-left">
                                             <div className="flex items-center gap-2">
                                                 <i className="fas fa-stethoscope text-xs text-gray-400"></i>
                                                 <span className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Área</span>
                                             </div>
                                         </th>
-                                        <th className="w-[16%] px-4 py-3 text-left">
+                                        <th className="w-[14%] px-4 py-3 text-left">
                                             <div className="flex items-center gap-2">
                                                 <i className="fas fa-comment-dots text-xs text-gray-400"></i>
                                                 <span className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Anotações</span>
@@ -158,7 +172,7 @@ export default function AppointmentTable({
                                                 <span className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</span>
                                             </div>
                                         </th>
-                                        <th className="w-[15%] px-4 py-3 text-center">
+                                        <th className="w-[17%] px-4 py-3 text-center">
                                             <div className="flex items-center justify-center gap-2">
                                                 <i className="fas fa-cogs text-xs text-gray-400"></i>
                                                 <span className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Controles</span>

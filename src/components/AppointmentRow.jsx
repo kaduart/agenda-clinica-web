@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { SPECIALTIES } from "../config/specialties";
 import { formatDateDisplay } from "../utils/date";
+// formatDateDisplay mantido para compatibilidade — não usado diretamente neste componente
 import { resolveSpecialtyKey } from "../utils/specialty";
+import { resolveServiceType, getServiceTypeLabel, getServiceTypeColorClass } from "../utils/serviceType";
 import { sendViaExtension, generateConfirmationMessage, generateReminderMessage } from "../services/whatsappExtension";
 
 export default function AppointmentRow({ appointment, onEdit, onDelete, onReminder, onGenerateCycle, onCancel }) {
@@ -54,32 +56,18 @@ export default function AppointmentRow({ appointment, onEdit, onDelete, onRemind
     (appointment.observations && String(appointment.observations).toLowerCase().includes("livre"));
 
   const rowToneBySpecialty = (key) => {
-    switch (key) {
-      case "fonoaudiologia":
-        return { bg: "bg-teal-500", hover: "hover:bg-teal-600", border: "border-l-teal-700" };
-      case "psicologia":
-        return { bg: "bg-violet-500", hover: "hover:bg-violet-600", border: "border-l-violet-700" };
-      case "psicomotricidade":
-        return { bg: "bg-lime-500", hover: "hover:bg-lime-600", border: "border-l-lime-700" };
-      case "psicopedagogia":
-        return { bg: "bg-cyan-500", hover: "hover:bg-cyan-600", border: "border-l-cyan-700" };
-      case "terapia_ocupacional":
-        return { bg: "bg-amber-500", hover: "hover:bg-amber-600", border: "border-l-amber-700" };
-      case "fisioterapia":
-        return { bg: "bg-sky-500", hover: "hover:bg-sky-600", border: "border-l-sky-700" };
-      case "tongue_tie_test":
-        return { bg: "bg-fuchsia-500", hover: "hover:bg-fuchsia-600", border: "border-l-fuchsia-700" };
-      case "neuropsych_evaluation":
-        return { bg: "bg-rose-500", hover: "hover:bg-rose-600", border: "border-l-rose-700" };
-      case "pediatria":
-        return { bg: "bg-indigo-500", hover: "hover:bg-indigo-600", border: "border-l-indigo-700" };
-      case "neuroped":
-        return { bg: "bg-red-500", hover: "hover:bg-red-600", border: "border-l-red-700" };
-      case "musicoterapia":
-        return { bg: "bg-orange-500", hover: "hover:bg-orange-600", border: "border-l-orange-700" };
-      default:
-        return { bg: "bg-gray-400", hover: "hover:bg-gray-500", border: "border-l-gray-700" };
+    const s = SPECIALTIES[key];
+    if (!s) {
+      return { bg: "bg-white", hover: "hover:bg-gray-100", border: "border-l-gray-400", text: "text-gray-700" };
     }
+    // Deriva a cor de borda a partir do textColor (ex: text-teal-700 → border-l-teal-500)
+    const colorBase = s.textColor.replace("text-", "").replace("-700", "");
+    return {
+      bg: s.lightBg,
+      hover: s.lightBg.replace("-50", "-100").replace("bg-", "hover:bg-"),
+      border: `border-l-${colorBase}-500`,
+      text: s.textColor,
+    };
   };
 
   const isPre = appointment.operationalStatus === 'pre_agendado';
@@ -113,12 +101,12 @@ export default function AppointmentRow({ appointment, onEdit, onDelete, onRemind
   const tone = rowToneBySpecialty(specialtyKey);
   const rowAccent =
     appointment.status === "Cancelado" || appointment.status === "desistiu" || appointment.status === "descartado"
-      ? "border-l-[8px] border-l-red-600 bg-red-300 hover:bg-red-200"
+      ? "border-l-[6px] border-l-red-500 bg-red-50 hover:bg-red-100"
       : isLivre
-        ? "border-l-[8px] border-l-emerald-600 bg-emerald-100 hover:bg-emerald-200"
+        ? "border-l-[6px] border-l-emerald-500 bg-emerald-50 hover:bg-emerald-100"
         : isPre
-          ? "border-l-[8px] border-l-indigo-600 bg-indigo-50 hover:bg-indigo-100/60"
-          : `border-l-[8px] ${tone.border} ${tone.bg} ${tone.hover}`;
+          ? "border-l-[6px] border-l-indigo-500 bg-indigo-50 hover:bg-indigo-100"
+          : `border-l-[6px] ${tone.border} ${tone.bg} ${tone.hover}`;
 
   // Handler para enviar mensagem WhatsApp
   const handleWhatsAppSend = async (type) => {
@@ -202,8 +190,16 @@ export default function AppointmentRow({ appointment, onEdit, onDelete, onRemind
       </td>
 
       <td className="px-4 py-3">
-        <div className="text-gray-900 font-bold">{appointment.time || "-"}</div>
-        <div className="text-sm text-gray-500 mt-1 whitespace-nowrap">{formatDateDisplay(appointment.date)}</div>
+        <div className="text-gray-900 font-bold text-base leading-tight">{appointment.time || "-"}</div>
+        <div className="text-[11px] text-gray-400 mt-0.5 whitespace-nowrap">
+          {(() => {
+            const [y, m, d] = (appointment.date || "").split("-");
+            if (!y || !m || !d) return "-";
+            const date = new Date(Number(y), Number(m) - 1, Number(d));
+            const weekday = date.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", "");
+            return `${weekday}, ${d}/${m}`;
+          })()}
+        </div>
       </td>
 
       <td className="px-4 py-3">
@@ -213,27 +209,18 @@ export default function AppointmentRow({ appointment, onEdit, onDelete, onRemind
       </td>
 
       <td className="px-4 py-3">
-        <div className="text-gray-900 font-semibold break-words">{SPECIALTIES[specialtyKey]?.name || appointment.specialty || "-"}</div>
-        {(appointment.serviceType === 'return' || appointment.crm?.serviceType === 'return') && (
-          <span className="mt-1 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-sky-100 text-sky-700">
-            Retorno
-          </span>
-        )}
-        {(appointment.serviceType === 'consultation' || appointment.crm?.serviceType === 'consultation') && (
-          <span className="mt-1 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-700">
-            Consulta
-          </span>
-        )}
-        {(appointment.serviceType === 'evaluation' || appointment.crm?.serviceType === 'evaluation') && (
-          <span className="mt-1 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-700">
-            Avaliação
-          </span>
-        )}
-        {(appointment.serviceType === 'package_session' || appointment.crm?.serviceType === 'package_session') && (
-          <span className="mt-1 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-700">
-            Pacote
-          </span>
-        )}
+        <div className={`font-semibold whitespace-nowrap text-sm ${tone.text || 'text-gray-900'}`}>{SPECIALTIES[specialtyKey]?.name || appointment.specialty || "-"}</div>
+        {(() => {
+          const st = resolveServiceType(appointment);
+          if (!st) return null;
+          const label = getServiceTypeLabel(st);
+          const colorClass = getServiceTypeColorClass(st);
+          return label ? (
+            <span className={`mt-1 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${colorClass}`}>
+              {label}
+            </span>
+          ) : null;
+        })()}
       </td>
 
       <td className="px-4 py-3">

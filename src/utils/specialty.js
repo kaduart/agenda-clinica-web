@@ -15,7 +15,17 @@ export const resolveSpecialtyKey = (aptOrLabel) => {
     // appointment object
     if (typeof aptOrLabel === "object") {
         if (aptOrLabel.specialtyKey) return aptOrLabel.specialtyKey;
-        // Prioriza a especialidade do médico/profissional que atendeu
+
+        // 1️⃣ Prioriza a especialidade do AGENDAMENTO (specialty)
+        const appointmentSpecialty = aptOrLabel.specialty;
+        if (appointmentSpecialty) {
+            const resolved =
+                SPECIALTY_KEY_BY_LABEL[appointmentSpecialty] ||
+                normalizeSpecialtyKey(appointmentSpecialty);
+            if (resolved) return resolved;
+        }
+
+        // 2️⃣ Fallback: especialidade do médico/profissional
         if (aptOrLabel.doctor?.specialty) {
             const doctorSpecialty = aptOrLabel.doctor.specialty;
             return (
@@ -24,12 +34,8 @@ export const resolveSpecialtyKey = (aptOrLabel) => {
                 "fonoaudiologia"
             );
         }
-        const label = aptOrLabel.specialty;
-        return (
-            SPECIALTY_KEY_BY_LABEL[label] ||
-            normalizeSpecialtyKey(label) ||
-            "fonoaudiologia"
-        );
+
+        return "fonoaudiologia";
     }
 
     // label string

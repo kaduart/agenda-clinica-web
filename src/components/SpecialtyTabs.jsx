@@ -3,7 +3,7 @@ import { SPECIALTIES } from "../config/specialties";
 export default function SpecialtyTabs({ activeTab, onTabChange }) {
   return (
     <div className="bg-white border border-gray-200 rounded-xl p-2 shadow-sm">
-      <div className="flex flex-wrap gap-1.5">
+      <div className="flex flex-nowrap gap-1.5 overflow-x-auto pb-1 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
         {Object.entries(SPECIALTIES).map(([key, specialty]) => {
           const isActive = activeTab === key;
           return (

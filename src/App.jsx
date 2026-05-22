@@ -130,6 +130,7 @@ export default function App() {
   const [isRemindersListOpen, setIsRemindersListOpen] = React.useState(false);
 
   const [availableSlots, setAvailableSlots] = React.useState([]);
+  const [isLoadingAppointments, setIsLoadingAppointments] = React.useState(true);
   
   // Função global para forçar refresh da lista de appointments
   const forceRefreshAppointments = React.useCallback(() => {
@@ -214,8 +215,10 @@ export default function App() {
       specificDate = filters.filterDate; // Passa a data específica para busca otimizada
     }
 
+    setIsLoadingAppointments(true);
     const unsub = listenAppointmentsForMonth(targetYear, targetMonth, (data) => {
       setAppointments(data);
+      setIsLoadingAppointments(false);
     }, specificDate);
     return () => {
       unsub();
@@ -848,6 +851,7 @@ export default function App() {
             <AppointmentTable
               activeSpecialty={activeSpecialty}
               appointments={filteredAppointments}
+              isLoading={isLoadingAppointments}
               onEdit={openEditModal}
               onDelete={onDelete}
               onCancel={onCancel}
