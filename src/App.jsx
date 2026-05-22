@@ -725,6 +725,8 @@ export default function App() {
 
     // 7. Slots virtuais (só quando filtro profissional + data ativo)
     if (filters.filterProfessional && filters.filterDate && availableSlots.length > 0) {
+      const selectedProf = professionals.find(p => p.fullName === filters.filterProfessional);
+      const profSpecialty = selectedProf?.specialty || activeSpecialty;
       const virtualAppointments = availableSlots
         .filter(slot => (typeof slot === 'string' ? true : slot.available))
         .map(slot => {
@@ -734,6 +736,7 @@ export default function App() {
             date: filters.filterDate,
             time,
             professional: filters.filterProfessional,
+            specialty: profSpecialty,
             patient: "Livre",
             status: "Vaga",
             __isVirtual: true
