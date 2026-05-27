@@ -42,109 +42,98 @@ export default function AppointmentTable({
                 </div>
             </div>
 
-            {/* Tabela */}
-            <div className="overflow-x-auto">
-                <div className="min-w-[1200px]">
-                    {isLoading ? (
-                        <div className="px-6 py-16 text-center">
-                            <div className="max-w-sm mx-auto">
-                                <div className="w-16 h-16 mx-auto bg-blue-50 rounded-full flex items-center justify-center mb-4 animate-pulse">
-                                    <i className="fas fa-spinner fa-spin text-2xl text-blue-500"></i>
-                                </div>
-                                <h4 className="text-base font-semibold text-gray-900 mb-1">
-                                    Carregando agendamentos...
-                                </h4>
-                                <p className="text-sm text-gray-500">
-                                    Buscando dados do servidor.
-                                </p>
+            {/* Lista */}
+            <div className="p-2">
+                {isLoading ? (
+                    <div className="px-6 py-16 text-center">
+                        <div className="max-w-sm mx-auto">
+                            <div className="w-16 h-16 mx-auto bg-blue-50 rounded-full flex items-center justify-center mb-4 animate-pulse">
+                                <i className="fas fa-spinner fa-spin text-2xl text-blue-500"></i>
+                            </div>
+                            <h4 className="text-base font-semibold text-gray-900 mb-1">
+                                Carregando agendamentos...
+                            </h4>
+                            <p className="text-sm text-gray-500">
+                                Buscando dados do servidor.
+                            </p>
+                        </div>
+                    </div>
+                ) : appointments.length === 0 ? (
+                    <div className="px-6 py-16 text-center">
+                        <div className="max-w-sm mx-auto">
+                            <div className="w-16 h-16 mx-auto bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                                <i className="fas fa-calendar-times text-2xl text-gray-400"></i>
+                            </div>
+                            <h4 className="text-base font-semibold text-gray-900 mb-1">
+                                Nenhum agendamento encontrado
+                            </h4>
+                            <p className="text-sm text-gray-500 mb-4">
+                                Não há registros para esta especialidade ou filtros aplicados.
+                            </p>
+                            <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 rounded-lg border border-blue-200">
+                                <i className="fas fa-lightbulb text-xs text-blue-600"></i>
+                                <span className="text-xs text-blue-700">Tente ajustar os filtros ou criar um novo agendamento</span>
                             </div>
                         </div>
-                    ) : appointments.length === 0 ? (
-                        <div className="px-6 py-16 text-center">
-                            <div className="max-w-sm mx-auto">
-                                <div className="w-16 h-16 mx-auto bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                                    <i className="fas fa-calendar-times text-2xl text-gray-400"></i>
-                                </div>
-                                <h4 className="text-base font-semibold text-gray-900 mb-1">
-                                    Nenhum agendamento encontrado
-                                </h4>
-                                <p className="text-sm text-gray-500 mb-4">
-                                    Não há registros para esta especialidade ou filtros aplicados.
-                                </p>
-                                <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 rounded-lg border border-blue-200">
-                                    <i className="fas fa-lightbulb text-xs text-blue-600"></i>
-                                    <span className="text-xs text-blue-700">Tente ajustar os filtros ou criar um novo agendamento</span>
-                                </div>
+                    </div>
+                ) : (
+                    <>
+                        {/* Header row — espelha as colunas do AppointmentRow */}
+                        <div className="flex items-center gap-2 px-3 py-2 mb-1 border-b border-gray-200">
+                            <div className="flex-1 min-w-0">
+                                <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+                                    <i className="fas fa-user text-[10px]"></i> Paciente
+                                </span>
+                            </div>
+                            <div className="w-14 shrink-0">
+                                <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+                                    <i className="fas fa-clock text-[10px]"></i> Hora
+                                </span>
+                            </div>
+                            <div className="w-36 shrink-0 hidden md:block">
+                                <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+                                    <i className="fas fa-user-md text-[10px]"></i> Profissional
+                                </span>
+                            </div>
+                            <div className="w-28 shrink-0 hidden lg:block">
+                                <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+                                    <i className="fas fa-stethoscope text-[10px]"></i> Área
+                                </span>
+                            </div>
+                            <div className="w-24 shrink-0 hidden xl:block">
+                                <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+                                    <i className="fas fa-comment-dots text-[10px]"></i> Anotações
+                                </span>
+                            </div>
+                            <div className="w-24 shrink-0 text-center">
+                                <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider flex items-center justify-center gap-1.5">
+                                    <i className="fas fa-flag text-[10px]"></i> Status
+                                </span>
+                            </div>
+                            <div className="w-24 shrink-0 text-center">
+                                <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider flex items-center justify-center gap-1.5">
+                                    <i className="fas fa-cogs text-[10px]"></i> Ações
+                                </span>
                             </div>
                         </div>
-                    ) : (
-                        <>
-                            <table className="w-full table-fixed">
-                                <thead className="bg-gray-50 border-b border-gray-200">
-                                    <tr>
-                                        <th className="w-[18%] px-4 py-3 text-left">
-                                            <div className="flex items-center gap-2">
-                                                <i className="fas fa-user text-xs text-gray-400"></i>
-                                                <span className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Paciente</span>
-                                            </div>
-                                        </th>
-                                        <th className="w-[7%] px-4 py-3 text-left">
-                                            <div className="flex items-center gap-2">
-                                                <i className="fas fa-clock text-xs text-gray-400"></i>
-                                                <span className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Hora</span>
-                                            </div>
-                                        </th>
-                                        <th className="w-[16%] px-4 py-3 text-left">
-                                            <div className="flex items-center gap-2">
-                                                <i className="fas fa-user-md text-xs text-gray-400"></i>
-                                                <span className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Profissional</span>
-                                            </div>
-                                        </th>
-                                        <th className="w-[14%] px-4 py-3 text-left">
-                                            <div className="flex items-center gap-2">
-                                                <i className="fas fa-stethoscope text-xs text-gray-400"></i>
-                                                <span className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Área</span>
-                                            </div>
-                                        </th>
-                                        <th className="w-[14%] px-4 py-3 text-left">
-                                            <div className="flex items-center gap-2">
-                                                <i className="fas fa-comment-dots text-xs text-gray-400"></i>
-                                                <span className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Anotações</span>
-                                            </div>
-                                        </th>
-                                        <th className="w-[11%] px-4 py-3 text-left">
-                                            <div className="flex items-center gap-2">
-                                                <i className="fas fa-flag text-xs text-gray-400"></i>
-                                                <span className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</span>
-                                            </div>
-                                        </th>
-                                        <th className="w-[17%] px-4 py-3 text-center">
-                                            <div className="flex items-center justify-center gap-2">
-                                                <i className="fas fa-cogs text-xs text-gray-400"></i>
-                                                <span className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Controles</span>
-                                            </div>
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-100">
-                                    {appointments.map((appointment, index) => (
-                                        <AppointmentRow
-                                            key={appointment.id}
-                                            appointment={appointment}
-                                            index={index}
-                                            onEdit={onEdit}
-                                            onDelete={onDelete}
-                                            onCancel={onCancel}
-                                            onReminder={onReminder}
-                                            onGenerateCycle={handleGenerateCycle}
-                                        />
-                                    ))}
-                                </tbody>
-                            </table>
 
-                        </>
-                    )}
-                </div>
+                        {/* Rows */}
+                        <div className="space-y-1.5">
+                            {appointments.map((appointment, index) => (
+                                <AppointmentRow
+                                    key={appointment.id}
+                                    appointment={appointment}
+                                    index={index}
+                                    onEdit={onEdit}
+                                    onDelete={onDelete}
+                                    onCancel={onCancel}
+                                    onReminder={onReminder}
+                                    onGenerateCycle={handleGenerateCycle}
+                                />
+                            ))}
+                        </div>
+                    </>
+                )}
             </div>
 
             {/* Modal de Ciclo */}

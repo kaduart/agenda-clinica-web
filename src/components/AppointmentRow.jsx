@@ -162,203 +162,108 @@ export default function AppointmentRow({ appointment, onEdit, onDelete, onRemind
   }
 
   return (
-    <tr className={`border-b border-gray-200 transition-colors ${rowAccent}`}>
-      <td className="px-4 py-3">
-        <div className="font-medium text-gray-900 flex items-center gap-2 break-words">
-          <div className="flex items-center gap-1">
-            {source && getSourceIcon(source)}
-            <span>{patientName || "-"}</span>
-          </div>
+    <div className={`flex items-center gap-2 px-3 py-2.5 rounded-lg border border-gray-200 border-l-[4px] transition-all shadow-sm ${rowAccent}`}>
 
+      {/* Paciente */}
+      <div className="flex-1 min-w-0">
+        <div className="font-semibold text-gray-900 flex items-center gap-1.5 flex-wrap text-[15px]">
+          {source && getSourceIcon(source)}
+          <span className="truncate">{patientName || "-"}</span>
           {hasReminder && (
-            <span className="text-[11px] font-extrabold px-2 py-0.5 rounded-full bg-yellow-200 text-yellow-900">
-              lembrete
-            </span>
+            <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-full bg-yellow-200 text-yellow-900 shrink-0">lembrete</span>
           )}
-
           {isPre && getPreStatusBadge(preStatus)}
           {isPre && appointment.attemptCount > 0 && (
-            <span className="text-[10px] text-gray-500 flex items-center gap-1" title="Tentativas de contato">
-              <i className="fas fa-phone-alt"></i> {appointment.attemptCount}
-            </span>
+            <span className="text-[10px] text-gray-500 shrink-0"><i className="fas fa-phone-alt"></i> {appointment.attemptCount}</span>
           )}
         </div>
-
         {appointment.responsible && (
-          <div className="text-xs text-gray-600 mt-1">{appointment.responsible}</div>
+          <div className="text-xs text-gray-500 mt-0.5 truncate">{appointment.responsible}</div>
         )}
-      </td>
+      </div>
 
-      <td className="px-4 py-3">
-        <div className="text-gray-900 font-bold text-base leading-tight">{appointment.time || "-"}</div>
-        <div className="text-[11px] text-gray-400 mt-0.5 whitespace-nowrap">
+      {/* Hora */}
+      <div className="w-14 shrink-0">
+        <div className="text-gray-900 font-bold text-sm leading-tight">{appointment.time || "-"}</div>
+        <div className="text-[10px] text-gray-400 whitespace-nowrap">
           {(() => {
             const [y, m, d] = (appointment.date || "").split("-");
-            if (!y || !m || !d) return "-";
+            if (!y || !m || !d) return "";
             const date = new Date(Number(y), Number(m) - 1, Number(d));
-            const weekday = date.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", "");
-            return `${weekday}, ${d}/${m}`;
+            return `${date.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", "")}, ${d}/${m}`;
           })()}
         </div>
-      </td>
+      </div>
 
-      <td className="px-4 py-3">
-        <div className="text-gray-900 font-medium break-words">
+      {/* Profissional */}
+      <div className="w-36 shrink-0 hidden md:block">
+        <div className="text-gray-800 font-medium text-sm truncate">
           {appointment.doctor?.fullName || appointment.professional?.fullName || appointment.professional?.name || (typeof appointment.professional === 'string' ? appointment.professional : null) || "-"}
         </div>
-      </td>
+      </div>
 
-      <td className="px-4 py-3">
-        <div className={`font-semibold whitespace-nowrap text-sm ${tone.text || 'text-gray-900'}`}>{SPECIALTIES[specialtyKey]?.name || appointment.specialty || "-"}</div>
+      {/* Área */}
+      <div className="w-28 shrink-0 hidden lg:block">
+        <div className={`font-semibold text-sm ${tone.text || 'text-gray-900'}`}>{SPECIALTIES[specialtyKey]?.name || appointment.specialty || "-"}</div>
         {(() => {
           const st = resolveServiceType(appointment);
           if (!st) return null;
           const label = getServiceTypeLabel(st);
           const colorClass = getServiceTypeColorClass(st);
-          return label ? (
-            <span className={`mt-1 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${colorClass}`}>
-              {label}
-            </span>
-          ) : null;
+          return label ? <span className={`mt-0.5 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium ${colorClass}`}>{label}</span> : null;
         })()}
-      </td>
+      </div>
 
-      <td className="px-4 py-3">
-        <div className="text-sm text-gray-700 truncate" title={appointment.observations || ""}>
-          {appointment.observations || "-"}
-        </div>
-      </td>
+      {/* Anotações */}
+      <div className="w-24 shrink-0 hidden xl:block">
+        <div className="text-xs text-gray-600 truncate" title={appointment.observations || ""}>{appointment.observations || "-"}</div>
+      </div>
 
-      <td className="px-4 py-3">
-        <span className={`px-3 py-1 inline-flex text-xs font-extrabold rounded-full ${getStatusColor(appointment.operationalStatus)}`}>
+      {/* Status */}
+      <div className="w-24 shrink-0 text-center">
+        <span className={`px-2.5 py-1 inline-flex text-xs font-bold rounded-full ${getStatusColor(appointment.operationalStatus)}`}>
           {isPre ? 'Pré-agendado' : (appointment.status || appointment.operationalStatus || "-")}
         </span>
-      </td>
+      </div>
 
-      <td className="px-4 py-3">
-        <div className="flex gap-1 items-center flex-wrap justify-center">
-          
-          {/* 🟢 WhatsApp Confirmar */}
+      {/* Controles */}
+      <div className="w-24 shrink-0">
+        <div className="flex gap-0.5 items-center justify-end">
           {patientPhone && (isPre || appointment.operationalStatus === 'scheduled') && (
-            <button
-              type="button"
-              className="p-2 text-emerald-600 hover:text-emerald-800 hover:bg-emerald-100 rounded-lg"
-              onClick={() => handleWhatsAppSend('confirm')}
-              title="Confirmar agendamento (WhatsApp)"
-            >
-              <i className="fab fa-whatsapp text-lg"></i>
+            <button type="button" className="p-1.5 text-emerald-600 hover:text-emerald-800 hover:bg-emerald-100 rounded-lg" onClick={() => handleWhatsAppSend('confirm')} title="Confirmar (WhatsApp)">
+              <i className="fab fa-whatsapp text-base"></i>
             </button>
           )}
-          
-          {/* 🔔 WhatsApp Lembrete */}
           {patientPhone && (
-            <button
-              type="button"
-              className="p-2 text-amber-600 hover:text-amber-800 hover:bg-amber-100 rounded-lg disabled:opacity-50"
-              onClick={() => handleWhatsAppSend('reminder')}
-              disabled={sendingWhatsApp === 'reminder'}
-              title="Lembrar consulta (WhatsApp)"
-            >
-              {sendingWhatsApp === 'reminder' ? (
-                <i className="fas fa-spinner fa-spin"></i>
-              ) : (
-                <i className="fas fa-bell"></i>
-              )}
+            <button type="button" className="p-1.5 text-amber-600 hover:text-amber-800 hover:bg-amber-100 rounded-lg disabled:opacity-50" onClick={() => handleWhatsAppSend('reminder')} disabled={sendingWhatsApp === 'reminder'} title="Lembrete (WhatsApp)">
+              {sendingWhatsApp === 'reminder' ? <i className="fas fa-spinner fa-spin text-sm"></i> : <i className="fas fa-bell text-sm"></i>}
             </button>
           )}
-          
-          {/* ✏️ Editar - Sempre */}
-          <button
-            type="button"
-            className="p-2 text-gray-700 hover:text-gray-900 hover:bg-white/60 rounded-lg"
-            onClick={() => onEdit(appointment)}
-            title={appointment.__isVirtual ? "Agendar" : "Editar"}
-          >
-            <i className={`fas ${appointment.__isVirtual ? 'fa-calendar-plus text-emerald-600' : 'fa-edit'}`}></i>
+          <button type="button" className="p-1.5 text-gray-600 hover:text-gray-900 hover:bg-white/60 rounded-lg" onClick={() => onEdit(appointment)} title={appointment.__isVirtual ? "Agendar" : "Editar"}>
+            <i className={`fas ${appointment.__isVirtual ? 'fa-calendar-plus text-emerald-600' : 'fa-edit'} text-sm`}></i>
           </button>
-
-          {/* ⋮ Menu Mais */}
           {!appointment.__isVirtual && (
             <div className="relative">
-              <button
-                type="button"
-                className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg"
-                onClick={() => setShowMenu(!showMenu)}
-                title="Mais opções"
-              >
-                <i className="fas fa-ellipsis-v"></i>
+              <button type="button" className="p-1.5 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-lg" onClick={() => setShowMenu(!showMenu)} title="Mais opções">
+                <i className="fas fa-ellipsis-v text-sm"></i>
               </button>
-              
               {showMenu && (
                 <>
-                  {/* Overlay para fechar ao clicar fora */}
-                  <div 
-                    className="fixed inset-0 z-40" 
-                    onClick={() => setShowMenu(false)}
-                  ></div>
-                  
+                  <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)}></div>
                   <div className="absolute right-0 top-full mt-1 w-56 bg-white rounded-lg shadow-xl border border-gray-200 z-50 py-1">
-                    
-                    {/* Cancelar */}
                     {appointment.status !== "Cancelado" && appointment.status !== "desistiu" && appointment.status !== "descartado" && (
-                      <button
-                        type="button"
-                        className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-amber-50 hover:text-amber-800 flex items-center gap-2"
-                        onClick={() => {
-                          onCancel?.(appointment);
-                          setShowMenu(false);
-                        }}
-                      >
-                        <i className="fas fa-ban text-amber-600"></i>
-                        Cancelar (manter registro)
+                      <button type="button" className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-amber-50 hover:text-amber-800 flex items-center gap-2" onClick={() => { onCancel?.(appointment); setShowMenu(false); }}>
+                        <i className="fas fa-ban text-amber-600"></i> Cancelar (manter registro)
                       </button>
                     )}
-                    
-                    {/* Excluir - INATIVADO para evitar corrupção de pacotes e fraude de caixa */}
-                    {/* <button
-                      type="button"
-                      className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-red-50 hover:text-red-800 flex items-center gap-2"
-                      onClick={() => {
-                        onDelete(appointment.id);
-                        setShowMenu(false);
-                      }}
-                    >
-                      <i className="fas fa-trash text-red-600"></i>
-                      Excluir permanentemente
-                    </button> */}
-                    
-                    {/* Separador */}
                     <div className="border-t border-gray-100 my-1"></div>
-                    
-                    {/* Lembrete Interno */}
-                    <button
-                      type="button"
-                      className={`w-full px-4 py-2 text-left text-sm flex items-center gap-2 ${
-                        hasReminder 
-                          ? 'bg-yellow-50 text-yellow-900 hover:bg-yellow-100' 
-                          : 'text-gray-700 hover:bg-gray-50'
-                      }`}
-                      onClick={() => {
-                        onReminder?.(appointment);
-                        setShowMenu(false);
-                      }}
-                    >
+                    <button type="button" className={`w-full px-4 py-2 text-left text-sm flex items-center gap-2 ${hasReminder ? 'bg-yellow-50 text-yellow-900 hover:bg-yellow-100' : 'text-gray-700 hover:bg-gray-50'}`} onClick={() => { onReminder?.(appointment); setShowMenu(false); }}>
                       <i className={`fas fa-sticky-note ${hasReminder ? 'text-yellow-600' : 'text-gray-500'}`}></i>
                       {hasReminder ? 'Editar lembrete interno' : 'Adicionar lembrete interno'}
                     </button>
-                    
-                    {/* Gerar Ciclo */}
                     {!isLivre && appointment.status !== "Cancelado" && (
-                      <button
-                        type="button"
-                        className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-indigo-50 hover:text-indigo-800 flex items-center gap-2"
-                        onClick={() => {
-                          onGenerateCycle?.(appointment);
-                          setShowMenu(false);
-                        }}
-                      >
-                        <i className="fas fa-repeat text-indigo-600"></i>
-                        Gerar sessões do ciclo
+                      <button type="button" className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-indigo-50 hover:text-indigo-800 flex items-center gap-2" onClick={() => { onGenerateCycle?.(appointment); setShowMenu(false); }}>
+                        <i className="fas fa-repeat text-indigo-600"></i> Gerar sessões do ciclo
                       </button>
                     )}
                   </div>
@@ -366,9 +271,8 @@ export default function AppointmentRow({ appointment, onEdit, onDelete, onRemind
               )}
             </div>
           )}
-
         </div>
-      </td>
-    </tr>
+      </div>
+    </div>
   );
 }
