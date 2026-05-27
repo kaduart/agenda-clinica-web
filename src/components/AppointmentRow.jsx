@@ -17,22 +17,22 @@ export default function AppointmentRow({ appointment, onEdit, onDelete, onRemind
       case "paid":
       case "Confirmado":
       case "Compareceu":
-        return "bg-emerald-200 text-emerald-900 border border-emerald-300";
+        return "bg-emerald-600 text-white border border-emerald-700";
       case "scheduled":
       case "pending":
       case "Pendente":
       case "Agendado":
-        return "bg-blue-100 text-blue-800 border border-blue-200";
+        return "bg-blue-600 text-white border border-blue-700";
       case "canceled":
       case "Cancelado":
-        return "bg-red-100 text-red-800 border border-red-200";
+        return "bg-gray-500 text-white border border-gray-600";
       case "missed":
-        return "bg-rose-100 text-rose-800 border border-rose-200";
+        return "bg-rose-600 text-white border border-rose-700";
       case "pre_agendado":
       case "Pré-Agendado":
-        return "bg-pink-100 text-pink-800 border border-pink-200";
+        return "bg-violet-600 text-white border border-violet-700";
       default:
-        return "bg-gray-100 text-gray-800 border border-gray-200";
+        return "bg-gray-500 text-white border border-gray-600";
     }
   };
 
@@ -70,6 +70,14 @@ export default function AppointmentRow({ appointment, onEdit, onDelete, onRemind
     };
   };
 
+  const isCancelled =
+    appointment.status === "Cancelado" ||
+    appointment.status === "canceled" ||
+    appointment.status === "desistiu" ||
+    appointment.status === "descartado" ||
+    appointment.operationalStatus === "canceled" ||
+    appointment.operationalStatus === "Cancelado";
+
   const isPre = appointment.operationalStatus === 'pre_agendado';
   const preStatus = appointment.metadata?.preAgendamentoStatus || appointment.status;
   const source = appointment.source || appointment.metadata?.origin?.source;
@@ -99,14 +107,13 @@ export default function AppointmentRow({ appointment, onEdit, onDelete, onRemind
   };
 
   const tone = rowToneBySpecialty(specialtyKey);
-  const rowAccent =
-    appointment.status === "Cancelado" || appointment.status === "desistiu" || appointment.status === "descartado"
-      ? "border-l-[6px] border-l-red-500 bg-red-50 hover:bg-red-100"
-      : isLivre
-        ? "border-l-[6px] border-l-emerald-500 bg-emerald-50 hover:bg-emerald-100"
-        : isPre
-          ? "border-l-[6px] border-l-indigo-500 bg-indigo-50 hover:bg-indigo-100"
-          : `border-l-[6px] ${tone.border} ${tone.bg} ${tone.hover}`;
+  const rowAccent = isCancelled
+    ? "border-l-[6px] border-l-gray-400 bg-gray-100"
+    : isLivre
+      ? "border-l-[6px] border-l-emerald-600 bg-emerald-100 hover:bg-emerald-200"
+      : isPre
+        ? "border-l-[6px] border-l-violet-600 bg-violet-100 hover:bg-violet-200"
+        : `border-l-[6px] ${tone.border} ${tone.bg.replace('-50', '-100')} ${tone.hover.replace('-100', '-200').replace('-50', '-100')}`;
 
   // Handler para enviar mensagem WhatsApp
   const handleWhatsAppSend = async (type) => {
@@ -162,11 +169,11 @@ export default function AppointmentRow({ appointment, onEdit, onDelete, onRemind
   }
 
   return (
-    <div className={`flex items-center gap-2 px-3 py-2.5 rounded-lg border border-gray-200 border-l-[4px] transition-all shadow-sm ${rowAccent}`}>
+    <div className={`flex items-center gap-2 px-3 py-2.5 rounded-lg border border-gray-200 border-l-[4px] transition-all shadow-sm ${rowAccent} ${isCancelled ? 'opacity-60 grayscale' : ''}`}>
 
       {/* Paciente */}
       <div className="flex-1 min-w-0">
-        <div className="font-semibold text-gray-900 flex items-center gap-1.5 flex-wrap text-[15px]">
+        <div className={`font-semibold flex items-center gap-1.5 flex-wrap text-[15px] ${isCancelled ? 'line-through text-gray-500' : 'text-gray-900'}`}>
           {source && getSourceIcon(source)}
           <span className="truncate">{patientName || "-"}</span>
           {hasReminder && (

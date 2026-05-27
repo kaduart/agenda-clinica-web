@@ -24,18 +24,18 @@ export const SERVICE_TYPE_LABELS = {
  * Cores por serviceType para os badges.
  */
 export const SERVICE_TYPE_COLORS = {
-  evaluation: "bg-amber-100 text-amber-700",
-  session: "bg-teal-100 text-teal-700",
-  package_session: "bg-purple-100 text-purple-700",
-  individual_session: "bg-indigo-100 text-indigo-700",
-  meet: "bg-pink-100 text-pink-700",
-  alignment: "bg-lime-100 text-lime-700",
-  return: "bg-sky-100 text-sky-700",
-  tongue_tie_test: "bg-fuchsia-100 text-fuchsia-700",
-  neuropsych_evaluation: "bg-rose-100 text-rose-700",
-  convenio_session: "bg-cyan-100 text-cyan-700",
-  liminar_session: "bg-orange-100 text-orange-700",
-  consultation: "bg-emerald-100 text-emerald-700",
+  evaluation: "bg-amber-200 text-amber-900 font-semibold",
+  session: "bg-teal-200 text-teal-900 font-semibold",
+  package_session: "bg-purple-200 text-purple-900 font-semibold",
+  individual_session: "bg-indigo-200 text-indigo-900 font-semibold",
+  meet: "bg-pink-200 text-pink-900 font-semibold",
+  alignment: "bg-lime-200 text-lime-900 font-semibold",
+  return: "bg-sky-200 text-sky-900 font-semibold",
+  tongue_tie_test: "bg-fuchsia-200 text-fuchsia-900 font-semibold",
+  neuropsych_evaluation: "bg-rose-200 text-rose-900 font-semibold",
+  convenio_session: "bg-cyan-200 text-cyan-900 font-semibold",
+  liminar_session: "bg-orange-200 text-orange-900 font-semibold",
+  consultation: "bg-emerald-200 text-emerald-900 font-semibold",
 };
 
 /**
