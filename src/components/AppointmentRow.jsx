@@ -61,11 +61,12 @@ export default function AppointmentRow({ appointment, onEdit, onDelete, onRemind
       return { bg: "bg-white", hover: "hover:bg-gray-100", border: "border-l-gray-400", text: "text-gray-700" };
     }
     // Deriva a cor de borda a partir do textColor (ex: text-teal-700 → border-l-teal-500)
-    const colorBase = s.textColor.replace("text-", "").replace("-700", "");
+    const colorBase = s.textColor.replace("text-", "").replace(/-\d+$/, "");
+    const hoverBg = s.lightBg.replace(/-\d+$/, '-200').replace("bg-", "hover:bg-");
     return {
       bg: s.lightBg,
-      hover: s.lightBg.replace("-50", "-100").replace("bg-", "hover:bg-"),
-      border: `border-l-${colorBase}-500`,
+      hover: hoverBg,
+      border: `border-l-${colorBase}-600`,
       text: s.textColor,
     };
   };
@@ -113,7 +114,7 @@ export default function AppointmentRow({ appointment, onEdit, onDelete, onRemind
       ? "border-l-[6px] border-l-emerald-600 bg-emerald-100 hover:bg-emerald-200"
       : isPre
         ? "border-l-[6px] border-l-violet-600 bg-violet-100 hover:bg-violet-200"
-        : `border-l-[6px] ${tone.border} ${tone.bg.replace('-50', '-100')} ${tone.hover.replace('-100', '-200').replace('-50', '-100')}`;
+        : `border-l-[6px] ${tone.border} ${tone.bg} ${tone.hover}`;
 
   // Handler para enviar mensagem WhatsApp
   const handleWhatsAppSend = async (type) => {
