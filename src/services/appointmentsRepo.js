@@ -210,6 +210,11 @@ export const updateAppointmentDirect = async (appointmentId, appointmentData) =>
     return { mode: "update", id: appointmentId, data };
 };
 
+export const adminEditAppointment = async (appointmentId, fields, adminReason) => {
+    const data = await v2.adminEditAppointment(appointmentId, fields, adminReason);
+    return { mode: "admin_edit", id: appointmentId, data };
+};
+
 export const rescheduleAppointmentDirect = async (appointmentId, appointmentData) => {
     try {
         const data = await v2.rescheduleAppointment(appointmentId, appointmentData);

@@ -127,11 +127,24 @@ export async function updateAppointment(id, rawData) {
     return response.data;
 }
 
+export async function adminEditAppointment(id, fields, adminReason) {
+    const response = await api.patch(`/api/v2/appointments/${id}/admin-edit`, {
+        ...fields,
+        adminReason
+    });
+    return response.data;
+}
+
 export async function cancelAppointment(id, reason = "Cancelado via Web App", options = {}) {
     const response = await api.patch(`/api/v2/appointments/${id}/cancel`, {
         reason,
         confirmedAbsence: options.confirmedAbsence || false,
-        notifyPatient: options.notifyPatient || false
+        notifyPatient: options.notifyPatient || false,
+        forceCancel: options.forceCancel || false,
+        reverseFinancial: options.reverseFinancial || false,
+        ...(options.notes != null && { notes: options.notes }),
+        ...(options.observations != null && { observations: options.observations }),
+        ...(options.responsible != null && { responsible: options.responsible }),
     });
     return response.data;
 }

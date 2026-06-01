@@ -85,12 +85,12 @@ export default function AppointmentTable({
                                     <i className="fas fa-user text-[10px]"></i> Paciente
                                 </span>
                             </div>
-                            <div className="w-14 shrink-0">
+                            <div className="w-[68px] shrink-0">
                                 <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
                                     <i className="fas fa-clock text-[10px]"></i> Hora
                                 </span>
                             </div>
-                            <div className="w-36 shrink-0 hidden md:block">
+                            <div className="flex-1 min-w-0 hidden md:block">
                                 <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
                                     <i className="fas fa-user-md text-[10px]"></i> Profissional
                                 </span>
@@ -110,7 +110,7 @@ export default function AppointmentTable({
                                     <i className="fas fa-flag text-[10px]"></i> Status
                                 </span>
                             </div>
-                            <div className="w-24 shrink-0 text-center">
+                            <div className="w-40 shrink-0 text-center">
                                 <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider flex items-center justify-center gap-1.5">
                                     <i className="fas fa-cogs text-[10px]"></i> Ações
                                 </span>

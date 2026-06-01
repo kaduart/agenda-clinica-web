@@ -24,6 +24,7 @@ import {
   listenToNotifications,
   upsertAppointment,
   updateAppointmentDirect,
+  adminEditAppointment,
   cancelAppointment,
   hardDeleteAppointment,
   fetchAvailableSlots,
@@ -403,11 +404,17 @@ export default function App() {
       }
     }
 
+    const isCompleted = appointment.operationalStatus === 'completed';
+
     try {
       if (isPre) {
         // Pré-agendamento: cancela (status = 'cancelado')
         await cancelPreAppointment(appointment.id);
         toast.success("Pré-agendamento cancelado!");
+      } else if (isCompleted) {
+        // Agendamento concluído: requer forceCancel explícito, sem estornar pagamento
+        await cancelAppointment(appointment.id, reason, { forceCancel: true, reverseFinancial: false });
+        toast.success("Agendamento revertido (force_cancelled). Pagamento preservado.");
       } else {
         // Agendamento real: cancela (soft delete / status cancelado)
         await cancelAppointment(appointment.id, reason);
@@ -482,12 +489,75 @@ export default function App() {
     }
 
     
+    // Edição de appointment completed: usa admin-edit (campos operacionais seguros)
+    if (isEditing && editingAppointment?.operationalStatus === 'completed') {
+      try {
+        const safeFields = {
+          notes: appointmentData.observations,
+          responsible: appointmentData.responsible,
+          sessionValue: appointmentData.sessionValue ?? appointmentData.crm?.paymentAmount,
+          paymentMethod: appointmentData.paymentMethod ?? appointmentData.crm?.paymentMethod,
+          serviceType: appointmentData.crm?.serviceType,
+          sessionType: appointmentData.crm?.sessionType,
+          specialty: appointmentData.specialty,
+          date: appointmentData.date,
+          time: appointmentData.time,
+        };
+        // Remove undefined/null para não enviar campos vazios
+        Object.keys(safeFields).forEach(k => { if (safeFields[k] == null) delete safeFields[k]; });
+        await adminEditAppointment(appointmentId, safeFields, 'Edição via modal');
+        toast.success("Agendamento atualizado!");
+        setIsModalOpen(false);
+        setEditingAppointment(null);
+        forceRefreshAppointments();
+      } catch (err) {
+        const msg = err.response?.data?.error || err.message;
+        toast.error("Erro ao salvar: " + msg);
+        throw err;
+      }
+      return;
+    }
+
+    const newStatus = appointmentData.operationalStatus;
+    const originalStatus = editingAppointment?.operationalStatus;
+
+    // 🎯 ROTEAMENTO POR TRANSIÇÃO DE STATUS
+    // O modal é o cockpit — cada transição vai para o endpoint correto
+    if (isEditing && newStatus !== originalStatus) {
+
+      // canceled → endpoint dedicado /cancel com todos os campos relevantes
+      if (newStatus === 'canceled') {
+        const reason = prompt("Motivo do cancelamento:", "Cancelado pela secretária");
+        if (!reason) return;
+        try {
+          await cancelAppointment(appointmentId, reason, {
+            forceCancel: originalStatus === 'completed',
+            reverseFinancial: false,
+            notes: appointmentData.observations ?? appointmentData.notes,
+            responsible: appointmentData.responsible,
+          });
+          toast.success("Agendamento cancelado!");
+          setIsModalOpen(false);
+          setEditingAppointment(null);
+          forceRefreshAppointments();
+        } catch (err) {
+          toast.error("Erro ao cancelar: " + (err.response?.data?.error || err.message));
+          throw err;
+        }
+        return;
+      }
+
+      // completed → bloqueia via modal (use botão Complete no CRM)
+      if (newStatus === 'completed') {
+        toast.warning("Para concluir um atendimento, use o fluxo de conclusão no CRM.");
+        return;
+      }
+    }
+
     const candidate = {
       ...(isEditing ? editingAppointment : {}),
       ...appointmentData,
-      operationalStatus: appointmentData.operationalStatus || editingAppointment?.operationalStatus || "scheduled",
     };
-    
 
     if (appointmentId && isEditing) candidate.id = appointmentId;
 
@@ -510,10 +580,35 @@ export default function App() {
       forceRefreshAppointments();
 
     } catch (err) {
+      // Fallback: completed no banco mas estado local desatualizado
+      if (isEditing && err.response?.data?.code === 'CANNOT_EDIT_COMPLETED_APPOINTMENT') {
+        try {
+          const safeFields = {};
+          if (appointmentData.observations != null) safeFields.notes = appointmentData.observations;
+          if (appointmentData.responsible != null) safeFields.responsible = appointmentData.responsible;
+          if (appointmentData.sessionValue != null) safeFields.sessionValue = appointmentData.sessionValue;
+          if (appointmentData.crm?.paymentAmount != null) safeFields.sessionValue = appointmentData.crm.paymentAmount;
+          if (appointmentData.paymentMethod != null) safeFields.paymentMethod = appointmentData.paymentMethod;
+          if (appointmentData.crm?.paymentMethod != null) safeFields.paymentMethod = appointmentData.crm.paymentMethod;
+          if (appointmentData.crm?.serviceType != null) safeFields.serviceType = appointmentData.crm.serviceType;
+          if (appointmentData.specialty != null) safeFields.specialty = appointmentData.specialty;
+          if (appointmentData.date != null) safeFields.date = appointmentData.date;
+          if (appointmentData.time != null) safeFields.time = appointmentData.time;
+          await adminEditAppointment(appointmentId, safeFields, 'Edição via modal (completed)');
+          toast.success("Agendamento atualizado!");
+          setIsModalOpen(false);
+          setEditingAppointment(null);
+          forceRefreshAppointments();
+          return;
+        } catch (adminErr) {
+          toast.error("Erro ao salvar: " + (adminErr.response?.data?.error || adminErr.message));
+          throw adminErr;
+        }
+      }
       console.error("[saveAppointment] Erro:", err);
       const msg = err.response?.data?.error || err.message;
       toast.error("Erro ao salvar: " + msg);
-      throw err; // Propaga erro para o modal saber que falhou
+      throw err;
     }
   };
 

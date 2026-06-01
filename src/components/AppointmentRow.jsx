@@ -174,26 +174,30 @@ export default function AppointmentRow({ appointment, onEdit, onDelete, onRemind
 
       {/* Paciente */}
       <div className="flex-1 min-w-0">
-        <div className={`font-semibold flex items-center gap-1.5 flex-wrap text-[15px] ${isCancelled ? 'line-through text-gray-500' : 'text-gray-900'}`}>
-          {source && getSourceIcon(source)}
-          <span className="truncate">{patientName || "-"}</span>
-          {hasReminder && (
-            <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-full bg-yellow-200 text-yellow-900 shrink-0">lembrete</span>
-          )}
-          {isPre && getPreStatusBadge(preStatus)}
-          {isPre && appointment.attemptCount > 0 && (
-            <span className="text-[10px] text-gray-500 shrink-0"><i className="fas fa-phone-alt"></i> {appointment.attemptCount}</span>
-          )}
+        <div className="flex items-start gap-1.5">
+          {source && <span className="shrink-0 mt-0.5">{getSourceIcon(source)}</span>}
+          <div className="min-w-0">
+            <div className={`font-semibold flex items-center gap-1.5 flex-wrap text-[14px] leading-tight ${isCancelled ? 'line-through text-gray-500' : 'text-gray-900'}`}>
+              <span className="truncate">{patientName || "-"}</span>
+              {hasReminder && (
+                <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-full bg-yellow-200 text-yellow-900 shrink-0">lembrete</span>
+              )}
+              {isPre && getPreStatusBadge(preStatus)}
+              {isPre && appointment.attemptCount > 0 && (
+                <span className="text-[10px] text-gray-500 shrink-0"><i className="fas fa-phone-alt"></i> {appointment.attemptCount}</span>
+              )}
+            </div>
+            {appointment.responsible && (
+              <div className="text-[11px] text-gray-500 mt-0.5 truncate">{appointment.responsible}</div>
+            )}
+          </div>
         </div>
-        {appointment.responsible && (
-          <div className="text-xs text-gray-500 mt-0.5 truncate">{appointment.responsible}</div>
-        )}
       </div>
 
       {/* Hora */}
-      <div className="w-14 shrink-0">
-        <div className="text-gray-900 font-bold text-sm leading-tight">{appointment.time || "-"}</div>
-        <div className="text-[10px] text-gray-400 whitespace-nowrap">
+      <div className="w-[68px] shrink-0">
+        <div className="text-gray-900 font-bold text-[13px] leading-tight tracking-tight">{appointment.time || "-"}</div>
+        <div className="text-[11px] text-gray-400 whitespace-nowrap mt-0.5">
           {(() => {
             const [y, m, d] = (appointment.date || "").split("-");
             if (!y || !m || !d) return "";
@@ -204,7 +208,7 @@ export default function AppointmentRow({ appointment, onEdit, onDelete, onRemind
       </div>
 
       {/* Profissional */}
-      <div className="w-36 shrink-0 hidden md:block">
+      <div className="flex-1 min-w-0 hidden md:block">
         <div className="text-gray-800 font-medium text-sm truncate">
           {appointment.doctor?.fullName || appointment.professional?.fullName || appointment.professional?.name || (typeof appointment.professional === 'string' ? appointment.professional : null) || "-"}
         </div>
@@ -235,7 +239,7 @@ export default function AppointmentRow({ appointment, onEdit, onDelete, onRemind
       </div>
 
       {/* Controles */}
-      <div className="w-24 shrink-0">
+      <div className="w-40 shrink-0">
         <div className="flex gap-0.5 items-center justify-end">
           {patientPhone && (isPre || appointment.operationalStatus === 'scheduled') && (
             <button type="button" className="p-1.5 text-emerald-600 hover:text-emerald-800 hover:bg-emerald-100 rounded-lg" onClick={() => handleWhatsAppSend('confirm')} title="Confirmar (WhatsApp)">
@@ -245,6 +249,16 @@ export default function AppointmentRow({ appointment, onEdit, onDelete, onRemind
           {patientPhone && (
             <button type="button" className="p-1.5 text-amber-600 hover:text-amber-800 hover:bg-amber-100 rounded-lg disabled:opacity-50" onClick={() => handleWhatsAppSend('reminder')} disabled={sendingWhatsApp === 'reminder'} title="Lembrete (WhatsApp)">
               {sendingWhatsApp === 'reminder' ? <i className="fas fa-spinner fa-spin text-sm"></i> : <i className="fas fa-bell text-sm"></i>}
+            </button>
+          )}
+          {appointment.operationalStatus === 'completed' && (
+            <button type="button" className="p-1.5 text-amber-600 hover:text-amber-800 hover:bg-amber-100 rounded-lg" onClick={() => onCancel?.(appointment)} title="Reverter conclusão (preserva financeiro)">
+              <i className="fas fa-undo text-sm"></i>
+            </button>
+          )}
+          {!appointment.__isVirtual && appointment.operationalStatus !== 'completed' && appointment.status !== "Cancelado" && appointment.status !== "desistiu" && appointment.status !== "descartado" && (
+            <button type="button" className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-100 rounded-lg" onClick={() => onCancel?.(appointment)} title="Cancelar (manter registro)">
+              <i className="fas fa-ban text-sm"></i>
             </button>
           )}
           <button type="button" className="p-1.5 text-gray-600 hover:text-gray-900 hover:bg-white/60 rounded-lg" onClick={() => onEdit(appointment)} title={appointment.__isVirtual ? "Agendar" : "Editar"}>
@@ -259,11 +273,6 @@ export default function AppointmentRow({ appointment, onEdit, onDelete, onRemind
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)}></div>
                   <div className="absolute right-0 top-full mt-1 w-56 bg-white rounded-lg shadow-xl border border-gray-200 z-50 py-1">
-                    {appointment.status !== "Cancelado" && appointment.status !== "desistiu" && appointment.status !== "descartado" && (
-                      <button type="button" className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-amber-50 hover:text-amber-800 flex items-center gap-2" onClick={() => { onCancel?.(appointment); setShowMenu(false); }}>
-                        <i className="fas fa-ban text-amber-600"></i> Cancelar (manter registro)
-                      </button>
-                    )}
                     <div className="border-t border-gray-100 my-1"></div>
                     <button type="button" className={`w-full px-4 py-2 text-left text-sm flex items-center gap-2 ${hasReminder ? 'bg-yellow-50 text-yellow-900 hover:bg-yellow-100' : 'text-gray-700 hover:bg-gray-50'}`} onClick={() => { onReminder?.(appointment); setShowMenu(false); }}>
                       <i className={`fas fa-sticky-note ${hasReminder ? 'text-yellow-600' : 'text-gray-500'}`}></i>

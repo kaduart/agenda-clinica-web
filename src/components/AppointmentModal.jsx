@@ -783,6 +783,8 @@ export default function AppointmentModal({ appointment, professionals, patients,
                     </div>
                 )}
 
+
+
                 <form onSubmit={handleSubmit} className="px-6 py-4">
                     {/* Banner: agendamento de pacote — somente leitura nesta tela */}
                     {isPackagePreAgendado && (
@@ -1176,11 +1178,12 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                 <select
                                     name="operationalStatus"
                                     value={formData.operationalStatus}
-                                    onChange={(e) => { ; handleChange(e); }}
+                                    onChange={(e) => { handleChange(e); }}
                                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                                 >
                                     <option value="scheduled">Agendado</option>
                                     <option value="pre_agendado">⭐ Pré-Agendado</option>
+                                    <option value="completed">Concluído</option>
                                     <option value="canceled">Cancelado</option>
                                     <option value="missed">Faltou</option>
                                 </select>
