@@ -20,6 +20,14 @@ export default function WhatsAppConnectModal({ isOpen, onClose }) {
         signal: abortControllerRef.current.signal,
         timeout: 8000, // timeout curto: se o backend congelou, falha rápido
       });
+      console.log('[WA Modal] status recebido:', {
+        status: response.data?.status,
+        ready: response.data?.ready,
+        temQR: !!response.data?.qrCode,
+        updatedAt: response.data?.updatedAt,
+        pid: response.data?.pid,
+        uptime: response.data?.uptime,
+      });
       setStatus(response.data);
     } catch (err) {
       if (err.name === 'AbortError' || err.code === 'ERR_CANCELED') {
