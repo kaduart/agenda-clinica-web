@@ -673,9 +673,16 @@ export default function App() {
   };
 
   const handleCloseModal = React.useCallback(() => {
+    const id = editingAppointment?.id || editingAppointment?._id;
+    const isPre = editingAppointment?.operationalStatus === 'pre_agendado';
+    if (isPre && id) {
+      cancelPreAppointment(id).catch(err =>
+        console.error('[handleCloseModal] Erro ao cancelar pre_agendado ao fechar modal:', err)
+      );
+    }
     setIsModalOpen(false);
     setEditingAppointment(null);
-  }, []);
+  }, [editingAppointment]);
 
   const handleReloadPatients = React.useCallback(async () => {
     try {

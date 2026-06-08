@@ -103,6 +103,11 @@ export function buildAppointmentPayload(raw, options = {}) {
     // --- Flags visuais ---
     const visualFlag = raw.visualFlag || null;
 
+    // --- Sessão Conjunta (permite mesmo médico em dois slots simultâneos) ---
+    const isJointSession = raw.isJointSession === true
+        || raw.crm?.serviceType === 'joint_session'
+        || raw.serviceType === 'joint_session';
+
     // --- Metadados ---
     const metadata = raw.metadata || { origin: { source: "web_app" } };
 
@@ -133,6 +138,7 @@ export function buildAppointmentPayload(raw, options = {}) {
         package: packageInfo,
         responsible,
         visualFlag,
+        isJointSession,
         metadata,
     };
 
