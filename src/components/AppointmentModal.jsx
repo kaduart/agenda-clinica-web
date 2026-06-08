@@ -641,6 +641,9 @@ export default function AppointmentModal({ appointment, professionals, patients,
                 // Dados CRM
                 crm: formData.crm,
 
+                // Sessão Conjunta: permite mesmo profissional em dois slots simultâneos
+                isJointSession: formData.crm?.serviceType === 'joint_session',
+
                 // ID se estiver editando
                 ...(appointment?.id ? { id: appointment.id } : {})
             };

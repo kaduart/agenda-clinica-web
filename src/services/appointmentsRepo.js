@@ -189,6 +189,7 @@ export const listenAppointmentsForMonth = (year, month, onData, specificDate = n
 };
 
 export const hasConflict = (appointments, candidate, editingId) => {
+    if (candidate.serviceType === 'joint_session') return false;
     return (appointments || []).some((a) =>
         a.id !== editingId &&
         a.date === candidate.date &&
