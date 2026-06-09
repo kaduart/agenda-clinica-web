@@ -95,7 +95,7 @@ export default function AppointmentTable({
                                     <i className="fas fa-user-md text-[10px]"></i> Profissional
                                 </span>
                             </div>
-                            <div className="w-28 shrink-0 hidden lg:block">
+                            <div className="w-28 shrink-0">
                                 <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
                                     <i className="fas fa-stethoscope text-[10px]"></i> Área
                                 </span>

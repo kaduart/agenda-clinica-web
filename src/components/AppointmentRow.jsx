@@ -215,7 +215,7 @@ export default function AppointmentRow({ appointment, onEdit, onDelete, onRemind
       </div>
 
       {/* Área */}
-      <div className="w-28 shrink-0 hidden lg:block">
+      <div className="w-28 shrink-0">
         <div className={`font-semibold text-sm ${tone.text || 'text-gray-900'}`}>{SPECIALTIES[specialtyKey]?.name || appointment.specialty || "-"}</div>
         {(() => {
           const st = resolveServiceType(appointment);
