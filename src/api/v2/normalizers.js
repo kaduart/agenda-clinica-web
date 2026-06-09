@@ -73,11 +73,12 @@ export const normalizeSessionType = (value, fallback = 'fonoaudiologia') => {
 };
 
 // ─── SERVICE TYPE ────────────────────────────────────────────
-// Backend V2 espera: 'evaluation', 'session', 'package_session', 'sessao_avulsa', 'retorno' ou 'consultation'
+// Backend V2 espera: 'evaluation', 'session', 'package_session', 'sessao_avulsa', 'retorno', 'consultation' ou 'joint_session'
 export const normalizeServiceType = (value) => {
     if (!value) return 'evaluation';
     const normalized = value.toLowerCase().trim();
 
+    if (normalized === 'joint_session') return 'joint_session';
     if (normalized === 'consulta' || normalized === 'consultation') return 'consultation';
     if (normalized === 'retorno' || normalized === 'return') return 'return';
     if (normalized === 'sessao_avulsa') return 'individual_session';
