@@ -613,6 +613,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                 responsible: formData.responsible,
 
                 // Dados do agendamento
+                serviceType: formData.crm?.serviceType || 'individual_session',
                 date: formData.date,
                 time: formData.time,
                 professional: formData.professional,
