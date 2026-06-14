@@ -1366,6 +1366,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                 <select
                                     value={formData.crm.serviceType || 'individual_session'}
                                     onChange={(e) => {
+                                        hasInteracted.current = true;
                                         const value = e.target.value;
                                         setFormData(prev => ({
                                             ...prev,
