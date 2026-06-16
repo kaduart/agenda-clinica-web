@@ -1,9 +1,11 @@
 /**
  * 🧭 NORMALIZERS V2
- * 
+ *
  * Garante que todo payload enviado ao CRM esteja no formato correto.
  * Única fonte de verdade para tradução frontend ↔ backend.
  */
+
+import { VALID_SERVICE_TYPES } from "../../utils/serviceType";
 
 // ─── PAYMENT METHOD ─────────────────────────────────────────
 // Frontend envia inglês, CRM V2 espera português
@@ -73,23 +75,24 @@ export const normalizeSessionType = (value, fallback = 'fonoaudiologia') => {
 };
 
 // ─── SERVICE TYPE ────────────────────────────────────────────
-// Backend V2 espera: 'evaluation', 'session', 'package_session', 'sessao_avulsa', 'retorno', 'consultation' ou 'joint_session'
+// Regra: o que já é um valor válido do enum (VALID_SERVICE_TYPES) é
+// SEMPRE preservado como veio — nunca reescrito. Só traduzimos aliases
+// legados em pt-BR. 'evaluation' é fallback apenas para lixo/vazio.
 export const normalizeServiceType = (value) => {
     if (!value) return 'evaluation';
-    const normalized = value.toLowerCase().trim();
+    const normalized = String(value).toLowerCase().trim();
 
-    if (normalized === 'joint_session') return 'joint_session';
-    if (normalized === 'consulta' || normalized === 'consultation') return 'consultation';
-    if (normalized === 'retorno' || normalized === 'return') return 'return';
+    // Já é um valor válido do backend → respeita como está
+    if (VALID_SERVICE_TYPES.includes(normalized)) {
+        return normalized;
+    }
+
+    // Aliases legados / pt-BR
+    if (normalized === 'consulta') return 'consultation';
+    if (normalized === 'retorno') return 'return';
     if (normalized === 'sessao_avulsa') return 'individual_session';
-
-    if (normalized === 'package_session' || normalized === 'sessao' || normalized === 'session') {
-        return 'session';
-    }
-
-    if (normalized === 'individual_session' || normalized === 'avaliacao' || normalized === 'evaluation') {
-        return 'evaluation';
-    }
+    if (normalized === 'sessao') return 'session';
+    if (normalized === 'avaliacao') return 'evaluation';
 
     return 'evaluation';
 };
