@@ -3,6 +3,7 @@ import { formatDateLocal, extractDateForInput } from "../utils/date";
 import { resolveSpecialtyKey } from "../utils/specialty";
 import { SERVICE_TYPE_LABELS, mapBackendServiceType } from "../utils/serviceType";
 import api from "../services/api";
+import { searchPatients } from "../services/patientsRepo";
 import { cancelPreAppointment } from "../services/preAppointmentsRepo";
 import { sendWhatsAppMessage, generateConfirmationMessage, generateReminderMessage } from "../services/baileysApi";
 import { getHolidays, holidaysToMap, isTimeBlockedByHoliday as checkHolidayBlock } from "../services/calendarService";
@@ -369,30 +370,25 @@ export default function AppointmentModal({ appointment, professionals, patients,
     const [isLoading, setIsLoading] = React.useState(false);
     const [showSuggestions, setShowSuggestions] = React.useState(false);
     const [filteredPatients, setFilteredPatients] = React.useState([]);
+    const [isSearching, setIsSearching] = React.useState(false);
 
     // Estado para controlar se é paciente novo ou existente
     const [isNewPatient, setIsNewPatient] = React.useState(() => {
-        // Detecta se é pré-agendamento da agenda externa
         const isPre = appointment?.operationalStatus === 'pre_agendado';
-
-        // Se já tem patientId (direto ou em originalData para pré-agendamentos), é existente
         const hasPatientId = appointment?.patientId ||
             appointment?.originalData?.patientId ||
             (typeof appointment?.patient === 'object' && appointment?.patient?._id);
-        const hasPatientName = appointment?.patientName || (typeof appointment?.patient === 'string' ? appointment?.patient : '');
 
-        // Se tem ID, é paciente existente
         if (hasPatientId) return false;
 
-        // Se é pré-agendamento e não tem patientId, força modo NOVO PACIENTE
-        // (pois pré-agendamentos geralmente são de novos pacientes)
-        if (isPre) return true;
+        // Pré-agendamento externo: chegou com nome pré-preenchido mas sem ID → novo paciente
+        const prefilledName = (typeof appointment?.patient === 'string' && appointment.patient.trim()) ||
+            appointment?.patientName?.trim() ||
+            appointment?.originalData?.patientName?.trim();
+        if (isPre && prefilledName) return true;
 
-        // Se está criando novo e não tem nada, assume novo por padrão
-        if (!appointment?.id && !hasPatientName) return true;
-
-        // Sem patientId → sempre novo paciente (será criado no submit)
-        return true;
+        // Novo pré-agendamento manual ou novo agendamento: começa no modo busca
+        return false;
     });
 
     // Sincroniza isNewPatient quando formData.patientId muda (ex: ao carregar pré-agendamento)
@@ -401,6 +397,30 @@ export default function AppointmentModal({ appointment, professionals, patients,
             setIsNewPatient(false);
         }
     }, [formData.patientId]);
+
+    // Busca no backend com debounce de 300ms (igual ao CRM)
+    React.useEffect(() => {
+        const term = formData.patient?.trim();
+
+        if (!term || term.length < 2 || formData.patientId || isNewPatient) {
+            return;
+        }
+
+        const timeoutId = setTimeout(async () => {
+            setIsSearching(true);
+            try {
+                const results = await searchPatients(term);
+                setFilteredPatients(results);
+                setShowSuggestions(true);
+            } catch (err) {
+                console.error('[AppointmentModal] Erro ao buscar pacientes:', err);
+            } finally {
+                setIsSearching(false);
+            }
+        }, 300);
+
+        return () => clearTimeout(timeoutId);
+    }, [formData.patient, formData.patientId, isNewPatient]);
 
     const handlePatientChange = (value) => {
         hasInteracted.current = true;
@@ -411,14 +431,11 @@ export default function AppointmentModal({ appointment, professionals, patients,
             patientId: ""
         }));
 
-        if (value.length > 2) {
-            const matches = (patients || []).filter(p =>
-                p.fullName.toLowerCase().includes(value.toLowerCase())
-            ).slice(0, 5);
-            setFilteredPatients(matches);
-            setShowSuggestions(matches.length > 0);
+        if (value.length > 1) {
+            setShowSuggestions(true);
         } else {
             setShowSuggestions(false);
+            setFilteredPatients([]);
         }
     };
 
@@ -806,31 +823,6 @@ export default function AppointmentModal({ appointment, professionals, patients,
                             <i className="fas fa-user text-blue-600"></i> Identificação do Paciente
                         </h4>
                         <div className="space-y-4">
-                            {/* Checkbox novo paciente (se não for edição) */}
-                            {!isEdit && (
-                                <div className="flex items-center gap-3 p-3 bg-white rounded-lg border border-blue-200">
-                                    <input
-                                        id="isNewPatient"
-                                        type="checkbox"
-                                        checked={isNewPatient}
-                                        onChange={(e) => {
-                                            const checked = e.target.checked;
-                                            setIsNewPatient(checked);
-                                            if (checked) {
-                                                setFormData(prev => ({ ...prev, patientId: "", patient: "", phone: "", birthDate: "", email: "" }));
-                                            } else {
-                                                setFormData(prev => ({ ...prev, patientId: "", patient: "" }));
-                                            }
-                                        }}
-                                        className="w-5 h-5 text-teal-600 rounded focus:ring-teal-500"
-                                    />
-                                    <label htmlFor="isNewPatient" className="text-sm font-medium text-gray-700 cursor-pointer">
-                                        {isNewPatient ? "✨ Criando novo paciente" : "🔍 Selecionar paciente existente"}
-                                    </label>
-                                </div>
-                            )}
-
-                            {/* Bloco de paciente: conforme lógica existente */}
                             {isEdit ? (
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -846,19 +838,32 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                     </p>
                                 </div>
                             ) : isNewPatient ? (
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Nome do novo paciente *
-                                    </label>
+                                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <p className="text-xs font-semibold text-blue-800 flex items-center gap-1.5">
+                                            <i className="fas fa-user-plus"></i> Novo paciente
+                                        </p>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setIsNewPatient(false);
+                                                setFormData(prev => ({ ...prev, patient: "", patientId: "", phone: "", birthDate: "", email: "" }));
+                                            }}
+                                            className="text-gray-400 hover:text-gray-600 p-1"
+                                        >
+                                            <i className="fas fa-times text-sm"></i>
+                                        </button>
+                                    </div>
                                     <input
                                         type="text"
                                         name="patient"
                                         value={formData.patient}
                                         onChange={(e) => setFormData(prev => ({ ...prev, patient: e.target.value }))}
-                                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                        className="w-full p-3 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-medium bg-white"
+                                        placeholder="Nome completo *"
                                         required
                                         autoComplete="off"
-                                        placeholder="Digite o nome completo..."
+                                        autoFocus
                                     />
                                 </div>
                             ) : (
@@ -878,19 +883,22 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                             placeholder="Buscar paciente..."
                                             value={formData.patient || ""}
                                             onChange={(e) => handlePatientChange(e.target.value)}
-                                            onFocus={() => {
-                                                setShowSuggestions(true);
-                                                setFilteredPatients(patients.slice(0, 10));
-                                            }}
                                             onBlur={(e) => handlePatientBlur(e.target.value)}
-                                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 pr-10"
                                             required
                                         />
-                                        <i className="fas fa-search absolute right-3 top-3.5 text-gray-400"></i>
+                                        {isSearching ? (
+                                            <svg className="animate-spin h-4 w-4 text-teal-500 absolute right-3 top-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                            </svg>
+                                        ) : (
+                                            <i className="fas fa-search absolute right-3 top-3.5 text-gray-400"></i>
+                                        )}
                                     </div>
-                                    {/* Lista de sugestões */}
+                                    {/* Dropdown de sugestões */}
                                     {showSuggestions && (
-                                        <div className="border border-gray-200 rounded-lg max-h-48 overflow-y-auto bg-white mb-2">
+                                        <div className="border border-gray-200 rounded-lg overflow-hidden bg-white mb-2 shadow-md">
                                             {filteredPatients.length === 0 ? (
                                                 <div className="p-3 text-gray-500 text-sm text-center">
                                                     Nenhum paciente encontrado
@@ -899,8 +907,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                                 filteredPatients.map((p) => (
                                                     <div
                                                         key={p._id}
-                                                        className={`p-3 cursor-pointer border-b border-gray-100 last:border-0 hover:bg-teal-50 ${formData.patientId === p._id ? 'bg-teal-50 border-l-4 border-l-teal-500' : ''
-                                                            }`}
+                                                        className={`p-3 cursor-pointer border-b border-gray-100 last:border-0 hover:bg-teal-50 ${formData.patientId === p._id ? 'bg-teal-50 border-l-4 border-l-teal-500' : ''}`}
                                                         onClick={() => selectPatient(p)}
                                                     >
                                                         <div className="font-semibold text-gray-800">{p.fullName}</div>
@@ -913,6 +920,20 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                                     </div>
                                                 ))
                                             )}
+                                            <button
+                                                type="button"
+                                                onMouseDown={(e) => e.preventDefault()}
+                                                onClick={() => {
+                                                    setIsNewPatient(true);
+                                                    setShowSuggestions(false);
+                                                }}
+                                                className="w-full px-3 py-2.5 text-left text-sm text-blue-700 hover:bg-blue-50 border-t border-gray-200 flex items-center gap-2 font-medium"
+                                            >
+                                                <i className="fas fa-user-plus text-blue-600"></i>
+                                                {formData.patient?.trim()
+                                                    ? `Criar novo: "${formData.patient}"`
+                                                    : "Criar novo paciente"}
+                                            </button>
                                         </div>
                                     )}
                                     {/* Resumo do paciente selecionado */}

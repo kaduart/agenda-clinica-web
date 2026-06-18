@@ -6,7 +6,7 @@ import CycleWizardModal from "./CycleWizardModal";
 export default function AppointmentTable({
     activeSpecialty, appointments, isLoading,
     onEdit, onDelete, onReminder, onCancel,
-    onConfirmCycle }) {
+    onConfirmCycle, onPostAppointment }) {
 
     const [cycleWizardOpen, setCycleWizardOpen] = useState(false);
     const [baseAppointment, setBaseAppointment] = useState(null);
@@ -79,40 +79,35 @@ export default function AppointmentTable({
                 ) : (
                     <>
                         {/* Header row — espelha as colunas do AppointmentRow */}
-                        <div className="flex items-center gap-2 px-3 py-2 mb-1 border-b border-gray-200">
-                            <div className="flex-1 min-w-0">
-                                <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
-                                    <i className="fas fa-user text-[10px]"></i> Paciente
+                        <div className="flex items-center gap-3 px-4 py-2 mb-2 border-b border-gray-200">
+                            <div className="flex-[1.2] min-w-0 flex items-center">
+                                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+                                    <i className="fas fa-user text-xs"></i> Paciente
                                 </span>
                             </div>
-                            <div className="w-[68px] shrink-0">
-                                <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
-                                    <i className="fas fa-clock text-[10px]"></i> Hora
+                            <div className="w-40 shrink-0 hidden sm:flex items-center">
+                                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+                                    <i className="fas fa-clock text-xs"></i> Horário / Profissional
                                 </span>
                             </div>
-                            <div className="flex-1 min-w-0 hidden md:block">
-                                <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
-                                    <i className="fas fa-user-md text-[10px]"></i> Profissional
+                            <div className="w-36 shrink-0 flex items-center">
+                                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+                                    <i className="fas fa-stethoscope text-xs"></i> Área / Tipo
                                 </span>
                             </div>
-                            <div className="w-28 shrink-0">
-                                <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
-                                    <i className="fas fa-stethoscope text-[10px]"></i> Área
+                            <div className="w-32 shrink-0 hidden xl:flex items-center">
+                                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+                                    <i className="fas fa-comment-dots text-xs"></i> Anotações
                                 </span>
                             </div>
-                            <div className="w-24 shrink-0 hidden xl:block">
-                                <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
-                                    <i className="fas fa-comment-dots text-[10px]"></i> Anotações
+                            <div className="w-28 shrink-0 text-center hidden md:flex items-center justify-center">
+                                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center justify-center gap-1.5">
+                                    <i className="fas fa-flag text-xs"></i> Status
                                 </span>
                             </div>
-                            <div className="w-24 shrink-0 text-center">
-                                <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider flex items-center justify-center gap-1.5">
-                                    <i className="fas fa-flag text-[10px]"></i> Status
-                                </span>
-                            </div>
-                            <div className="w-40 shrink-0 text-center">
-                                <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider flex items-center justify-center gap-1.5">
-                                    <i className="fas fa-cogs text-[10px]"></i> Ações
+                            <div className="w-52 shrink-0 flex items-center justify-end">
+                                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center justify-center gap-1.5">
+                                    <i className="fas fa-cogs text-xs"></i> Ações
                                 </span>
                             </div>
                         </div>
@@ -129,6 +124,7 @@ export default function AppointmentTable({
                                     onCancel={onCancel}
                                     onReminder={onReminder}
                                     onGenerateCycle={handleGenerateCycle}
+                                    onPostAppointment={onPostAppointment}
                                 />
                             ))}
                         </div>

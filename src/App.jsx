@@ -38,7 +38,7 @@ import {
   deleteProfessional,
   listenProfessionals
 } from "./services/professionalsRepo";
-import { fetchPatients } from "./services/patientsRepo";
+import { fetchPatients, updatePatient } from "./services/patientsRepo";
 
 import { confirmToast } from "./utils/confirmToast";
 import { formatDateLocal, getWeeksInMonth } from "./utils/date";
@@ -48,6 +48,7 @@ import { SPECIALTIES } from "./config/specialties";
 
 import ReminderModal from "./components/ReminderModal";
 import RemindersListModal from "./components/RemindersListModal";
+import PostAppointmentModal from "./components/PostAppointmentModal";
 import WhatsAppQRGlobal from "./components/WhatsAppQRGlobal";
 
 // crmExport removido pois a sincronização agora é automática no repo
@@ -128,6 +129,8 @@ export default function App() {
   const [reminderAppointment, setReminderAppointment] = React.useState(null);
   const [reminders, setReminders] = React.useState([]);
   const [isRemindersListOpen, setIsRemindersListOpen] = React.useState(false);
+  const [isPostAppointmentOpen, setIsPostAppointmentOpen] = React.useState(false);
+  const [postAppointmentData, setPostAppointmentData] = React.useState(null);
 
   const [availableSlots, setAvailableSlots] = React.useState([]);
   const [isLoadingAppointments, setIsLoadingAppointments] = React.useState(true);
@@ -165,6 +168,11 @@ export default function App() {
   const openReminder = (appointment) => {
     setReminderAppointment(appointment);
     setIsReminderOpen(true);
+  };
+
+  const openPostAppointment = (appointment) => {
+    setPostAppointmentData(appointment);
+    setIsPostAppointmentOpen(true);
   };
 
   const saveReminder = async (payload) => {
@@ -489,23 +497,58 @@ export default function App() {
     }
 
     
-    // Edição de appointment completed: usa admin-edit (campos operacionais seguros)
+    // Edição de appointment completed: usa admin-edit com TODOS os campos do modal
     if (isEditing && editingAppointment?.operationalStatus === 'completed') {
       try {
-        const safeFields = {
-          notes: appointmentData.observations,
+        const adminFields = {
+          patientName: appointmentData.patientName ?? appointmentData.patient,
+          patientId: appointmentData.patientId,
+          phone: appointmentData.phone,
+          birthDate: appointmentData.birthDate,
+          email: appointmentData.email,
           responsible: appointmentData.responsible,
-          sessionValue: appointmentData.sessionValue ?? appointmentData.crm?.paymentAmount,
-          paymentMethod: appointmentData.paymentMethod ?? appointmentData.crm?.paymentMethod,
-          serviceType: appointmentData.crm?.serviceType,
-          sessionType: appointmentData.crm?.sessionType,
-          specialty: appointmentData.specialty,
           date: appointmentData.date,
           time: appointmentData.time,
+          professional: appointmentData.professional,
+          professionalName: appointmentData.professionalName,
+          professionalId: appointmentData.professionalId,
+          specialty: appointmentData.specialty,
+          specialtyKey: appointmentData.specialtyKey,
+          operationalStatus: appointmentData.operationalStatus,
+          notes: appointmentData.observations ?? appointmentData.notes,
+          observations: appointmentData.observations,
+          paymentStatus: appointmentData.paymentStatus,
+          billingType: appointmentData.billingType,
+          insuranceProvider: appointmentData.insuranceProvider,
+          insuranceValue: appointmentData.insuranceValue,
+          authorizationCode: appointmentData.authorizationCode,
+          package: appointmentData.package,
+          sessionValue: appointmentData.sessionValue ?? appointmentData.crm?.paymentAmount,
+          paymentMethod: appointmentData.paymentMethod ?? appointmentData.crm?.paymentMethod,
+          paymentAmount: appointmentData.paymentAmount ?? appointmentData.crm?.paymentAmount,
+          serviceType: appointmentData.crm?.serviceType ?? appointmentData.serviceType,
+          sessionType: appointmentData.crm?.sessionType ?? appointmentData.sessionType,
+          crm: appointmentData.crm,
+          isJointSession: appointmentData.crm?.serviceType === 'joint_session',
         };
         // Remove undefined/null para não enviar campos vazios
-        Object.keys(safeFields).forEach(k => { if (safeFields[k] == null) delete safeFields[k]; });
-        await adminEditAppointment(appointmentId, safeFields, 'Edição via modal');
+        Object.keys(adminFields).forEach(k => { if (adminFields[k] == null) delete adminFields[k]; });
+        await adminEditAppointment(appointmentId, adminFields, 'Edição via modal');
+        // Atualiza telefone do paciente se houver patientId (admin-edit não atualiza o cadastro do paciente)
+        if (appointmentData.patientId && appointmentData.phone != null) {
+          try {
+            await updatePatient(appointmentData.patientId, {
+              phone: appointmentData.phone,
+              ...(appointmentData.email != null ? { email: appointmentData.email } : {}),
+              ...(appointmentData.birthDate != null ? { dateOfBirth: appointmentData.birthDate } : {}),
+            });
+            toast.success("Telefone do paciente atualizado!");
+            handleReloadPatients();
+          } catch (patientErr) {
+            console.error('[saveAppointment] Erro ao atualizar paciente:', patientErr);
+            toast.error("Telefone do paciente não atualizado: " + (patientErr.response?.data?.error || patientErr.message));
+          }
+        }
         toast.success("Agendamento atualizado!");
         setIsModalOpen(false);
         setEditingAppointment(null);
@@ -583,18 +626,54 @@ export default function App() {
       // Fallback: completed no banco mas estado local desatualizado
       if (isEditing && err.response?.data?.code === 'CANNOT_EDIT_COMPLETED_APPOINTMENT') {
         try {
-          const safeFields = {};
-          if (appointmentData.observations != null) safeFields.notes = appointmentData.observations;
-          if (appointmentData.responsible != null) safeFields.responsible = appointmentData.responsible;
-          if (appointmentData.sessionValue != null) safeFields.sessionValue = appointmentData.sessionValue;
-          if (appointmentData.crm?.paymentAmount != null) safeFields.sessionValue = appointmentData.crm.paymentAmount;
-          if (appointmentData.paymentMethod != null) safeFields.paymentMethod = appointmentData.paymentMethod;
-          if (appointmentData.crm?.paymentMethod != null) safeFields.paymentMethod = appointmentData.crm.paymentMethod;
-          if (appointmentData.crm?.serviceType != null) safeFields.serviceType = appointmentData.crm.serviceType;
-          if (appointmentData.specialty != null) safeFields.specialty = appointmentData.specialty;
-          if (appointmentData.date != null) safeFields.date = appointmentData.date;
-          if (appointmentData.time != null) safeFields.time = appointmentData.time;
-          await adminEditAppointment(appointmentId, safeFields, 'Edição via modal (completed)');
+          const adminFields = {
+            patientName: appointmentData.patientName ?? appointmentData.patient,
+            patientId: appointmentData.patientId,
+            phone: appointmentData.phone,
+            birthDate: appointmentData.birthDate,
+            email: appointmentData.email,
+            responsible: appointmentData.responsible,
+            date: appointmentData.date,
+            time: appointmentData.time,
+            professional: appointmentData.professional,
+            professionalName: appointmentData.professionalName,
+            professionalId: appointmentData.professionalId,
+            specialty: appointmentData.specialty,
+            specialtyKey: appointmentData.specialtyKey,
+            operationalStatus: appointmentData.operationalStatus,
+            notes: appointmentData.observations ?? appointmentData.notes,
+            observations: appointmentData.observations,
+            paymentStatus: appointmentData.paymentStatus,
+            billingType: appointmentData.billingType,
+            insuranceProvider: appointmentData.insuranceProvider,
+            insuranceValue: appointmentData.insuranceValue,
+            authorizationCode: appointmentData.authorizationCode,
+            package: appointmentData.package,
+            sessionValue: appointmentData.sessionValue ?? appointmentData.crm?.paymentAmount,
+            paymentMethod: appointmentData.paymentMethod ?? appointmentData.crm?.paymentMethod,
+            paymentAmount: appointmentData.paymentAmount ?? appointmentData.crm?.paymentAmount,
+            serviceType: appointmentData.crm?.serviceType ?? appointmentData.serviceType,
+            sessionType: appointmentData.crm?.sessionType ?? appointmentData.sessionType,
+            crm: appointmentData.crm,
+            isJointSession: appointmentData.crm?.serviceType === 'joint_session',
+          };
+          Object.keys(adminFields).forEach(k => { if (adminFields[k] == null) delete adminFields[k]; });
+          await adminEditAppointment(appointmentId, adminFields, 'Edição via modal (completed)');
+          // Atualiza telefone do paciente se houver patientId (admin-edit não atualiza o cadastro do paciente)
+          if (appointmentData.patientId && appointmentData.phone != null) {
+            try {
+              await updatePatient(appointmentData.patientId, {
+                phone: appointmentData.phone,
+                ...(appointmentData.email != null ? { email: appointmentData.email } : {}),
+                ...(appointmentData.birthDate != null ? { dateOfBirth: appointmentData.birthDate } : {}),
+              });
+              toast.success("Telefone do paciente atualizado!");
+              handleReloadPatients();
+            } catch (patientErr) {
+              console.error('[saveAppointment] Erro ao atualizar paciente:', patientErr);
+              toast.error("Telefone do paciente não atualizado: " + (patientErr.response?.data?.error || patientErr.message));
+            }
+          }
           toast.success("Agendamento atualizado!");
           setIsModalOpen(false);
           setEditingAppointment(null);
@@ -973,6 +1052,7 @@ export default function App() {
               onDelete={onDelete}
               onCancel={onCancel}
               onReminder={openReminder}
+              onPostAppointment={openPostAppointment}
               onConfirmCycle={async (payload, baseAppointment) => {
                 try {
                   const result = await generateCycleAppointments(baseAppointment, payload, {
@@ -1084,6 +1164,16 @@ export default function App() {
           toast.info(`Abrir agendamento: ${appointmentId}`);
         }}
       />
+
+      {isPostAppointmentOpen && postAppointmentData && (
+        <PostAppointmentModal
+          appointment={postAppointmentData}
+          onClose={() => {
+            setIsPostAppointmentOpen(false);
+            setPostAppointmentData(null);
+          }}
+        />
+      )}
       
       {/* Modal QR Code Global */}
       <WhatsAppQRGlobal />

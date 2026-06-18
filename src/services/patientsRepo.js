@@ -27,3 +27,36 @@ export const fetchPatients = async () => {
         return [];
     }
 };
+
+/**
+ * Busca pacientes por nome/CPF/telefone no backend (accent-insensitive)
+ * @param {string} term - Termo de busca
+ * @returns {Promise<Array>} Lista de pacientes encontrados
+ */
+export const searchPatients = async (term) => {
+    try {
+        const response = await api.get('/api/patients', {
+            params: { search: term, limit: 10 }
+        });
+        return Array.isArray(response.data) ? response.data : [];
+    } catch (error) {
+        console.error('[searchPatients] Erro:', error.response?.data || error.message);
+        return [];
+    }
+};
+
+/**
+ * Atualiza dados básicos do paciente no CRM
+ * @param {string} patientId - ID do paciente
+ * @param {Object} data - Dados a atualizar (phone, email, birthDate, etc)
+ * @returns {Promise<Object>} Resposta do backend
+ */
+export const updatePatient = async (patientId, data) => {
+    try {
+        const response = await api.put(`/api/patients/${patientId}`, data);
+        return response.data;
+    } catch (error) {
+        console.error('[updatePatient] Erro:', error.response?.data || error.message);
+        throw error;
+    }
+};
