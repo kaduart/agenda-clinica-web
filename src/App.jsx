@@ -1168,6 +1168,16 @@ export default function App() {
       {isPostAppointmentOpen && postAppointmentData && (
         <PostAppointmentModal
           appointment={postAppointmentData}
+          onSent={(type) => {
+            const now = new Date().toISOString();
+            const field = type === 'msg2' ? 'reviewRequestSentAt' : 'postAppointmentSentAt';
+            setAppointments(prev => prev.map(a =>
+              (a.id === postAppointmentData.id || a._id === postAppointmentData._id)
+                ? { ...a, [field]: now }
+                : a
+            ));
+            setPostAppointmentData(prev => prev ? { ...prev, [field]: now } : prev);
+          }}
           onClose={() => {
             setIsPostAppointmentOpen(false);
             setPostAppointmentData(null);

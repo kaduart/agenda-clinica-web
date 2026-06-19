@@ -253,26 +253,39 @@ export default function AppointmentRow({ appointment, onEdit, onReminder, onGene
       <div className="w-52 shrink-0 flex items-center justify-end">
         <div className="flex items-center gap-1">
           {/* Concluído: Avaliação Google em destaque */}
-          {isCompleted && !appointment.__isVirtual && (
-            <button
-              type="button"
-              className={`px-2.5 py-1.5 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 shadow-sm ${
-                patientPhone
-                  ? "text-white bg-amber-500 hover:bg-amber-600"
-                  : "text-amber-700 bg-amber-100 cursor-not-allowed opacity-70"
-              }`}
-              onClick={() => {
-                if (!patientPhone) {
-                  showToast('Paciente sem telefone cadastrado', 'error');
-                  return;
-                }
-                onPostAppointment?.(appointment);
-              }}
-              title={patientPhone ? "Enviar avaliação Google" : "Paciente sem telefone cadastrado"}
-            >
-              <i className="fas fa-star"></i> Avaliação
-            </button>
-          )}
+          {isCompleted && !appointment.__isVirtual && (() => {
+            const m1 = !!appointment.postAppointmentSentAt;
+            const m2 = !!appointment.reviewRequestSentAt;
+            const bothSent = m1 && m2;
+            const anySent = m1 || m2;
+            const label = bothSent ? "Pós-atend. ✓" : m1 ? "Cuidado ✓" : m2 ? "Avaliação ✓" : "Pós-atend.";
+            const tooltipLines = [
+              m1 ? `Msg 1 enviada em ${new Date(appointment.postAppointmentSentAt).toLocaleString("pt-BR")}` : "Msg 1: não enviada",
+              m2 ? `Msg 2 enviada em ${new Date(appointment.reviewRequestSentAt).toLocaleString("pt-BR")}` : "Msg 2: não enviada",
+            ].join("\n");
+            return (
+              <button
+                type="button"
+                className={`px-2.5 py-1.5 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 shadow-sm ${
+                  bothSent
+                    ? "text-white bg-emerald-600 hover:bg-emerald-700"
+                    : anySent
+                      ? "text-white bg-teal-500 hover:bg-teal-600"
+                      : patientPhone
+                        ? "text-white bg-amber-500 hover:bg-amber-600"
+                        : "text-amber-700 bg-amber-100 cursor-not-allowed opacity-70"
+                }`}
+                onClick={() => {
+                  if (!patientPhone) { showToast('Paciente sem telefone cadastrado', 'error'); return; }
+                  onPostAppointment?.(appointment);
+                }}
+                title={anySent ? tooltipLines : patientPhone ? "Enviar pós-atendimento" : "Paciente sem telefone cadastrado"}
+              >
+                <i className={`fas ${anySent ? "fa-check" : "fa-star"}`}></i>
+                {label}
+              </button>
+            );
+          })()}
 
           {/* Agendado/Pré: WhatsApp com dropdown */}
           {!isCompleted && patientPhone && (

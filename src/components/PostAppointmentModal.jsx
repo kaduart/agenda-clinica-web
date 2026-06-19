@@ -1,5 +1,6 @@
 import React from "react";
 import { sendWhatsAppMessage } from "../services/baileysApi";
+import api from "../services/api";
 
 const STORAGE_KEY_MESSAGES = "postAppointmentMessages_v3";
 const STORAGE_KEY_GOOGLE_LINK = "postAppointmentGoogleLink";
@@ -94,13 +95,15 @@ function applyVariables(text, appointment, googleLink) {
         .replace(/{{LINK}}/g, googleLink || "[COLOCAR LINK DO GOOGLE AQUI]");
 }
 
-export default function PostAppointmentModal({ appointment, onClose }) {
+export default function PostAppointmentModal({ appointment, onClose, onSent }) {
     const saved = React.useMemo(() => loadSavedMessages(), []);
     const [message1, setMessage1] = React.useState(saved.message1);
     const [message2, setMessage2] = React.useState(saved.message2);
     const [googleLink, setGoogleLink] = React.useState(loadGoogleLink());
     const [sending, setSending] = React.useState(null); // 'msg1' | 'msg2' | null
     const [showSuccess, setShowSuccess] = React.useState(null); // 'msg1' | 'msg2' | null
+    const [msg1SentAt, setMsg1SentAt] = React.useState(appointment.postAppointmentSentAt || null);
+    const [msg2SentAt, setMsg2SentAt] = React.useState(appointment.reviewRequestSentAt || null);
 
     const phone = resolvePhone(appointment);
     const preview1 = applyVariables(message1, appointment, googleLink);
@@ -120,6 +123,12 @@ export default function PostAppointmentModal({ appointment, onClose }) {
             return;
         }
 
+        const alreadySent = type === "msg1" ? msg1SentAt : msg2SentAt;
+        if (alreadySent) {
+            const data = new Date(alreadySent).toLocaleString("pt-BR");
+            if (!window.confirm(`Essa mensagem já foi enviada em ${data}.\nDeseja enviar novamente?`)) return;
+        }
+
         setSending(type);
         const message = type === "msg1" ? preview1 : preview2;
         const result = await sendWhatsAppMessage(phone, message);
@@ -128,6 +137,25 @@ export default function PostAppointmentModal({ appointment, onClose }) {
         if (result.success) {
             setShowSuccess(type);
             setTimeout(() => setShowSuccess(null), 3000);
+
+            // Atualização otimista — badge aparece imediatamente
+            const now = new Date().toISOString();
+            if (type === "msg1") setMsg1SentAt(now);
+            else setMsg2SentAt(now);
+            onSent?.(type);
+
+            // Persiste no backend em background
+            const appointmentId = appointment.id || appointment._id || appointment.preAgendamentoId || appointment.appointmentId;
+            if (appointmentId) {
+                api.patch(`/api/v2/appointments/${appointmentId}/post-appointment`, { step: type })
+                    .catch(e => {
+                        console.error("[PostAppointmentModal] Erro ao registrar envio no banco:", e);
+                        showToast("Mensagem enviada, mas não foi possível registrar no banco.", "warning");
+                    });
+            } else {
+                console.warn("[PostAppointmentModal] appointmentId não encontrado, envio não será registrado.", appointment);
+            }
+
             if (result.needsReconnect) {
                 window.dispatchEvent(new CustomEvent("open-whatsapp-connect"));
                 showToast("Mensagem enviada pela Meta API. Conecte o WhatsApp Web nativo para usar chip comum.", "warning");
@@ -178,6 +206,16 @@ export default function PostAppointmentModal({ appointment, onClose }) {
                 </div>
 
                 <div className="px-6 py-5 space-y-5">
+                    {(msg1SentAt || msg2SentAt) && (
+                        <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-sm text-emerald-800 flex items-start gap-2">
+                            <i className="fas fa-check-circle mt-0.5 text-emerald-600"></i>
+                            <div>
+                                {msg1SentAt && <p>Msg 1 enviada em {new Date(msg1SentAt).toLocaleString("pt-BR")}</p>}
+                                {msg2SentAt && <p>Msg 2 (avaliação) enviada em {new Date(msg2SentAt).toLocaleString("pt-BR")}</p>}
+                            </div>
+                        </div>
+                    )}
+
                     {!phone && (
                         <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-800">
                             <i className="fas fa-exclamation-circle mr-2"></i>
@@ -213,20 +251,15 @@ export default function PostAppointmentModal({ appointment, onClose }) {
                                 type="button"
                                 onClick={() => handleSend("msg1")}
                                 disabled={sending === "msg1" || !phone}
-                                className={`px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors ${
-                                    showSuccess === "msg1"
-                                        ? "bg-emerald-600 text-white"
-                                        : "bg-emerald-600 text-white hover:bg-emerald-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
-                                }`}
+                                className="px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors bg-emerald-600 text-white hover:bg-emerald-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                                title={msg1SentAt ? `Enviada em ${new Date(msg1SentAt).toLocaleString("pt-BR")} — clique para reenviar` : ""}
                             >
                                 {sending === "msg1" ? (
                                     <i className="fas fa-spinner fa-spin"></i>
-                                ) : showSuccess === "msg1" ? (
-                                    <i className="fas fa-check"></i>
                                 ) : (
-                                    <i className="fab fa-whatsapp"></i>
+                                    <i className={`${msg1SentAt ? "fas fa-check" : "fab fa-whatsapp"}`}></i>
                                 )}
-                                {showSuccess === "msg1" ? "Enviada" : "Enviar mensagem 1"}
+                                {msg1SentAt ? "Cuidado enviado ✓" : "Enviar — Cuidado"}
                             </button>
                         </div>
                         <textarea
@@ -252,20 +285,15 @@ export default function PostAppointmentModal({ appointment, onClose }) {
                                 type="button"
                                 onClick={() => handleSend("msg2")}
                                 disabled={sending === "msg2" || !phone}
-                                className={`px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors ${
-                                    showSuccess === "msg2"
-                                        ? "bg-blue-600 text-white"
-                                        : "bg-blue-600 text-white hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
-                                }`}
+                                className="px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors bg-blue-600 text-white hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                                title={msg2SentAt ? `Enviada em ${new Date(msg2SentAt).toLocaleString("pt-BR")} — clique para reenviar` : ""}
                             >
                                 {sending === "msg2" ? (
                                     <i className="fas fa-spinner fa-spin"></i>
-                                ) : showSuccess === "msg2" ? (
-                                    <i className="fas fa-check"></i>
                                 ) : (
-                                    <i className="fab fa-whatsapp"></i>
+                                    <i className={`${msg2SentAt ? "fas fa-check" : "fab fa-whatsapp"}`}></i>
                                 )}
-                                {showSuccess === "msg2" ? "Enviada" : "Enviar mensagem 2"}
+                                {msg2SentAt ? "Avaliação enviada ✓" : "Pedir avaliação Google"}
                             </button>
                         </div>
                         <textarea
