@@ -27,6 +27,7 @@ export const mapDoctorResponseDTO = (raw) => {
         name,
         fullName: name,
         specialty: raw?.specialty || raw?.sessionType || '',
+        phoneNumber: raw?.phoneNumber || '',
         raw
     };
 };

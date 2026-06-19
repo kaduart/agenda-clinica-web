@@ -35,6 +35,11 @@ export const extractPatientEmail = (raw) => {
     return raw.email || raw.mail || null;
 };
 
+export const extractPatientMainComplaint = (raw) => {
+    if (!raw || typeof raw === 'string') return '';
+    return raw.mainComplaint || raw.queixaPrincipal || raw.complaint || '';
+};
+
 /**
  * @param {any} raw — objeto patient vindo do backend (pode ser string ID, objeto populado, etc.)
  * @returns {PatientDTO}

@@ -151,12 +151,19 @@ export const listenAppointmentsForMonth = (year, month, onData, specificDate = n
     }
 
     const fetchData = async () => {
+        const startTime = Date.now();
         try {
+            console.log(`[appointmentsRepo] Buscando agendamentos: ${startDate} → ${endDate}`);
             const merged = await v2.getCalendarData({ startDate, endDate, limit: 500, page: 1 });
             const list = mapAppointmentListResponseDTO(merged || []);
+            console.log(`[appointmentsRepo] Recebidos ${list.length} agendamentos em ${Date.now() - startTime}ms`, {
+                primeiro: list[0]?.date,
+                ultimo: list[list.length - 1]?.date,
+                amostra: list.slice(0, 3).map(a => ({ id: a.id, date: a.date, status: a.operationalStatus }))
+            });
             onData(list);
         } catch (error) {
-            console.error('[fetchAppointments] Erro:', error);
+            console.error(`[appointmentsRepo] Erro após ${Date.now() - startTime}ms:`, error);
             onData([]);
         }
     };

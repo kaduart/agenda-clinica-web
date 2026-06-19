@@ -16,9 +16,27 @@ api.interceptors.request.use(
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
         }
+        console.log(`[API Request] ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`, { params: config.params });
         return config;
     },
     (error) => {
+        return Promise.reject(error);
+    }
+);
+
+// Interceptor para logar respostas
+api.interceptors.response.use(
+    (response) => {
+        console.log(`[API Response] ${response.config.method?.toUpperCase()} ${response.config.url} → ${response.status}`, {
+            dataType: typeof response.data,
+            isArray: Array.isArray(response.data),
+            length: Array.isArray(response.data) ? response.data.length : (response.data ? 1 : 0),
+            sample: Array.isArray(response.data) ? response.data.slice(0, 2).map(i => ({ id: i.id, date: i.date })) : null
+        });
+        return response;
+    },
+    (error) => {
+        console.error('API Error:', error.response || error.message);
         return Promise.reject(error);
     }
 );

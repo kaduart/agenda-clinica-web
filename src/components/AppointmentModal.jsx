@@ -5,7 +5,13 @@ import { SERVICE_TYPE_LABELS, mapBackendServiceType } from "../utils/serviceType
 import api from "../services/api";
 import { searchPatients } from "../services/patientsRepo";
 import { cancelPreAppointment } from "../services/preAppointmentsRepo";
-import { sendWhatsAppMessage, generateConfirmationMessage, generateReminderMessage } from "../services/baileysApi";
+import {
+    sendWhatsAppMessage,
+    generateConfirmationMessage,
+    generateReminderMessage,
+    generateProfessionalNewAppointmentMessage,
+    generateProfessionalReminderMessage
+} from "../services/baileysApi";
 import { getHolidays, holidaysToMap, isTimeBlockedByHoliday as checkHolidayBlock } from "../services/calendarService";
 
 /**
@@ -66,6 +72,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
         professional: "",
         professionalName: "",
         professionalId: "",
+        professionalPhone: "",
         specialty: "fonoaudiologia",
         specialtyKey: "fonoaudiologia",
         operationalStatus: "pre_agendado",
@@ -146,12 +153,20 @@ export default function AppointmentModal({ appointment, professionals, patients,
             // 🆕 Resolve professionalId quando doctor vem como string (não populado) — caso V2
             let resolvedProfId = dObj._id || appointment.professionalId || "";
             let resolvedProfName = dObj.fullName || appointment.professional || appointment.professionalName || "";
+            let resolvedProfPhone = dObj.phoneNumber || appointment.doctor?.phoneNumber || "";
             
             if (!resolvedProfName && typeof appointment.doctor === 'string') {
                 const matchedProf = (professionals || []).find(p => String(p.id) === String(appointment.doctor) || String(p._id) === String(appointment.doctor));
                 if (matchedProf) {
                     resolvedProfId = matchedProf.id || matchedProf._id;
                     resolvedProfName = matchedProf.fullName;
+                    resolvedProfPhone = matchedProf.phoneNumber || "";
+                }
+            }
+            if (!resolvedProfPhone && resolvedProfId) {
+                const matchedProf = (professionals || []).find(p => String(p.id) === String(resolvedProfId) || String(p._id) === String(resolvedProfId));
+                if (matchedProf) {
+                    resolvedProfPhone = matchedProf.phoneNumber || "";
                 }
             }
 
@@ -177,6 +192,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                 professional: resolvedProfName || "",
                 professionalName: resolvedProfName || "",  // alias para o backend
                 professionalId: resolvedProfId || "",
+                professionalPhone: resolvedProfPhone || "",
                 specialty: resolveSpecialtyKey(appointment) || "fonoaudiologia",
                 specialtyKey: resolveSpecialtyKey(appointment) || "fonoaudiologia",
                 operationalStatus: appointment.operationalStatus || "scheduled",
@@ -517,6 +533,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                 professional: value,
                 professionalName: value,
                 professionalId: selectedProf?.id || selectedProf?._id || "",
+                professionalPhone: selectedProf?.phoneNumber || "",
             }));
             return;
         }
@@ -1084,6 +1101,85 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                 
                                 <p className="text-xs text-gray-500">
                                     ⚠️ <strong>Aviso:</strong> Volume baixo (20-100/dia) = risco mínimo de banimento
+                                </p>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* 🆕 Seção: Notificar Profissional */}
+                    {formData.professionalPhone && formData.professional && (
+                        <div className="bg-blue-50/50 rounded-lg p-4 border border-blue-200">
+                            <h4 className="text-sm font-semibold text-blue-800 mb-3 flex items-center gap-2">
+                                <i className="fas fa-user-md text-blue-600"></i> Notificar Profissional
+                            </h4>
+
+                            <div className="space-y-3">
+                                <p className="text-xs text-blue-700">
+                                    📲 Enviar mensagem diretamente para o WhatsApp do profissional
+                                </p>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    <button
+                                        type="button"
+                                        onClick={async () => {
+                                            try {
+                                                const message = generateProfessionalNewAppointmentMessage({
+                                                    ...formData,
+                                                    patientName: formData.patient,
+                                                    professional: formData.professional
+                                                });
+                                                await sendWhatsAppMessage(formData.professionalPhone, message);
+                                                const toast = document.createElement('div');
+                                                toast.className = 'fixed bottom-4 right-4 bg-blue-500 text-white px-4 py-3 rounded-lg text-sm z-50 shadow-lg flex items-center gap-2';
+                                                toast.innerHTML = '<i class="fab fa-whatsapp text-lg"></i> <div><strong>✅ Enviado com sucesso!</strong><br>Notificação enviada ao profissional</div>';
+                                                document.body.appendChild(toast);
+                                                setTimeout(() => toast.remove(), 3000);
+                                            } catch (err) {
+                                                const toast = document.createElement('div');
+                                                toast.className = 'fixed bottom-4 right-4 bg-red-500 text-white px-4 py-3 rounded-lg text-sm z-50 shadow-lg flex items-center gap-2';
+                                                toast.innerHTML = `<i class="fas fa-exclamation-circle text-lg"></i> <div><strong>Erro ao enviar</strong><br>${err.error || 'WhatsApp não conectado'}</div>`;
+                                                document.body.appendChild(toast);
+                                                setTimeout(() => toast.remove(), 5000);
+                                            }
+                                        }}
+                                        className="flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-lg transition-colors"
+                                    >
+                                        <i className="fab fa-whatsapp"></i>
+                                        🔔 Novo Agendamento
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onClick={async () => {
+                                            try {
+                                                const message = generateProfessionalReminderMessage({
+                                                    ...formData,
+                                                    patientName: formData.patient,
+                                                    professional: formData.professional
+                                                });
+                                                await sendWhatsAppMessage(formData.professionalPhone, message);
+                                                const toast = document.createElement('div');
+                                                toast.className = 'fixed bottom-4 right-4 bg-blue-500 text-white px-4 py-3 rounded-lg text-sm z-50 shadow-lg flex items-center gap-2';
+                                                toast.innerHTML = '<i class="fab fa-whatsapp text-lg"></i> <div><strong>🔔 Enviado com sucesso!</strong><br>Lembrete enviado ao profissional</div>';
+                                                document.body.appendChild(toast);
+                                                setTimeout(() => toast.remove(), 3000);
+                                            } catch (err) {
+                                                const toast = document.createElement('div');
+                                                toast.className = 'fixed bottom-4 right-4 bg-red-500 text-white px-4 py-3 rounded-lg text-sm z-50 shadow-lg flex items-center gap-2';
+                                                toast.innerHTML = `<i class="fas fa-exclamation-circle text-lg"></i> <div><strong>Erro ao enviar</strong><br>${err.error || 'WhatsApp não conectado'}</div>`;
+                                                document.body.appendChild(toast);
+                                                setTimeout(() => toast.remove(), 5000);
+                                            }
+                                        }}
+                                        className="flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-blue-500 text-blue-600 hover:bg-blue-50 text-sm font-medium rounded-lg transition-colors"
+                                    >
+                                        <i className="far fa-clock"></i>
+                                        ⏰ Lembrete
+                                    </button>
+                                </div>
+
+                                <p className="text-xs text-gray-500">
+                                    Destinatário: <strong>{formData.professional}</strong> — {formData.professionalPhone.replace(/(\d{2})(\d{4,5})(\d{4})/, '($1) $2-$3')}
                                 </p>
                             </div>
                         </div>

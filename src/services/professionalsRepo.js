@@ -10,7 +10,8 @@ export const listenProfessionals = (onData) => {
           id: doc._id?.toString() || doc.id,
           fullName: doc.fullName,
           name: doc.name || doc.fullName,
-          specialty: doc.specialty
+          specialty: doc.specialty,
+          phoneNumber: doc.phoneNumber || ''
         }))
         .sort((a, b) => a.fullName.localeCompare(b.fullName));
       onData(doctors);

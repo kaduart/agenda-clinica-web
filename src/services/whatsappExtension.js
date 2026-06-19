@@ -7,6 +7,10 @@
  */
 import api from './api.js';
 import { openWhatsAppQRModal } from '../components/WhatsAppQRGlobal.jsx';
+import {
+  generateProfessionalNewAppointmentMessage,
+  generateProfessionalReminderMessage
+} from './professionalMessages.js';
 
 /**
  * Envia mensagem (usa VPS se disponível, senão API Meta Business)
@@ -187,3 +191,8 @@ export function generateReminderMessage(paciente) {
     'Posso confirmar sua presença?' + '\n\u200B\n' +
     'Até mais 😊';
 }
+
+export {
+  generateProfessionalNewAppointmentMessage,
+  generateProfessionalReminderMessage
+};

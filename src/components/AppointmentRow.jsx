@@ -2,7 +2,13 @@ import { useState } from "react";
 import { SPECIALTIES } from "../config/specialties";
 import { resolveSpecialtyKey } from "../utils/specialty";
 import { resolveServiceType, getServiceTypeLabel, getServiceTypeColorClass } from "../utils/serviceType";
-import { sendViaExtension, generateConfirmationMessage, generateReminderMessage } from "../services/whatsappExtension";
+import {
+  sendViaExtension,
+  generateConfirmationMessage,
+  generateReminderMessage,
+  generateProfessionalNewAppointmentMessage,
+  generateProfessionalReminderMessage
+} from "../services/whatsappExtension";
 
 export default function AppointmentRow({ appointment, onEdit, onReminder, onGenerateCycle, onCancel, onPostAppointment }) {
   
@@ -51,6 +57,10 @@ export default function AppointmentRow({ appointment, onEdit, onReminder, onGene
                        appointment.phone ||
                        appointment.patientPhone ||
                        "";
+  
+  const professionalPhone = appointment.doctor?.phoneNumber ||
+                            appointment.professional?.phoneNumber ||
+                            "";
   
   const isLivre =
     (appointment.professional && String(appointment.professional).toLowerCase().includes("livre")) ||
@@ -152,6 +162,46 @@ export default function AppointmentRow({ appointment, onEdit, onReminder, onGene
       }
     } else if (result.error?.includes('conectado') || result.error?.includes('QR') || result.error?.includes('desconectado') || result.needsReconnect) {
       // Abre modal de conexão automaticamente
+      window.dispatchEvent(new CustomEvent('open-whatsapp-connect'));
+      showToast('WhatsApp desconectado. Escaneie o QR code.', 'error');
+    } else {
+      showToast(result.error || 'Erro ao enviar', 'error');
+    }
+  };
+
+  // Handler para enviar mensagem ao PROFISSIONAL
+  const handleWhatsAppSendProfessional = async (type) => {
+    if (!professionalPhone) {
+      showToast('Profissional sem telefone cadastrado', 'error');
+      return;
+    }
+
+    const internalType = type === 'notify' ? 'notify_prof' : 'reminder_prof';
+    setSendingWhatsApp(internalType);
+
+    const message = type === 'notify'
+      ? generateProfessionalNewAppointmentMessage({
+          ...appointment,
+          patientName: patientName,
+          professional: appointment.doctor?.fullName || appointment.professional
+        })
+      : generateProfessionalReminderMessage({
+          ...appointment,
+          patientName: patientName,
+          professional: appointment.doctor?.fullName || appointment.professional
+        });
+    
+    const result = await sendViaExtension(professionalPhone, message);
+    
+    setSendingWhatsApp(null);
+    
+    if (result.success) {
+      showToast(`✅ ${type === 'notify' ? 'Notificação' : 'Lembrete'} enviado ao profissional!`, 'success');
+      if (result.needsReconnect) {
+        window.dispatchEvent(new CustomEvent('open-whatsapp-connect'));
+        showToast('Mensagem enviada pela Meta API. Conecte o WhatsApp Web nativo para usar chip comum.', 'warning');
+      }
+    } else if (result.error?.includes('conectado') || result.error?.includes('QR') || result.error?.includes('desconectado') || result.needsReconnect) {
       window.dispatchEvent(new CustomEvent('open-whatsapp-connect'));
       showToast('WhatsApp desconectado. Escaneie o QR code.', 'error');
     } else {
@@ -296,8 +346,8 @@ export default function AppointmentRow({ appointment, onEdit, onReminder, onGene
             );
           })()}
 
-          {/* Agendado/Pré: WhatsApp com dropdown */}
-          {!isCompleted && patientPhone && (
+          {/* WhatsApp: todas as mensagens (paciente + profissional) */}
+          {(patientPhone || professionalPhone) && (
             <div className="relative">
               <button
                 type="button"
@@ -310,24 +360,71 @@ export default function AppointmentRow({ appointment, onEdit, onReminder, onGene
               {showWhatsAppMenu && (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setShowWhatsAppMenu(false)}></div>
-                  <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-xl border border-gray-200 z-50 py-1">
-                    {canConfirmWhatsApp && (
+                  <div className="absolute right-0 top-full mt-1 w-60 bg-white rounded-lg shadow-xl border border-gray-200 z-50 py-1">
+                    {/* PACIENTE */}
+                    {(patientPhone) && (
+                      <div className="px-3 py-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                        Paciente
+                      </div>
+                    )}
+                    {patientPhone && !isCompleted && canConfirmWhatsApp && (
                       <button
                         type="button"
                         className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-emerald-50 hover:text-emerald-800 flex items-center gap-2"
                         onClick={() => { handleWhatsAppSend('confirm'); setShowWhatsAppMenu(false); }}
                       >
-                        <i className="fab fa-whatsapp text-emerald-600"></i> Confirmar
+                        <i className="fab fa-whatsapp text-emerald-600"></i> Confirmar agendamento
                       </button>
                     )}
-                    <button
-                      type="button"
-                      className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-amber-50 hover:text-amber-800 flex items-center gap-2 disabled:opacity-50"
-                      onClick={() => { handleWhatsAppSend('reminder'); setShowWhatsAppMenu(false); }}
-                      disabled={sendingWhatsApp === 'reminder'}
-                    >
-                      {sendingWhatsApp === 'reminder' ? <i className="fas fa-spinner fa-spin text-amber-600"></i> : <i className="fas fa-bell text-amber-600"></i>} Lembrete
-                    </button>
+                    {patientPhone && !isCompleted && (
+                      <button
+                        type="button"
+                        className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-amber-50 hover:text-amber-800 flex items-center gap-2 disabled:opacity-50"
+                        onClick={() => { handleWhatsAppSend('reminder'); setShowWhatsAppMenu(false); }}
+                        disabled={sendingWhatsApp === 'reminder'}
+                      >
+                        {sendingWhatsApp === 'reminder' ? <i className="fas fa-spinner fa-spin text-amber-600"></i> : <i className="fas fa-bell text-amber-600"></i>} Lembrete de atendimento
+                      </button>
+                    )}
+                    {patientPhone && isCompleted && (
+                      <button
+                        type="button"
+                        className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-yellow-50 hover:text-yellow-800 flex items-center gap-2"
+                        onClick={() => { onPostAppointment?.(appointment); setShowWhatsAppMenu(false); }}
+                      >
+                        <i className="fas fa-star text-yellow-600"></i> Pós-atendimento
+                      </button>
+                    )}
+
+                    {/* DIVISOR + PROFISSIONAL */}
+                    {patientPhone && professionalPhone && (
+                      <div className="border-t border-gray-100 my-1"></div>
+                    )}
+                    {professionalPhone && !isCompleted && (
+                      <div className="px-3 py-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                        Profissional
+                      </div>
+                    )}
+                    {professionalPhone && !isCompleted && (
+                      <button
+                        type="button"
+                        className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-800 flex items-center gap-2 disabled:opacity-50"
+                        onClick={() => { handleWhatsAppSendProfessional('notify'); setShowWhatsAppMenu(false); }}
+                        disabled={sendingWhatsApp === 'notify_prof'}
+                      >
+                        {sendingWhatsApp === 'notify_prof' ? <i className="fas fa-spinner fa-spin text-blue-600"></i> : <i className="fas fa-user-md text-blue-600"></i>} Avisar agendamento
+                      </button>
+                    )}
+                    {professionalPhone && !isCompleted && (
+                      <button
+                        type="button"
+                        className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-800 flex items-center gap-2 disabled:opacity-50"
+                        onClick={() => { handleWhatsAppSendProfessional('reminder'); setShowWhatsAppMenu(false); }}
+                        disabled={sendingWhatsApp === 'reminder_prof'}
+                      >
+                        {sendingWhatsApp === 'reminder_prof' ? <i className="fas fa-spinner fa-spin text-blue-600"></i> : <i className="far fa-clock text-blue-600"></i>} Lembrar atendimento
+                      </button>
+                    )}
                   </div>
                 </>
               )}
@@ -366,11 +463,6 @@ export default function AppointmentRow({ appointment, onEdit, onReminder, onGene
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)}></div>
                   <div className="absolute right-0 top-full mt-1 w-56 bg-white rounded-lg shadow-xl border border-gray-200 z-50 py-1">
-                    {!isCompleted && patientPhone && (
-                      <button type="button" className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-emerald-50 hover:text-emerald-800 flex items-center gap-2" onClick={() => { onPostAppointment?.(appointment); setShowMenu(false); }}>
-                        <i className="fab fa-whatsapp text-emerald-600"></i> Pós-atendimento
-                      </button>
-                    )}
                     <button type="button" className={`w-full px-4 py-2 text-left text-sm flex items-center gap-2 ${hasReminder ? 'bg-yellow-50 text-yellow-900 hover:bg-yellow-100' : 'text-gray-700 hover:bg-gray-50'}`} onClick={() => { onReminder?.(appointment); setShowMenu(false); }}>
                       <i className={`fas fa-sticky-note ${hasReminder ? 'text-yellow-600' : 'text-gray-500'}`}></i>
                       {hasReminder ? 'Editar lembrete interno' : 'Adicionar lembrete interno'}

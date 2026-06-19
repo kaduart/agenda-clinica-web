@@ -41,7 +41,7 @@ import {
 import { fetchPatients, updatePatient } from "./services/patientsRepo";
 
 import { confirmToast } from "./utils/confirmToast";
-import { formatDateLocal, getWeeksInMonth } from "./utils/date";
+import { formatDateLocal, getWeeksInMonth, extractDateForInput } from "./utils/date";
 import { sortAppointmentsByDateTimeAsc } from "./utils/sort";
 import { resolveSpecialtyKey } from "./utils/specialty";
 import { SPECIALTIES } from "./config/specialties";
@@ -224,7 +224,9 @@ export default function App() {
     }
 
     setIsLoadingAppointments(true);
+    console.log(`[App.jsx] Carregando appointments: ${targetYear}-${targetMonth + 1}, specificDate=${specificDate}`);
     const unsub = listenAppointmentsForMonth(targetYear, targetMonth, (data) => {
+      console.log(`[App.jsx] Appointments carregados: ${data.length}`);
       setAppointments(data);
       setIsLoadingAppointments(false);
     }, specificDate);
@@ -242,6 +244,7 @@ export default function App() {
           filters.specialty = activeSpecialty;
         }
         const data = await fetchPreAppointments(filters);
+        console.log(`[App.jsx] Pré-agendamentos carregados: ${data.length}`);
         setPreAppointments(data);
       } catch (error) {
         console.error("❌ [App.jsx] Erro ao buscar pré-agendamentos:", error);
@@ -820,6 +823,14 @@ export default function App() {
 
   // Pipeline para List View (appointments filtrados + todos os pré-agendamentos pendentes)
   const filteredAppointments = React.useMemo(() => {
+    console.log('[filteredAppointments] Iniciando filtro:', {
+      totalAppointments: appointments?.length,
+      totalPreAppointments: mappedPreAppointments?.length,
+      activeSpecialty,
+      filters,
+      currentYear,
+      currentMonth
+    });
 
     const weeks = getWeeksInMonth(currentYear, currentMonth);
     const isPreAgendamento = (appt) => appt?.operationalStatus === 'pre_agendado';
@@ -831,11 +842,12 @@ export default function App() {
       }
 
       if (filters.filterDate) {
-        if (appointment.date !== filters.filterDate) return false;
+        if (extractDateForInput(appointment.date) !== filters.filterDate) return false;
       } else {
         if (filters.filterDay) {
-          if (!appointment.date) return false;
-          const [y, m, d] = appointment.date.split("-").map(Number);
+          const dateStr = extractDateForInput(appointment.date);
+          if (!dateStr) return false;
+          const [y, m, d] = dateStr.split("-").map(Number);
           const dateObj = new Date(y, m - 1, d);
           if (dateObj.getDay() !== Number(filters.filterDay)) return false;
         }
@@ -843,11 +855,14 @@ export default function App() {
           const w = weeks[filters.filterWeek];
           if (!w) return false;
           const toKey = (v) => (typeof v === "string" ? v.replaceAll("-", "") : formatDateLocal(v).replaceAll("-", ""));
-          const dKey = toKey(appointment.date);
+          const dKey = toKey(extractDateForInput(appointment.date));
           if (!(dKey >= toKey(w.start) && dKey <= toKey(w.end))) return false;
         }
       }
       return true;
+    });
+    console.log('[filteredAppointments] Após filtro de appointments reais:', filteredReals.length, {
+      amostra: filteredReals.slice(0, 3).map(a => ({ id: a.id, date: a.date, specialty: a.specialty, status: a.operationalStatus }))
     });
 
     // 2. Filtrar pré-agendamentos por especialidade e por data do agendamento
@@ -857,7 +872,7 @@ export default function App() {
       }
       // Mostrar pré-agendamento apenas no dia da consulta, não no dia da criação
       if (filters.filterDate) {
-        if (appointment.date !== filters.filterDate) return false;
+        if (extractDateForInput(appointment.date) !== filters.filterDate) return false;
       }
       return true;
     });
@@ -886,7 +901,7 @@ export default function App() {
             samePatient = preWords.filter(w => realWords.includes(w)).length >= 2;
           }
         }
-        return samePatient && real.date === appointment.date && real.time === appointment.time && real.professional === appointment.professional;
+        return samePatient && extractDateForInput(real.date) === extractDateForInput(appointment.date) && real.time === appointment.time && real.professional === appointment.professional;
       });
       if (hasRealAppointment) {
         return false;
@@ -916,6 +931,10 @@ export default function App() {
 
     filteredReals = applySecondaryFilters(filteredReals);
     filteredPres = applySecondaryFilters(filteredPres);
+    console.log('[filteredAppointments] Após filtros secundários:', {
+      filteredReals: filteredReals.length,
+      filteredPres: filteredPres.length
+    });
 
     // 6. Merge
     let base = [...filteredReals, ...filteredPres];
@@ -955,6 +974,9 @@ export default function App() {
     });
 
     base = sortAppointmentsByDateTimeAsc(base);
+    console.log('[filteredAppointments] Resultado final:', base.length, {
+      amostra: base.slice(0, 3).map(a => ({ id: a.id, date: a.date, patientName: a.patientName, professional: a.professional }))
+    });
     return base;
   }, [appointments, mappedPreAppointments, activeSpecialty, filters, currentYear, currentMonth, availableSlots]);
 

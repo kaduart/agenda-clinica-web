@@ -3,6 +3,10 @@
  */
 
 import api from "./api";
+import {
+  generateProfessionalNewAppointmentMessage,
+  generateProfessionalReminderMessage
+} from "./professionalMessages";
 
 /**
  * Envia mensagem de texto (Baileys → WhatsApp Web → VPS → Meta API)
@@ -198,3 +202,8 @@ export function generateReminderMessage(paciente) {
     'Posso confirmar sua presença?' + '\n\u200B\n' +
     'Até mais 😊';
 }
+
+export {
+  generateProfessionalNewAppointmentMessage,
+  generateProfessionalReminderMessage
+};

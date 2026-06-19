@@ -283,6 +283,10 @@ export async function recreateAppointmentFromSession({
 
 export async function getCalendarData({ startDate, endDate, limit = 500, page = 1 }) {
     const appointmentsRes = await getAppointments({ startDate, endDate, limit, page });
+    // API legada pode retornar array direto ou { data: { appointments: [...] } }
+    if (Array.isArray(appointmentsRes)) {
+        return appointmentsRes;
+    }
     return appointmentsRes?.data?.appointments || [];
 }
 

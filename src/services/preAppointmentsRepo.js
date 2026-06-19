@@ -5,13 +5,21 @@ import * as v2 from "../api/v2/agendaV2Client";
  * Como o backend ainda não filtra por operationalStatus, busca tudo e filtra no frontend.
  */
 export const fetchPreAppointments = async (filters = {}) => {
+    const startTime = Date.now();
     try {
+        console.log(`[preAppointmentsRepo] Buscando pré-agendamentos com filtros:`, filters);
         const data = await v2.getAppointments(filters);
-        const appointments = data?.data?.appointments || data?.appointments || [];
+        // API legada pode retornar array direto ou { data: { appointments: [...] } }
+        const appointments = Array.isArray(data)
+            ? data
+            : (data?.data?.appointments || data?.appointments || []);
+        console.log(`[preAppointmentsRepo] Recebidos ${appointments.length} registros em ${Date.now() - startTime}ms`);
         // Filtra apenas pré-agendamentos no frontend
-        return appointments.filter(a => a.operationalStatus === 'pre_agendado');
+        const preAgendados = appointments.filter(a => a.operationalStatus === 'pre_agendado');
+        console.log(`[preAppointmentsRepo] Filtrados ${preAgendados.length} pré-agendamentos`);
+        return preAgendados;
     } catch (error) {
-        console.error('❌ Erro ao buscar pré-agendamentos:', error);
+        console.error(`❌ [preAppointmentsRepo] Erro após ${Date.now() - startTime}ms:`, error);
         return [];
     }
 };
