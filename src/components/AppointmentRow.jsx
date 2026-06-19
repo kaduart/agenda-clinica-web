@@ -194,12 +194,21 @@ export default function AppointmentRow({ appointment, onEdit, onReminder, onGene
                 <span className="text-[10px] text-gray-500 shrink-0"><i className="fas fa-phone-alt"></i> {appointment.attemptCount}</span>
               )}
             </div>
-            <div className="flex items-center gap-2 mt-1">
+            <div className="flex items-center gap-1 mt-1 text-xs text-gray-500">
               {appointment.responsible && (
-                <div className="text-xs text-gray-500 truncate">{appointment.responsible}</div>
+                <span className="truncate">{appointment.responsible}</span>
+              )}
+              {appointment.responsible && patientPhone && (
+                <span className="text-gray-300 shrink-0">|</span>
               )}
               {patientPhone && (
-                <div className="text-xs text-gray-400 truncate">{patientPhone.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3')}</div>
+                <a
+                  href={`tel:${patientPhone}`}
+                  className="text-blue-500 hover:text-blue-700 hover:underline truncate shrink-0"
+                  onClick={e => e.stopPropagation()}
+                >
+                  {patientPhone.replace(/(\d{2})(\d{4,5})(\d{4})/, '($1) $2-$3')}
+                </a>
               )}
             </div>
           </div>
