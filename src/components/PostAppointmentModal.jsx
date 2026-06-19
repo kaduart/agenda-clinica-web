@@ -1,10 +1,10 @@
 import React from "react";
 import { sendWhatsAppMessage } from "../services/baileysApi";
 
-const STORAGE_KEY_MESSAGES = "postAppointmentMessages_v2";
+const STORAGE_KEY_MESSAGES = "postAppointmentMessages_v3";
 const STORAGE_KEY_GOOGLE_LINK = "postAppointmentGoogleLink";
 
-const NL = '\n\n';
+const NL = '\n​\n';
 
 const DEFAULT_MESSAGE_1 =
     '👋 {{SAUDACAO}}, {{RESPONSAVEL}}!' + NL +
