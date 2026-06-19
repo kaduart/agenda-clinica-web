@@ -1,7 +1,7 @@
 import React from "react";
 import { sendWhatsAppMessage } from "../services/baileysApi";
 
-const STORAGE_KEY_MESSAGES = "postAppointmentMessages";
+const STORAGE_KEY_MESSAGES = "postAppointmentMessages_v2";
 const STORAGE_KEY_GOOGLE_LINK = "postAppointmentGoogleLink";
 
 const NL = '\n\n';
@@ -122,7 +122,7 @@ export default function PostAppointmentModal({ appointment, onClose }) {
 
         setSending(type);
         const message = type === "msg1" ? preview1 : preview2;
-        const result = await sendViaExtension(phone, message);
+        const result = await sendWhatsAppMessage(phone, message);
         setSending(null);
 
         if (result.success) {

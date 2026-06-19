@@ -5,40 +5,42 @@
 import api from "./api";
 
 /**
- * Envia mensagem de texto (tenta Baileys → WhatsApp Web → VPS → Meta API)
+ * Envia mensagem de texto (Baileys → WhatsApp Web → VPS → Meta API)
+ * Só tenta Baileys se estiver conectado para evitar request desnecessário.
  */
 export async function sendWhatsAppMessage(phone, message) {
-  // 1. Tenta Baileys
+  // 1. Verifica se Baileys está conectado antes de tentar
+  let baileysConnected = false;
   try {
-    const response = await api.post("/api/baileys/send", { phone, message });
-    return response.data;
-  } catch (err) {
-    const error = err.response?.data?.error || '';
+    const status = await api.get('/api/baileys/status');
+    baileysConnected = status.data?.connected === true || status.data?.status === 'connected';
+  } catch (_) {}
 
-    // 2. Tenta WhatsApp Web nativo
+  if (baileysConnected) {
     try {
-      const response = await api.post('/api/whatsapp-web/send', { phone, message });
+      const response = await api.post('/api/baileys/send', { phone, message });
       return response.data;
-    } catch (err2) {
-      const error2 = err2.response?.data?.error || '';
+    } catch (_) {}
+  }
 
-      // 3. Tenta VPS
-      try {
-        const response = await api.post('/api/whatsapp-vps/send', { phone, message });
-        return response.data;
-      } catch (err3) {
-        const error3 = err3.response?.data?.error || '';
+  // 2. WhatsApp Web
+  try {
+    const response = await api.post('/api/whatsapp-web/send', { phone, message });
+    return response.data;
+  } catch (_) {}
 
-        // 4. Fallback Meta API
-        try {
-          const response = await api.post('/api/whatsapp/send-text', { phone, text: message });
-          return response.data;
-        } catch (metaErr) {
-          const metaError = metaErr.response?.data?.error || metaErr.message;
-          return { success: false, error: metaError };
-        }
-      }
-    }
+  // 3. VPS
+  try {
+    const response = await api.post('/api/whatsapp-vps/send', { phone, message });
+    return response.data;
+  } catch (_) {}
+
+  // 4. Meta API
+  try {
+    const response = await api.post('/api/whatsapp/send-text', { phone, text: message });
+    return response.data;
+  } catch (metaErr) {
+    return { success: false, error: metaErr.response?.data?.error || metaErr.message };
   }
 }
 
