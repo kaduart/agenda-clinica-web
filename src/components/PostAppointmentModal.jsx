@@ -1,19 +1,22 @@
 import React from "react";
-import { sendViaExtension } from "../services/whatsappExtension";
+import { sendWhatsAppMessage } from "../services/baileysApi";
 
 const STORAGE_KEY_MESSAGES = "postAppointmentMessages";
 const STORAGE_KEY_GOOGLE_LINK = "postAppointmentGoogleLink";
 
-const DEFAULT_MESSAGE_1 = `Oi! 😊
-Gostaríamos de saber como foi seu atendimento hoje.
-Ficou alguma dúvida? O atendimento foi tranquilo pra você?`;
+const NL = '\n\n';
 
-const DEFAULT_MESSAGE_2 = `Que bom saber! 😊
-Isso é muito importante pra gente.
-Você poderia nos ajudar deixando uma avaliação no Google?
-Leva menos de 1 minuto e ajuda muito nossa clínica a crescer 💙
+const DEFAULT_MESSAGE_1 =
+    '👋 {{SAUDACAO}}, {{RESPONSAVEL}}!' + NL +
+    'Passamos para saber como foi a consulta de *{{NOME}}* hoje aqui na Clínica Fono Inova 💚' + NL +
+    'Tudo correu bem? O atendimento atendeu as expectativas de vocês?';
 
-👉 Aqui está o link: {{LINK}}`;
+const DEFAULT_MESSAGE_2 =
+    'Fico muito feliz em saber! 😊' + NL +
+    'Sua opinião é muito importante pra nós.' + NL +
+    'Você poderia reservar 1 minutinho para deixar uma avaliação no Google? Ajuda muito outras famílias a encontrarem nossa clínica 🙏' + NL +
+    '👉 {{LINK}}' + NL +
+    'Obrigada, {{RESPONSAVEL}}! 💙';
 
 const DEFAULT_GOOGLE_LINK = "https://g.page/r/CR6aUdS_hstDEBM/review";
 
@@ -57,6 +60,13 @@ function saveGoogleLink(link) {
     }
 }
 
+function getSaudacao() {
+    const hora = new Date().getHours();
+    if (hora >= 5 && hora < 12) return 'Bom dia';
+    if (hora >= 12 && hora < 18) return 'Boa tarde';
+    return 'Boa noite';
+}
+
 function resolvePhone(appointment) {
     return (appointment.patient?.phone || appointment.phone || appointment.patientPhone || "").replace(/\D/g, "");
 }
@@ -77,6 +87,7 @@ function applyVariables(text, appointment, googleLink) {
     const professional = appointment.doctor?.fullName || appointment.professional?.fullName || appointment.professional?.name || (typeof appointment.professional === "string" ? appointment.professional : "") || "";
 
     return text
+        .replace(/{{SAUDACAO}}/g, getSaudacao())
         .replace(/{{NOME}}/g, firstName)
         .replace(/{{RESPONSAVEL}}/g, responsible || firstName)
         .replace(/{{PROFISSIONAL}}/g, professional)
@@ -271,6 +282,7 @@ export default function PostAppointmentModal({ appointment, onClose }) {
 
                     <div className="text-xs text-gray-500 bg-gray-50 p-3 rounded-lg border border-gray-200">
                         <strong>Variáveis disponíveis:</strong>{" "}
+                        <code className="bg-gray-100 px-1 rounded">{"{{SAUDACAO}}"}</code>{" "}
                         <code className="bg-gray-100 px-1 rounded">{"{{NOME}}"}</code>{" "}
                         <code className="bg-gray-100 px-1 rounded">{"{{RESPONSAVEL}}"}</code>{" "}
                         <code className="bg-gray-100 px-1 rounded">{"{{PROFISSIONAL}}"}</code>{" "}
