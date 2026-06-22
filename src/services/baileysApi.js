@@ -49,6 +49,33 @@ export async function sendWhatsAppMessage(phone, message) {
 }
 
 /**
+ * Envia mensagem de mídia (imagem) com legenda.
+ * Usa o endpoint /api/whatsapp/send-media do backend CRM.
+ */
+export async function sendWhatsAppMediaMessage(phone, file, caption = '') {
+  try {
+    const formData = new FormData();
+    formData.append('phone', phone);
+    formData.append('type', 'image');
+    formData.append('caption', caption);
+    formData.append('file', file);
+
+    const response = await api.post('/api/whatsapp/send-media', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+
+    return response.data;
+  } catch (error) {
+    return {
+      success: false,
+      error: error.response?.data?.error || error.message || 'Erro ao enviar mídia',
+    };
+  }
+}
+
+/**
  * Verifica status da conexão
  */
 export async function getStatus() {

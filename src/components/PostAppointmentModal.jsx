@@ -1,5 +1,5 @@
 import React from "react";
-import { sendWhatsAppMessage } from "../services/baileysApi";
+import { sendWhatsAppMessage, sendWhatsAppMediaMessage } from "../services/baileysApi";
 import api from "../services/api";
 
 const STORAGE_KEY_MESSAGES = "postAppointmentMessages_v3";
@@ -104,6 +104,8 @@ export default function PostAppointmentModal({ appointment, onClose, onSent }) {
     const [showSuccess, setShowSuccess] = React.useState(null); // 'msg1' | 'msg2' | null
     const [msg1SentAt, setMsg1SentAt] = React.useState(appointment.postAppointmentSentAt || null);
     const [msg2SentAt, setMsg2SentAt] = React.useState(appointment.reviewRequestSentAt || null);
+    const [reviewImage, setReviewImage] = React.useState(null);
+    const [reviewImagePreview, setReviewImagePreview] = React.useState(null);
 
     const phone = resolvePhone(appointment);
     const preview1 = applyVariables(message1, appointment, googleLink);
@@ -131,7 +133,13 @@ export default function PostAppointmentModal({ appointment, onClose, onSent }) {
 
         setSending(type);
         const message = type === "msg1" ? preview1 : preview2;
-        const result = await sendWhatsAppMessage(phone, message);
+
+        let result;
+        if (type === "msg2" && reviewImage) {
+            result = await sendWhatsAppMediaMessage(phone, reviewImage, message);
+        } else {
+            result = await sendWhatsAppMessage(phone, message);
+        }
         setSending(null);
 
         if (result.success) {
@@ -302,6 +310,52 @@ export default function PostAppointmentModal({ appointment, onClose, onSent }) {
                             rows={5}
                             className="w-full p-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm mb-3"
                         />
+
+                        {/* Imagem da avaliação */}
+                        <div className="mb-3">
+                            <label className="block text-sm font-medium text-blue-800 mb-1.5">
+                                Imagem da avaliação (opcional)
+                            </label>
+                            {!reviewImage ? (
+                                <label className="flex items-center justify-center gap-2 w-full p-4 border-2 border-dashed border-blue-300 rounded-lg cursor-pointer hover:bg-blue-50 transition-colors">
+                                    <i className="fas fa-image text-blue-500"></i>
+                                    <span className="text-sm text-blue-700">Clique para escolher uma imagem</span>
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        className="hidden"
+                                        onChange={(e) => {
+                                            const file = e.target.files?.[0];
+                                            if (!file) return;
+                                            setReviewImage(file);
+                                            const reader = new FileReader();
+                                            reader.onloadend = () => setReviewImagePreview(reader.result);
+                                            reader.readAsDataURL(file);
+                                        }}
+                                    />
+                                </label>
+                            ) : (
+                                <div className="relative rounded-lg overflow-hidden border border-blue-200 w-fit max-w-full">
+                                    <img
+                                        src={reviewImagePreview}
+                                        alt="Preview da avaliação"
+                                        className="max-h-48 w-auto object-contain"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setReviewImage(null);
+                                            setReviewImagePreview(null);
+                                        }}
+                                        className="absolute top-1.5 right-1.5 p-1.5 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors shadow-sm"
+                                        title="Remover imagem"
+                                    >
+                                        <i className="fas fa-times text-xs"></i>
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+
                         <div className="bg-white border border-blue-100 rounded-lg p-3">
                             <p className="text-[11px] font-semibold text-blue-700 uppercase tracking-wider mb-1">Preview</p>
                             <p className="text-sm text-gray-700 whitespace-pre-line">{preview2}</p>
