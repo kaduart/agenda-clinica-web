@@ -55,8 +55,12 @@ export async function createPreAppointment(rawData) {
 
 export async function listPreAppointments(filters = {}) {
     const params = new URLSearchParams();
+    params.append("limit", filters.limit || "500");
+    params.append("page", filters.page || "1");
     if (filters.status) params.append("status", filters.status);
-    if (filters.specialty) params.append("specialty", filters.specialty);
+    if (filters.specialty && filters.specialty !== 'all' && filters.specialty !== 'todas') {
+        params.append("specialty", filters.specialty);
+    }
     if (filters.preferredDate) {
         params.append("from", filters.preferredDate);
         params.append("to", filters.preferredDate);
@@ -116,6 +120,7 @@ export async function getAppointments(params = {}) {
     const response = await api.get("/api/v2/appointments", { params });
     return response.data;
 }
+
 
 export async function updateAppointment(id, rawData) {
     const payload = buildAppointmentPayload(rawData, { mode: "update", id });
@@ -282,7 +287,13 @@ export async function recreateAppointmentFromSession({
 // ===============================
 
 export async function getCalendarData({ startDate, endDate, limit = 500, page = 1 }) {
-    const appointmentsRes = await getAppointments({ startDate, endDate, limit, page });
+    const appointmentsRes = await getAppointments({
+        startDate,
+        endDate,
+        limit,
+        page,
+        includePreAgendamentos: true
+    });
     // API legada pode retornar array direto ou { data: { appointments: [...] } }
     if (Array.isArray(appointmentsRes)) {
         return appointmentsRes;

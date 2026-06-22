@@ -1,22 +1,18 @@
 import * as v2 from "../api/v2/agendaV2Client";
+import { mapAppointmentListResponseDTO } from "../api/v2/appointment.response.dto";
 
 /**
  * Busca pré-agendamentos filtrados (operationalStatus = pre_agendado)
- * Como o backend ainda não filtra por operationalStatus, busca tudo e filtra no frontend.
+ * Usa o endpoint dedicado /api/v2/pre-appointments, que já filtra no backend.
  */
 export const fetchPreAppointments = async (filters = {}) => {
     const startTime = Date.now();
     try {
-        console.log(`[preAppointmentsRepo] Buscando pré-agendamentos com filtros:`, filters);
-        const data = await v2.getAppointments(filters);
-        // API legada pode retornar array direto ou { data: { appointments: [...] } }
-        const appointments = Array.isArray(data)
-            ? data
-            : (data?.data?.appointments || data?.appointments || []);
-        console.log(`[preAppointmentsRepo] Recebidos ${appointments.length} registros em ${Date.now() - startTime}ms`);
-        // Filtra apenas pré-agendamentos no frontend
-        const preAgendados = appointments.filter(a => a.operationalStatus === 'pre_agendado');
-        console.log(`[preAppointmentsRepo] Filtrados ${preAgendados.length} pré-agendamentos`);
+        console.log(`[preAppointmentsRepo] 🚀 Buscando pré-agendamentos com filtros:`, filters);
+        const rawList = await v2.listPreAppointments(filters);
+        console.log(`[preAppointmentsRepo] RAW list length:`, rawList?.length || 0);
+        const preAgendados = mapAppointmentListResponseDTO(rawList);
+        console.log(`[preAppointmentsRepo] ✅ Recebidos ${preAgendados.length} pré-agendamentos em ${Date.now() - startTime}ms`);
         return preAgendados;
     } catch (error) {
         console.error(`❌ [preAppointmentsRepo] Erro após ${Date.now() - startTime}ms:`, error);

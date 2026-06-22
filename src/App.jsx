@@ -31,7 +31,7 @@ import {
   generateCycleAppointments,
 } from "./services/appointmentsRepo";
 
-import { approvePreAppointment, discardPreAppointment, cancelPreAppointment, updatePreAppointment, fetchPreAppointments } from "./services/preAppointmentsRepo";
+import { approvePreAppointment, discardPreAppointment, cancelPreAppointment, updatePreAppointment } from "./services/preAppointmentsRepo";
 
 import {
   addProfessional,
@@ -61,7 +61,6 @@ export default function App() {
 
   const [view, setView] = React.useState("list");
   const [appointments, setAppointments] = React.useState([]);
-  const [preAppointments, setPreAppointments] = React.useState([]);
   const [professionals, setProfessionals] = React.useState([]);
   const [patients, setPatients] = React.useState([]);
   const [patientsError, setPatientsError] = React.useState(null);
@@ -120,7 +119,6 @@ export default function App() {
   
   // Estado para forçar refresh da lista após operações (criar, editar, cancelar, deletar)
   const [refreshTrigger, setRefreshTrigger] = React.useState(0);
-  const loadPreAppointmentsRef = React.useRef(null);
 
   const [isModalOpen, setIsModalOpen] = React.useState(false);
   const [editingAppointment, setEditingAppointment] = React.useState(null);
@@ -139,10 +137,6 @@ export default function App() {
   const forceRefreshAppointments = React.useCallback(() => {
     // Dispara refresh do useEffect de appointments (listener)
     setRefreshTrigger(prev => prev + 1);
-    // Dispara refresh imediato dos pré-agendamentos sem recriar o intervalo
-    if (typeof loadPreAppointmentsRef.current === 'function') {
-      loadPreAppointmentsRef.current();
-    }
   }, []);
 
   // ========== DISPONIBILIDADE REAL (Slots Virtuais) ==========
@@ -235,29 +229,8 @@ export default function App() {
     };
   }, [currentYear, currentMonth, filters.filterDate, refreshTrigger]);
 
-  // 🆕 Buscar pré-agendamentos (pre_agendado) para exibir na agenda
-  useEffect(() => {
-    const loadPreAppointments = async () => {
-      try {
-        const filters = {};
-        if (activeSpecialty && activeSpecialty !== 'all') {
-          filters.specialty = activeSpecialty;
-        }
-        const data = await fetchPreAppointments(filters);
-        console.log(`[App.jsx] Pré-agendamentos carregados: ${data.length}`);
-        setPreAppointments(data);
-      } catch (error) {
-        console.error("❌ [App.jsx] Erro ao buscar pré-agendamentos:", error);
-      }
-    };
-
-    loadPreAppointmentsRef.current = loadPreAppointments;
-    loadPreAppointments();
-
-    // Recarregar a cada 30 segundos
-    const interval = setInterval(loadPreAppointments, 30000);
-    return () => clearInterval(interval);
-  }, [activeSpecialty]);
+  // 🆕 Pré-agendamentos agora vêm pelo endpoint unificado /api/v2/appointments (includePreAgendamentos=true)
+  // Não é mais necessário buscar separadamente em /api/v2/pre-appointments para exibição na agenda.
 
   useEffect(() => {
     const unsub = listenReminders((list) => setReminders(list));
@@ -779,42 +752,8 @@ export default function App() {
   }, []);
 
   // ========== DERIVED LISTS (separação de pipelines) ==========
-  const mappedPreAppointments = React.useMemo(() => {
-    return (preAppointments || []).map(pre => ({
-      id: pre._id || pre.id || pre.preAgendamentoId || pre.appointmentId,
-      _id: pre._id || pre.id || pre.preAgendamentoId || pre.appointmentId,
-      date: pre.preferredDate || (typeof pre.date === 'string' ? pre.date.substring(0,10) : new Date(pre.date).toISOString().substring(0,10)),
-      time: pre.preferredTime || pre.time,
-      patient: pre.patient?.fullName || pre.patientName || 'Paciente Desconhecido',
-      patientName: pre.patient?.fullName || pre.patientName || 'Paciente Desconhecido',
-      patientId: pre.patient?._id?.toString?.() || pre.patient?.toString?.() || pre.patientId || null,
-      phone: pre.patient?.phone || '',
-      birthDate: pre.patient?.dateOfBirth || null,
-      email: pre.patient?.email || null,
-      professional: pre.professionalName || (pre.doctor?.fullName),
-      professionalId: pre.doctorId || pre.professionalId || (pre.doctor?._id || pre.doctor?.id),
-      specialty: pre.specialty,
-      specialtyKey: pre.specialtyKey || pre.specialty,
-      operationalStatus: 'pre_agendado',
-      status: 'Pré-agendado',
-      observations: pre.notes || pre.observations,
-      duration: pre.duration || 40,
-      paymentStatus: pre.paymentStatus || 'pending',
-      billingType: pre.billingType || 'particular',
-      insuranceProvider: pre.insuranceProvider || '',
-      insuranceValue: pre.insuranceValue || 0,
-      authorizationCode: pre.authorizationCode || '',
-      package: pre.package || null,
-      sessionValue: pre.sessionValue || 0,
-      paymentMethod: pre.paymentMethod || 'pix',
-      crm: pre.crm || null,
-      serviceType: pre.serviceType || null,
-      responsible: pre.responsible || '',
-      notes: pre.notes || '',
-      originalData: pre,
-      source: pre.metadata?.origin?.source || 'crm'
-    }));
-  }, [preAppointments]);
+  // 🆕 Pré-agendamentos vêm pelo endpoint unificado; mantido array vazio para compatibilidade
+  const mappedPreAppointments = React.useMemo(() => [], []);
 
   // Pipeline para Calendar / Weekly (tudo que cai no mês)
   const calendarAppointments = React.useMemo(() => {
