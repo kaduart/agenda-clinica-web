@@ -229,6 +229,25 @@ export default function AppointmentRow({ appointment, onEdit, onReminder, onGene
   return (
     <div className={`flex items-stretch gap-3 px-4 py-3 rounded-xl border border-gray-200 border-l-[5px] transition-all shadow-sm ${rowAccent} ${isCancelled ? 'opacity-60 grayscale' : ''}`}>
 
+      {/* Data/Hora + Profissional agrupados */}
+      <div className="w-40 shrink-0 hidden sm:flex flex-col justify-center">
+        <div className="text-gray-900 font-bold text-sm leading-tight tracking-tight flex items-center gap-1.5">
+          <span>{appointment.time || "-"}</span>
+          <span className="text-gray-300">|</span>
+          <span className="text-xs text-gray-500 font-medium">
+            {(() => {
+              const [y, m, d] = (appointment.date || "").split("-");
+              if (!y || !m || !d) return "";
+              const date = new Date(Number(y), Number(m) - 1, Number(d));
+              return `${date.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", "")}, ${d}/${m}`;
+            })()}
+          </span>
+        </div>
+        <div className="text-gray-600 text-xs truncate mt-1">
+          {appointment.doctor?.fullName || appointment.professional?.fullName || appointment.professional?.name || (typeof appointment.professional === 'string' ? appointment.professional : null) || "-"}
+        </div>
+      </div>
+
       {/* Paciente */}
       <div className="flex-[1.2] min-w-0 flex items-center">
         <div className="flex items-start gap-2.5">
@@ -262,25 +281,6 @@ export default function AppointmentRow({ appointment, onEdit, onReminder, onGene
               )}
             </div>
           </div>
-        </div>
-      </div>
-
-      {/* Data/Hora + Profissional agrupados */}
-      <div className="w-40 shrink-0 hidden sm:flex flex-col justify-center">
-        <div className="text-gray-900 font-bold text-sm leading-tight tracking-tight flex items-center gap-1.5">
-          <span>{appointment.time || "-"}</span>
-          <span className="text-gray-300">|</span>
-          <span className="text-xs text-gray-500 font-medium">
-            {(() => {
-              const [y, m, d] = (appointment.date || "").split("-");
-              if (!y || !m || !d) return "";
-              const date = new Date(Number(y), Number(m) - 1, Number(d));
-              return `${date.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", "")}, ${d}/${m}`;
-            })()}
-          </span>
-        </div>
-        <div className="text-gray-600 text-xs truncate mt-1">
-          {appointment.doctor?.fullName || appointment.professional?.fullName || appointment.professional?.name || (typeof appointment.professional === 'string' ? appointment.professional : null) || "-"}
         </div>
       </div>
 

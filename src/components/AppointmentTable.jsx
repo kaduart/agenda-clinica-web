@@ -80,14 +80,14 @@ export default function AppointmentTable({
                     <>
                         {/* Header row — espelha as colunas do AppointmentRow */}
                         <div className="flex items-center gap-3 px-4 py-2 mb-2 border-b border-gray-200">
-                            <div className="flex-[1.2] min-w-0 flex items-center">
-                                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
-                                    <i className="fas fa-user text-xs"></i> Paciente
-                                </span>
-                            </div>
                             <div className="w-40 shrink-0 hidden sm:flex items-center">
                                 <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
                                     <i className="fas fa-clock text-xs"></i> Horário / Profissional
+                                </span>
+                            </div>
+                            <div className="flex-[1.2] min-w-0 flex items-center">
+                                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+                                    <i className="fas fa-user text-xs"></i> Paciente
                                 </span>
                             </div>
                             <div className="w-36 shrink-0 flex items-center">
