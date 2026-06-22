@@ -415,6 +415,23 @@ export default function App() {
   };
 
 
+  const buildConflictMessage = (err) => {
+    const data = err.response?.data;
+    const conflict = data?.conflict;
+    if (err.response?.status === 409 && conflict) {
+      const who = conflict.patientName || conflict.doctorName || 'outro paciente';
+      const appt = conflict.existingAppointment || {};
+      const dateStr = appt.date ? appt.date.slice(0, 10).split('-').reverse().slice(0, 2).join('/') : '';
+      const timeStr = appt.time || '';
+      const parts = ['Horário'];
+      if (timeStr) parts.push(timeStr);
+      if (dateStr) parts.push(`do dia ${dateStr}`);
+      parts.push(`já ocupado por ${who}`);
+      return parts.join(' ');
+    }
+    return 'Erro ao salvar: ' + (data?.error || err.message);
+  };
+
   const saveAppointment = async (appointmentData) => {
     
     const appointmentId = editingAppointment?.id || editingAppointment?._id || editingAppointment?.preAgendamentoId || editingAppointment?.appointmentId;
@@ -467,7 +484,7 @@ export default function App() {
         return;
       } catch (err) {
         console.error("❌ Erro ao atualizar pré-agendamento:", err);
-        toast.error("Erro ao salvar: " + (err.response?.data?.error || err.message));
+        toast.error(buildConflictMessage(err));
         throw err; // Propaga erro para o modal saber que falhou
       }
     }
@@ -661,8 +678,7 @@ export default function App() {
         }
       }
       console.error("[saveAppointment] Erro:", err);
-      const msg = err.response?.data?.error || err.message;
-      toast.error("Erro ao salvar: " + msg);
+      toast.error(buildConflictMessage(err));
       throw err;
     }
   };
