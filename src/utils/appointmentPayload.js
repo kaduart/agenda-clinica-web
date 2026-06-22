@@ -92,8 +92,12 @@ export function buildAppointmentPayload(raw, options = {}) {
     const responsible = raw.responsible || "";
 
     // --- CRM ---
+    // Deriva serviceType de billingType quando não explicitado (convenio/liminar desacoplados)
+    const derivedServiceType = billingType === 'convenio' ? 'convenio_session'
+        : billingType === 'liminar' ? 'liminar_session'
+        : null;
     const crmBlock = {
-        serviceType: crm.serviceType || raw.serviceType || "session",
+        serviceType: crm.serviceType || raw.serviceType || derivedServiceType || "session",
         sessionType: crm.sessionType || raw.sessionType || specialty,
         paymentMethod: crm.paymentMethod || paymentMethod,
         paymentAmount: crm.paymentAmount ?? paymentAmount,

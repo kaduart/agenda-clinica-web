@@ -58,10 +58,15 @@ export function getServiceTypeColorClass(serviceType) {
 
 /**
  * Resolve o serviceType de um agendamento, olhando tanto a raiz quanto crm.serviceType.
+ * Fallback: deriva de billingType para convenio/liminar (pós-desacoplamento 2026-05-01).
  */
 export function resolveServiceType(appointment) {
   if (!appointment) return null;
-  return appointment.serviceType || appointment.crm?.serviceType || null;
+  const st = appointment.serviceType || appointment.crm?.serviceType;
+  if (st) return st;
+  if (appointment.billingType === 'convenio') return 'convenio_session';
+  if (appointment.billingType === 'liminar') return 'liminar_session';
+  return null;
 }
 
 /**
