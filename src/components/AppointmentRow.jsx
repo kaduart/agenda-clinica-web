@@ -93,6 +93,9 @@ export default function AppointmentRow({ appointment, onEdit, onReminder, onGene
 
   const isPre = appointment.operationalStatus === 'pre_agendado';
   const isCompleted = appointment.operationalStatus === 'completed';
+  const isConfirmed = appointment.operationalStatus === 'confirmed';
+  // Pós-atendimento / avaliação Google pode ser enviado para confirmados ou concluídos
+  const canSendPostAppointment = (isConfirmed || isCompleted) && !appointment.__isVirtual;
   const preStatus = appointment.metadata?.preAgendamentoStatus || appointment.status;
   const source = appointment.source || appointment.metadata?.origin?.source;
 
@@ -311,8 +314,8 @@ export default function AppointmentRow({ appointment, onEdit, onReminder, onGene
       {/* Ações contextuais */}
       <div className="w-52 shrink-0 flex items-center justify-end">
         <div className="flex items-center gap-1">
-          {/* Concluído: Avaliação Google em destaque */}
-          {isCompleted && !appointment.__isVirtual && (() => {
+          {/* Confirmado/Concluído: Avaliação Google / pós-atendimento em destaque */}
+          {canSendPostAppointment && (() => {
             const m1 = !!appointment.postAppointmentSentAt;
             const m2 = !!appointment.reviewRequestSentAt;
             const bothSent = m1 && m2;
@@ -475,6 +478,11 @@ export default function AppointmentRow({ appointment, onEdit, onReminder, onGene
                     {isCompleted && (
                       <button type="button" className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-amber-50 hover:text-amber-800 flex items-center gap-2" onClick={() => { onCancel?.(appointment); setShowMenu(false); }}>
                         <i className="fas fa-undo text-amber-600"></i> Reverter conclusão
+                      </button>
+                    )}
+                    {canSendPostAppointment && (
+                      <button type="button" className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-yellow-50 hover:text-yellow-800 flex items-center gap-2" onClick={() => { onPostAppointment?.(appointment); setShowMenu(false); }}>
+                        <i className="fas fa-star text-yellow-600"></i> Enviar avaliação
                       </button>
                     )}
                     {!isCompleted && !isCancelled && (
