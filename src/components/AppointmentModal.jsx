@@ -268,7 +268,8 @@ export default function AppointmentModal({ appointment, professionals, patients,
                 metadata: null,
             });
         }
-    }, [appointment]);
+    // professionals está nas deps: se carregar após appointment, re-resolve o profissional
+    }, [appointment, professionals]);
 
     // Quando patients carregar ou appointment mudar, busca dados do paciente
     React.useEffect(() => {
@@ -342,10 +343,38 @@ export default function AppointmentModal({ appointment, professionals, patients,
                 // Só atualiza se o usuário ainda não interagiu com o formulário
                 if (hasInteracted.current) return;
 
+                // Resolve profissional a partir da resposta da API (doctor pode vir populado aqui)
+                const dFresh = (typeof data.doctor === 'object' && data.doctor !== null) ? data.doctor : {};
+                const freshProfId   = dFresh._id || data.professionalId || (typeof data.doctor === 'string' ? data.doctor : '') || '';
+                const freshProfName = dFresh.fullName || data.professional || data.professionalName || '';
+                const freshProfPhone = dFresh.phoneNumber || '';
+
+                // Fallback: se ainda não tem nome, tenta na lista de profissionais pelo ID
+                let resolvedFreshName  = freshProfName;
+                let resolvedFreshId    = freshProfId;
+                let resolvedFreshPhone = freshProfPhone;
+                if (!resolvedFreshName && freshProfId) {
+                    const mp = (professionals || []).find(p =>
+                        String(p.id) === String(freshProfId) || String(p._id) === String(freshProfId)
+                    );
+                    if (mp) {
+                        resolvedFreshName  = mp.fullName;
+                        resolvedFreshId    = mp.id || mp._id;
+                        resolvedFreshPhone = mp.phoneNumber || '';
+                    }
+                }
+
                 // Atualiza com os dados recebidos da API
                 setFormData(prev => {
                     return {
                         ...prev,
+                        // Profissional: atualiza só se a versão atual estiver vazia
+                        ...(resolvedFreshName && !prev.professional ? {
+                            professional:     resolvedFreshName,
+                            professionalName: resolvedFreshName,
+                            professionalId:   resolvedFreshId,
+                            professionalPhone: resolvedFreshPhone,
+                        } : {}),
                         // Dados do pacote se existir
                         package: data.package || prev.package,
                         // Dados de faturamento

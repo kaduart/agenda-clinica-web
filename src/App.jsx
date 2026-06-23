@@ -69,20 +69,15 @@ export default function App() {
   const todayFormatted = formatDateLocal(today);
   const todayDayOfWeek = (today.getDay() === 0 ? 7 : today.getDay()).toString();
 
-  // Recupera data salva do localStorage ou usa hoje
+  // Restaura filtro de data APENAS se for do dia de hoje.
+  // Data de outro dia (ontem, semana passada) não faz sentido para outra pessoa
+  // ou outra sessão — sempre começa em hoje nesses casos.
   const getSavedDate = () => {
     try {
       const saved = localStorage.getItem('agendaFilterDate');
       const savedDay = localStorage.getItem('agendaFilterDay');
-      if (saved) {
-        // Verifica se a data salva é válida (não está muito no passado - mais de 30 dias)
-        const savedDate = new Date(saved);
-        const thirtyDaysAgo = new Date();
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-        
-        if (savedDate >= thirtyDaysAgo) {
-          return { date: saved, day: savedDay || todayDayOfWeek };
-        }
+      if (saved && saved === todayFormatted) {
+        return { date: saved, day: savedDay || todayDayOfWeek };
       }
     } catch (e) {
       console.error("[App.jsx] Erro ao ler localStorage:", e);
