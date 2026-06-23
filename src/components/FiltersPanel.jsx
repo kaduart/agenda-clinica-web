@@ -1,4 +1,5 @@
 import { getWeeksInMonth } from "../utils/date";
+import { useRef } from "react";
 
 export default function FiltersPanel({
     professionals,
@@ -11,6 +12,19 @@ export default function FiltersPanel({
     onResetFilters
 }) {
     const weeksInMonth = getWeeksInMonth(currentYear, currentMonth);
+    const dateInputRef = useRef(null);
+
+    const formatDateToBR = (isoDate) => {
+        if (!isoDate) return '';
+        const [y, m, d] = isoDate.split('-');
+        return `${d}/${m}/${y}`;
+    };
+
+    const parseBRDateToISO = (brDate) => {
+        if (!/^\d{2}\/\d{2}\/\d{4}$/.test(brDate)) return '';
+        const [d, m, y] = brDate.split('/');
+        return `${y}-${m}-${d}`;
+    };
 
     return (
         <div className="relative z-10 pointer-events-auto bg-white rounded-2xl shadow-xl border border-gray-200 p-6">
@@ -137,22 +151,51 @@ export default function FiltersPanel({
                         <i className="fas fa-calendar text-emerald-600"></i>
                         Data específica
                     </label>
-                    <input
-                        type="date"
-                        className="w-full p-3.5 border-2 border-gray-200 rounded-xl focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all duration-200 text-gray-700"
-                        value={filters.filterDate}
-                        onChange={(e) => {
-                            const selectedDate = e.target.value;
-
-                            // ✅ LÓGICA ORIGINAL
-                            setFilters((prev) => ({
-                                ...prev,
-                                filterDate: selectedDate,
-                                filterDay: "",      // ⚠️ limpa dia
-                                filterWeek: null    // ⚠️ limpa semana
-                            }));
-                        }}
-                    />
+                    <div className="relative">
+                        <input
+                            type="text"
+                            placeholder="dd/mm/aaaa"
+                            className="w-full p-3.5 pr-12 border-2 border-gray-200 rounded-xl focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all duration-200 text-gray-700"
+                            value={formatDateToBR(filters.filterDate)}
+                            onChange={(e) => {
+                                let raw = e.target.value.replace(/\D/g, '').substring(0, 8);
+                                if (raw.length >= 5) {
+                                    raw = raw.replace(/(\d{2})(\d{2})(\d+)/, '$1/$2/$3');
+                                } else if (raw.length >= 3) {
+                                    raw = raw.replace(/(\d{2})(\d+)/, '$1/$2');
+                                }
+                                const isoDate = parseBRDateToISO(raw);
+                                setFilters((prev) => ({
+                                    ...prev,
+                                    filterDate: isoDate,
+                                    filterDay: "",
+                                    filterWeek: null
+                                }));
+                            }}
+                        />
+                        <button
+                            type="button"
+                            onClick={() => dateInputRef.current?.showPicker?.()}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-emerald-600 transition-colors"
+                            aria-label="Abrir calendário"
+                        >
+                            <i className="fas fa-calendar"></i>
+                        </button>
+                        <input
+                            ref={dateInputRef}
+                            type="date"
+                            className="absolute opacity-0 w-0 h-0 p-0 border-0"
+                            value={filters.filterDate}
+                            onChange={(e) => {
+                                setFilters((prev) => ({
+                                    ...prev,
+                                    filterDate: e.target.value,
+                                    filterDay: "",
+                                    filterWeek: null
+                                }));
+                            }}
+                        />
+                    </div>
                     {filters.filterDate && (
                         <p className="text-xs font-medium text-emerald-600 mt-2 flex items-center gap-1">
                             <i className="fas fa-check-circle"></i>

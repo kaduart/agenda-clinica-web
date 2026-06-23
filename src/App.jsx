@@ -812,8 +812,9 @@ export default function App() {
       return true;
     });
     console.log('[filteredAppointments] Após filtro de appointments reais:', filteredReals.length, {
-      amostra: filteredReals.slice(0, 3).map(a => ({ id: a.id, date: a.date, specialty: a.specialty, status: a.operationalStatus }))
+      amostra: filteredReals.slice(0, 3).map(a => ({ id: a.id, date: a.date, specialty: a.specialty, status: a.operationalStatus, professional: a.professional, professionalId: a.professionalId, doctor: a.doctor }))
     });
+    console.log('[filteredAppointments] Profissionais dos reais:', filteredReals.map(a => ({ id: a.id, professional: a.professional, professionalId: a.professionalId, doctorId: a.doctor?.id || a.doctor?._id })));
 
     // 2. Filtrar pré-agendamentos por especialidade e por data do agendamento
     let filteredPres = mappedPreAppointments.filter((appointment) => {
@@ -860,6 +861,13 @@ export default function App() {
     });
 
     // 5. Filtros secundários (profissional / status) aplicados em ambos
+    const selectedProf = filters.filterProfessional
+      ? (professionals || []).find(p => p.fullName === filters.filterProfessional)
+      : null;
+
+    const normalizeForCompare = (str) =>
+      (str || "").toString().trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
     const applySecondaryFilters = (list) => list.filter(appointment => {
       if (filters.filterProfessional) {
         if (filters.filterProfessional.toLowerCase() === "livre") {
@@ -869,8 +877,15 @@ export default function App() {
             (pName.toLowerCase().includes("livre")) ||
             (appointment.observations && appointment.observations.toLowerCase().includes("livre"));
           if (!isLivre) return false;
-        } else if ((appointment.professional || "").toLowerCase() !== filters.filterProfessional.toLowerCase()) {
-          return false;
+        } else {
+          // Compara preferencialmente por ID para evitar problemas de nome ligeiramente diferente
+          const appointmentProfId = appointment.professionalId || appointment.doctor?.id || appointment.doctor?._id;
+          const selectedProfId = selectedProf?.id || selectedProf?._id;
+          if (selectedProfId && appointmentProfId && selectedProfId.toString() === appointmentProfId.toString()) {
+            // mantém o registro
+          } else if (normalizeForCompare(appointment.professional) !== normalizeForCompare(filters.filterProfessional)) {
+            return false;
+          }
         }
       }
       if (filters.filterStatus) {
@@ -883,7 +898,9 @@ export default function App() {
     filteredPres = applySecondaryFilters(filteredPres);
     console.log('[filteredAppointments] Após filtros secundários:', {
       filteredReals: filteredReals.length,
-      filteredPres: filteredPres.length
+      filteredPres: filteredPres.length,
+      filterProfessional: filters.filterProfessional,
+      selectedProfId: selectedProf?.id || selectedProf?._id || null
     });
 
     // 6. Merge
@@ -925,7 +942,7 @@ export default function App() {
 
     base = sortAppointmentsByDateTimeAsc(base);
     console.log('[filteredAppointments] Resultado final:', base.length, {
-      amostra: base.slice(0, 3).map(a => ({ id: a.id, date: a.date, patientName: a.patientName, professional: a.professional }))
+      amostra: base.slice(0, 3).map(a => ({ id: a.id, date: a.date, patientName: a.patientName, professional: a.professional, professionalId: a.professionalId }))
     });
     return base;
   }, [appointments, mappedPreAppointments, activeSpecialty, filters, currentYear, currentMonth, availableSlots]);
