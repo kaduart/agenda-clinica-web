@@ -1,5 +1,5 @@
 import { getWeeksInMonth } from "../utils/date";
-import { useRef } from "react";
+import { useRef, useState, useEffect } from "react";
 
 export default function FiltersPanel({
     professionals,
@@ -25,6 +25,14 @@ export default function FiltersPanel({
         const [d, m, y] = brDate.split('/');
         return `${y}-${m}-${d}`;
     };
+
+    const [dateInputValue, setDateInputValue] = useState(formatDateToBR(filters.filterDate));
+
+    // Sincroniza o input de texto quando a data é alterada externamente (date picker ou limpar filtros)
+    useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setDateInputValue(formatDateToBR(filters.filterDate));
+    }, [filters.filterDate]);
 
     return (
         <div className="relative z-10 pointer-events-auto bg-white rounded-2xl shadow-xl border border-gray-200 p-6">
@@ -156,7 +164,7 @@ export default function FiltersPanel({
                             type="text"
                             placeholder="dd/mm/aaaa"
                             className="w-full p-3.5 pr-12 border-2 border-gray-200 rounded-xl focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all duration-200 text-gray-700"
-                            value={formatDateToBR(filters.filterDate)}
+                            value={dateInputValue}
                             onChange={(e) => {
                                 let raw = e.target.value.replace(/\D/g, '').substring(0, 8);
                                 if (raw.length >= 5) {
@@ -164,13 +172,29 @@ export default function FiltersPanel({
                                 } else if (raw.length >= 3) {
                                     raw = raw.replace(/(\d{2})(\d+)/, '$1/$2');
                                 }
-                                const isoDate = parseBRDateToISO(raw);
-                                setFilters((prev) => ({
-                                    ...prev,
-                                    filterDate: isoDate,
-                                    filterDay: "",
-                                    filterWeek: null
-                                }));
+                                setDateInputValue(raw);
+                                if (raw.length === 0) {
+                                    setFilters((prev) => ({
+                                        ...prev,
+                                        filterDate: "",
+                                        filterDay: "",
+                                        filterWeek: null
+                                    }));
+                                } else if (raw.length === 10) {
+                                    const isoDate = parseBRDateToISO(raw);
+                                    setFilters((prev) => ({
+                                        ...prev,
+                                        filterDate: isoDate,
+                                        filterDay: "",
+                                        filterWeek: null
+                                    }));
+                                }
+                            }}
+                            onBlur={(e) => {
+                                const raw = e.target.value.replace(/\D/g, '');
+                                if (raw.length !== 8) {
+                                    setDateInputValue(formatDateToBR(filters.filterDate));
+                                }
                             }}
                         />
                         <button

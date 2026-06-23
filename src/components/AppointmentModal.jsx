@@ -5,13 +5,7 @@ import { SERVICE_TYPE_LABELS, mapBackendServiceType } from "../utils/serviceType
 import api from "../services/api";
 import { searchPatients } from "../services/patientsRepo";
 import { cancelPreAppointment } from "../services/preAppointmentsRepo";
-import {
-    sendWhatsAppMessage,
-    generateConfirmationMessage,
-    generateReminderMessage,
-    generateProfessionalNewAppointmentMessage,
-    generateProfessionalReminderMessage
-} from "../services/baileysApi";
+
 import { getHolidays, holidaysToMap, isTimeBlockedByHoliday as checkHolidayBlock } from "../services/calendarService";
 
 /**
@@ -806,6 +800,25 @@ export default function AppointmentModal({ appointment, professionals, patients,
     };
 
     // Se for pré-agendamento, mapeamos de preferredDate/Time
+
+    const formatCurrency = (value) => {
+        if (value == null || value === '' || Number.isNaN(Number(value))) return '—';
+        return Number(value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    };
+
+    const translateFinancialStatus = (status) => {
+        const map = {
+            unpaid: 'Não pago',
+            partially_paid: 'Parcialmente pago',
+            partial: 'Parcialmente pago',
+            paid: 'Pago',
+            paid_with_credit: 'Pago com crédito',
+            cancelled: 'Cancelado',
+            refunded: 'Reembolsado'
+        };
+        return map[status] || status || '—';
+    };
+
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
             <div className={`bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto relative ${isLoading ? "opacity-80 pointer-events-none" : ""}`}>
@@ -1052,167 +1065,6 @@ export default function AppointmentModal({ appointment, professionals, patients,
                             </div>
                         </div>
                     </div>
-
-                    {/* 🆕 Seção: Confirmação WhatsApp (Baileys - envio direto) */}
-                    {formData.phone && formData.patient && (
-                        <div className="bg-emerald-50/50 rounded-lg p-4 border border-emerald-200">
-                            <h4 className="text-sm font-semibold text-emerald-800 mb-3 flex items-center gap-2">
-                                <i className="fab fa-whatsapp text-emerald-600"></i> Confirmação WhatsApp
-                            </h4>
-                            
-                            <div className="space-y-3">
-                                <p className="text-xs text-emerald-700">
-                                    ⚡ Envia mensagem direto pelo WhatsApp (sem abrir navegador)
-                                </p>
-                                
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                    <button
-                                        type="button"
-                                        onClick={async () => {
-                                            try {
-                                                const message = generateConfirmationMessage({
-                                                    ...formData,
-                                                    fullName: formData.patient,
-                                                    professional: formData.professional
-                                                });
-                                                await sendWhatsAppMessage(formData.phone, message);
-                                                // Toast sucesso
-                                                const toast = document.createElement('div');
-                                                toast.className = 'fixed bottom-4 right-4 bg-emerald-500 text-white px-4 py-3 rounded-lg text-sm z-50 shadow-lg flex items-center gap-2';
-                                                toast.innerHTML = '<i class="fab fa-whatsapp text-lg"></i> <div><strong>✅ Enviado com sucesso!</strong><br>Confirmação enviada ao paciente</div>';
-                                                document.body.appendChild(toast);
-                                                setTimeout(() => toast.remove(), 3000);
-                                            } catch (err) {
-                                                // Toast erro
-                                                const toast = document.createElement('div');
-                                                toast.className = 'fixed bottom-4 right-4 bg-red-500 text-white px-4 py-3 rounded-lg text-sm z-50 shadow-lg flex items-center gap-2';
-                                                toast.innerHTML = `<i class="fas fa-exclamation-circle text-lg"></i> <div><strong>Erro ao enviar</strong><br>${err.error || 'WhatsApp não conectado'}</div>`;
-                                                document.body.appendChild(toast);
-                                                setTimeout(() => toast.remove(), 5000);
-                                            }
-                                        }}
-                                        className="flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-medium rounded-lg transition-colors"
-                                    >
-                                        <i className="fab fa-whatsapp"></i>
-                                        1️⃣ Enviar Confirmação
-                                    </button>
-                                    
-                                    <button
-                                        type="button"
-                                        onClick={async () => {
-                                            try {
-                                                const message = generateReminderMessage({
-                                                    ...formData,
-                                                    fullName: formData.patient
-                                                });
-                                                await sendWhatsAppMessage(formData.phone, message);
-                                                // Toast sucesso
-                                                const toast = document.createElement('div');
-                                                toast.className = 'fixed bottom-4 right-4 bg-amber-500 text-white px-4 py-3 rounded-lg text-sm z-50 shadow-lg flex items-center gap-2';
-                                                toast.innerHTML = '<i class="fab fa-whatsapp text-lg"></i> <div><strong>🔔 Enviado com sucesso!</strong><br>Lembrete enviado ao paciente</div>';
-                                                document.body.appendChild(toast);
-                                                setTimeout(() => toast.remove(), 3000);
-                                            } catch (err) {
-                                                // Toast erro
-                                                const toast = document.createElement('div');
-                                                toast.className = 'fixed bottom-4 right-4 bg-red-500 text-white px-4 py-3 rounded-lg text-sm z-50 shadow-lg flex items-center gap-2';
-                                                toast.innerHTML = `<i class="fas fa-exclamation-circle text-lg"></i> <div><strong>Erro ao enviar</strong><br>${err.error || 'WhatsApp não conectado'}</div>`;
-                                                document.body.appendChild(toast);
-                                                setTimeout(() => toast.remove(), 5000);
-                                            }
-                                        }}
-                                        className="flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-emerald-500 text-emerald-600 hover:bg-emerald-50 text-sm font-medium rounded-lg transition-colors"
-                                    >
-                                        <i className="far fa-clock"></i>
-                                        2️⃣ Enviar Lembrete
-                                    </button>
-                                </div>
-                                
-                                <p className="text-xs text-gray-500">
-                                    ⚠️ <strong>Aviso:</strong> Volume baixo (20-100/dia) = risco mínimo de banimento
-                                </p>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* 🆕 Seção: Notificar Profissional */}
-                    {formData.professionalPhone && formData.professional && (
-                        <div className="bg-blue-50/50 rounded-lg p-4 border border-blue-200">
-                            <h4 className="text-sm font-semibold text-blue-800 mb-3 flex items-center gap-2">
-                                <i className="fas fa-user-md text-blue-600"></i> Notificar Profissional
-                            </h4>
-
-                            <div className="space-y-3">
-                                <p className="text-xs text-blue-700">
-                                    📲 Enviar mensagem diretamente para o WhatsApp do profissional
-                                </p>
-
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                    <button
-                                        type="button"
-                                        onClick={async () => {
-                                            try {
-                                                const message = generateProfessionalNewAppointmentMessage({
-                                                    ...formData,
-                                                    patientName: formData.patient,
-                                                    professional: formData.professional
-                                                });
-                                                await sendWhatsAppMessage(formData.professionalPhone, message);
-                                                const toast = document.createElement('div');
-                                                toast.className = 'fixed bottom-4 right-4 bg-blue-500 text-white px-4 py-3 rounded-lg text-sm z-50 shadow-lg flex items-center gap-2';
-                                                toast.innerHTML = '<i class="fab fa-whatsapp text-lg"></i> <div><strong>✅ Enviado com sucesso!</strong><br>Notificação enviada ao profissional</div>';
-                                                document.body.appendChild(toast);
-                                                setTimeout(() => toast.remove(), 3000);
-                                            } catch (err) {
-                                                const toast = document.createElement('div');
-                                                toast.className = 'fixed bottom-4 right-4 bg-red-500 text-white px-4 py-3 rounded-lg text-sm z-50 shadow-lg flex items-center gap-2';
-                                                toast.innerHTML = `<i class="fas fa-exclamation-circle text-lg"></i> <div><strong>Erro ao enviar</strong><br>${err.error || 'WhatsApp não conectado'}</div>`;
-                                                document.body.appendChild(toast);
-                                                setTimeout(() => toast.remove(), 5000);
-                                            }
-                                        }}
-                                        className="flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-lg transition-colors"
-                                    >
-                                        <i className="fab fa-whatsapp"></i>
-                                        🔔 Novo Agendamento
-                                    </button>
-
-                                    <button
-                                        type="button"
-                                        onClick={async () => {
-                                            try {
-                                                const message = generateProfessionalReminderMessage({
-                                                    ...formData,
-                                                    patientName: formData.patient,
-                                                    professional: formData.professional
-                                                });
-                                                await sendWhatsAppMessage(formData.professionalPhone, message);
-                                                const toast = document.createElement('div');
-                                                toast.className = 'fixed bottom-4 right-4 bg-blue-500 text-white px-4 py-3 rounded-lg text-sm z-50 shadow-lg flex items-center gap-2';
-                                                toast.innerHTML = '<i class="fab fa-whatsapp text-lg"></i> <div><strong>🔔 Enviado com sucesso!</strong><br>Lembrete enviado ao profissional</div>';
-                                                document.body.appendChild(toast);
-                                                setTimeout(() => toast.remove(), 3000);
-                                            } catch (err) {
-                                                const toast = document.createElement('div');
-                                                toast.className = 'fixed bottom-4 right-4 bg-red-500 text-white px-4 py-3 rounded-lg text-sm z-50 shadow-lg flex items-center gap-2';
-                                                toast.innerHTML = `<i class="fas fa-exclamation-circle text-lg"></i> <div><strong>Erro ao enviar</strong><br>${err.error || 'WhatsApp não conectado'}</div>`;
-                                                document.body.appendChild(toast);
-                                                setTimeout(() => toast.remove(), 5000);
-                                            }
-                                        }}
-                                        className="flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-blue-500 text-blue-600 hover:bg-blue-50 text-sm font-medium rounded-lg transition-colors"
-                                    >
-                                        <i className="far fa-clock"></i>
-                                        ⏰ Lembrete
-                                    </button>
-                                </div>
-
-                                <p className="text-xs text-gray-500">
-                                    Destinatário: <strong>{formData.professional}</strong> — {formData.professionalPhone.replace(/(\d{2})(\d{4,5})(\d{4})/, '($1) $2-$3')}
-                                </p>
-                            </div>
-                        </div>
-                    )}
 
                     {/* Seção: Dados do Agendamento */}
                     <div className="bg-amber-50/30 rounded-lg p-4 border border-amber-100">
@@ -1475,15 +1327,27 @@ export default function AppointmentModal({ appointment, professionals, patients,
 
                         {/* Info do Pacote */}
                         {formData.package && (
-                            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                                <h5 className="text-sm font-bold text-blue-800 mb-2 flex items-center">
-                                    <i className="fas fa-box mr-1"></i> Pacote Ativo
+                            <div className="mb-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl">
+                                <h5 className="text-sm font-bold text-blue-900 mb-3 flex items-center gap-2">
+                                    <i className="fas fa-box text-blue-600"></i> Pacote Ativo
                                 </h5>
-                                <div className="grid grid-cols-2 gap-2 text-sm">
-                                    <div><span className="text-blue-600">Valor da Sessão:</span> R$ {formData.package.sessionValue}</div>
-                                    <div><span className="text-blue-600">Total de Sessões:</span> {formData.package.totalSessions}</div>
-                                    <div><span className="text-blue-600">Status:</span> {formData.package.financialStatus}</div>
-                                    <div><span className="text-blue-600">Total Pago:</span> R$ {formData.package.totalPaid}</div>
+                                <div className="grid grid-cols-2 gap-3 text-sm">
+                                    <div className="bg-white/70 rounded-lg p-2.5">
+                                        <span className="block text-xs text-blue-600 mb-0.5">Valor da Sessão</span>
+                                        <span className="font-semibold text-gray-900">{formatCurrency(formData.package.sessionValue)}</span>
+                                    </div>
+                                    <div className="bg-white/70 rounded-lg p-2.5">
+                                        <span className="block text-xs text-blue-600 mb-0.5">Total de Sessões</span>
+                                        <span className="font-semibold text-gray-900">{formData.package.totalSessions ?? '—'}</span>
+                                    </div>
+                                    <div className="bg-white/70 rounded-lg p-2.5">
+                                        <span className="block text-xs text-blue-600 mb-0.5">Status</span>
+                                        <span className="font-semibold text-gray-900">{translateFinancialStatus(formData.package.financialStatus)}</span>
+                                    </div>
+                                    <div className="bg-white/70 rounded-lg p-2.5">
+                                        <span className="block text-xs text-blue-600 mb-0.5">Total Pago</span>
+                                        <span className="font-semibold text-gray-900">{formatCurrency(formData.package.totalPaid)}</span>
+                                    </div>
                                 </div>
                             </div>
                         )}
