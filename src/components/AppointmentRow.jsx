@@ -267,10 +267,8 @@ export default function AppointmentRow({ appointment, onEdit, onReminder, onGene
               )}
             </div>
             <div className="flex items-center gap-1 mt-1 text-xs text-gray-500">
-              {appointment.responsible && (
-                <span className="truncate">{appointment.responsible}</span>
-              )}
-              {appointment.responsible && patientPhone && (
+              <span className="truncate">resp. {appointment.responsible || "-"}</span>
+              {patientPhone && (
                 <span className="text-gray-300 shrink-0">|</span>
               )}
               {patientPhone && (

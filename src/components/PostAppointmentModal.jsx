@@ -2,13 +2,13 @@ import React from "react";
 import { sendWhatsAppMessage, sendWhatsAppMediaMessage } from "../services/baileysApi";
 import api from "../services/api";
 
-const STORAGE_KEY_MESSAGES = "postAppointmentMessages_v3";
+const STORAGE_KEY_MESSAGES = "postAppointmentMessages_v4";
 const STORAGE_KEY_GOOGLE_LINK = "postAppointmentGoogleLink";
 
 const NL = '\n​\n';
 
 const DEFAULT_MESSAGE_1 =
-    '👋 {{SAUDACAO}}, {{RESPONSAVEL}}!' + NL +
+    '👋 {{SAUDACAO}}{{RESPONSAVEL_SAUDACAO}}!' + NL +
     'Passamos para saber como foi a consulta de *{{NOME}}* hoje aqui na Clínica Fono Inova 💚' + NL +
     'Tudo correu bem? O atendimento atendeu as expectativas de vocês?';
 
@@ -17,7 +17,7 @@ const DEFAULT_MESSAGE_2 =
     'Sua opinião é muito importante pra nós.' + NL +
     'Você poderia reservar 1 minutinho para deixar uma avaliação no Google? Ajuda muito outras famílias a encontrarem nossa clínica 🙏' + NL +
     '👉 {{LINK}}' + NL +
-    'Obrigada, {{RESPONSAVEL}}! 💙';
+    'Obrigada! 💙';
 
 const DEFAULT_GOOGLE_LINK = "https://g.page/r/CR6aUdS_hstDEBM/review";
 
@@ -82,15 +82,24 @@ function resolveResponsibleFirstName(appointment) {
     return responsible ? responsible.split(" ")[0] : "";
 }
 
+function resolveResponsibleGreeting(appointment) {
+    const responsible = resolveResponsibleFirstName(appointment);
+    const firstName = resolveFirstName(appointment);
+    const target = responsible || firstName;
+    return target ? `, ${target}` : "";
+}
+
 function applyVariables(text, appointment, googleLink) {
     const firstName = resolveFirstName(appointment);
     const responsible = resolveResponsibleFirstName(appointment);
+    const responsibleGreeting = resolveResponsibleGreeting(appointment);
     const professional = appointment.doctor?.fullName || appointment.professional?.fullName || appointment.professional?.name || (typeof appointment.professional === "string" ? appointment.professional : "") || "";
 
     return text
         .replace(/{{SAUDACAO}}/g, getSaudacao())
         .replace(/{{NOME}}/g, firstName)
-        .replace(/{{RESPONSAVEL}}/g, responsible || firstName)
+        .replace(/{{RESPONSAVEL}}/g, responsible)
+        .replace(/{{RESPONSAVEL_SAUDACAO}}/g, responsibleGreeting)
         .replace(/{{PROFISSIONAL}}/g, professional)
         .replace(/{{LINK}}/g, googleLink || "[COLOCAR LINK DO GOOGLE AQUI]");
 }
@@ -367,6 +376,7 @@ export default function PostAppointmentModal({ appointment, onClose, onSent }) {
                         <code className="bg-gray-100 px-1 rounded">{"{{SAUDACAO}}"}</code>{" "}
                         <code className="bg-gray-100 px-1 rounded">{"{{NOME}}"}</code>{" "}
                         <code className="bg-gray-100 px-1 rounded">{"{{RESPONSAVEL}}"}</code>{" "}
+                        <code className="bg-gray-100 px-1 rounded">{"{{RESPONSAVEL_SAUDACAO}}"}</code>{" "}
                         <code className="bg-gray-100 px-1 rounded">{"{{PROFISSIONAL}}"}</code>{" "}
                         <code className="bg-gray-100 px-1 rounded">{"{{LINK}}"}</code>
                     </div>
