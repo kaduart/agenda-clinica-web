@@ -84,9 +84,7 @@ function resolveResponsibleFirstName(appointment) {
 
 function resolveResponsibleGreeting(appointment) {
     const responsible = resolveResponsibleFirstName(appointment);
-    const firstName = resolveFirstName(appointment);
-    const target = responsible || firstName;
-    return target ? `, ${target}` : "";
+    return responsible ? `, ${responsible}` : "";
 }
 
 function applyVariables(text, appointment, googleLink) {
