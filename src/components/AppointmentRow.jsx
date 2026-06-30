@@ -368,16 +368,17 @@ export default function AppointmentRow({ appointment, onEdit, onReminder, onGene
                         Paciente
                       </div>
                     )}
-                    {patientPhone && !isCompleted && canConfirmWhatsApp && (
+                    {patientPhone && (
                       <button
                         type="button"
-                        className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-emerald-50 hover:text-emerald-800 flex items-center gap-2"
+                        className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-emerald-50 hover:text-emerald-800 flex items-center gap-2 disabled:opacity-50"
                         onClick={() => { handleWhatsAppSend('confirm'); setShowWhatsAppMenu(false); }}
+                        disabled={sendingWhatsApp === 'confirm'}
                       >
-                        <i className="fab fa-whatsapp text-emerald-600"></i> Confirmar agendamento
+                        {sendingWhatsApp === 'confirm' ? <i className="fas fa-spinner fa-spin text-emerald-600"></i> : <i className="fab fa-whatsapp text-emerald-600"></i>} Confirmar agendamento
                       </button>
                     )}
-                    {patientPhone && !isCompleted && (
+                    {patientPhone && (
                       <button
                         type="button"
                         className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-amber-50 hover:text-amber-800 flex items-center gap-2 disabled:opacity-50"
@@ -387,26 +388,17 @@ export default function AppointmentRow({ appointment, onEdit, onReminder, onGene
                         {sendingWhatsApp === 'reminder' ? <i className="fas fa-spinner fa-spin text-amber-600"></i> : <i className="fas fa-bell text-amber-600"></i>} Lembrete de atendimento
                       </button>
                     )}
-                    {patientPhone && isCompleted && (
-                      <button
-                        type="button"
-                        className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-yellow-50 hover:text-yellow-800 flex items-center gap-2"
-                        onClick={() => { onPostAppointment?.(appointment); setShowWhatsAppMenu(false); }}
-                      >
-                        <i className="fas fa-star text-yellow-600"></i> Pós-atendimento
-                      </button>
-                    )}
 
                     {/* DIVISOR + PROFISSIONAL */}
                     {patientPhone && professionalPhone && (
                       <div className="border-t border-gray-100 my-1"></div>
                     )}
-                    {professionalPhone && !isCompleted && (
+                    {professionalPhone && (
                       <div className="px-3 py-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
                         Profissional
                       </div>
                     )}
-                    {professionalPhone && !isCompleted && (
+                    {professionalPhone && (
                       <button
                         type="button"
                         className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-800 flex items-center gap-2 disabled:opacity-50"
@@ -416,7 +408,7 @@ export default function AppointmentRow({ appointment, onEdit, onReminder, onGene
                         {sendingWhatsApp === 'notify_prof' ? <i className="fas fa-spinner fa-spin text-blue-600"></i> : <i className="fas fa-user-md text-blue-600"></i>} Avisar agendamento
                       </button>
                     )}
-                    {professionalPhone && !isCompleted && (
+                    {professionalPhone && (
                       <button
                         type="button"
                         className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-800 flex items-center gap-2 disabled:opacity-50"
