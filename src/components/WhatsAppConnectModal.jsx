@@ -90,6 +90,13 @@ export default function WhatsAppConnectModal({ isOpen, onClose }) {
     return () => clearInterval(interval);
   }, [status.status]);
 
+  // Auto-fecha 2s após conectar
+  useEffect(() => {
+    if (!status.ready) return;
+    const timer = setTimeout(() => onClose(), 2000);
+    return () => clearTimeout(timer);
+  }, [status.ready]);
+
   if (!isOpen) return null;
 
   const statusConfig = {
@@ -199,7 +206,7 @@ export default function WhatsAppConnectModal({ isOpen, onClose }) {
           <p className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">Diagnóstico</p>
           <div className="grid grid-cols-2 gap-2 text-xs">
             <div className="text-gray-600">Status:</div>
-            <div className="font-mono text-gray-800">{status.status}</div>
+            <div className="font-mono text-gray-800">{status.ready ? 'ready' : status.status}</div>
             <div className="text-gray-600">PID:</div>
             <div className="font-mono text-gray-800">{status.pid || '—'}</div>
             <div className="text-gray-600">Uptime:</div>

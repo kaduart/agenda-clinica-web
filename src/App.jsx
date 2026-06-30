@@ -69,18 +69,18 @@ export default function App() {
   const todayFormatted = formatDateLocal(today);
   const todayDayOfWeek = (today.getDay() === 0 ? 7 : today.getDay()).toString();
 
-  // Restaura filtro de data APENAS se for do dia de hoje.
-  // Data de outro dia (ontem, semana passada) não faz sentido para outra pessoa
-  // ou outra sessão — sempre começa em hoje nesses casos.
+  // Restaura filtro de data do sessionStorage (isolado por aba — cada aba/PC tem seu próprio dia).
+  // sessionStorage não é compartilhado entre abas nem entre PCs, resolvendo o problema
+  // de um usuário alterar o filtro e afetar todos os outros logados.
   const getSavedDate = () => {
     try {
-      const saved = localStorage.getItem('agendaFilterDate');
-      const savedDay = localStorage.getItem('agendaFilterDay');
-      if (saved && saved === todayFormatted) {
+      const saved = sessionStorage.getItem('agendaFilterDate');
+      const savedDay = sessionStorage.getItem('agendaFilterDay');
+      if (saved) {
         return { date: saved, day: savedDay || todayDayOfWeek };
       }
     } catch (e) {
-      console.error("[App.jsx] Erro ao ler localStorage:", e);
+      console.error("[App.jsx] Erro ao ler sessionStorage:", e);
     }
     return { date: todayFormatted, day: todayDayOfWeek };
   };
@@ -100,15 +100,15 @@ export default function App() {
     filterWeek: null,
   });
   
-  // Salva a data no localStorage quando mudar
+  // Salva a data no sessionStorage quando mudar (isolado por aba)
   React.useEffect(() => {
     try {
       if (filters.filterDate) {
-        localStorage.setItem('agendaFilterDate', filters.filterDate);
-        localStorage.setItem('agendaFilterDay', filters.filterDay || todayDayOfWeek);
+        sessionStorage.setItem('agendaFilterDate', filters.filterDate);
+        sessionStorage.setItem('agendaFilterDay', filters.filterDay || todayDayOfWeek);
       }
     } catch (e) {
-      console.error("[App.jsx] Erro ao salvar localStorage:", e);
+      console.error("[App.jsx] Erro ao salvar sessionStorage:", e);
     }
   }, [filters.filterDate, filters.filterDay]);
   
