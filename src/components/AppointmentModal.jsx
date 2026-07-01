@@ -637,21 +637,20 @@ export default function AppointmentModal({ appointment, professionals, patients,
                 return;
             }
 
-            // Alerta quando valor é 0 mas status indica pagamento (pode ser dados não carregados do backend)
+            // Alerta quando valor é 0 (criação ou edição) para não perder receita
             const isEditing = !!appointment?.id;
             const valorZerado = formData.crm.paymentAmount === 0 || formData.crm.paymentAmount === '';
             const statusIndicaPagamento = ['paid', 'pending_receipt'].includes(formData.paymentStatus);
+            const isRetorno = formData.crm?.serviceType === 'return';
+            const isConvenioOuLiminar = ['convenio', 'liminar'].includes(formData.billingType);
 
-            if (isEditing && valorZerado && statusIndicaPagamento && !formData.package) {
-                const confirmar = confirm(
-                    "⚠️ ATENÇÃO!\n\n" +
-                    "O valor da sessão está zerado (R$ 0), mas o status de pagamento é '" +
-                    (formData.paymentStatus === 'paid' ? 'Pago' : 'Aguardando Recibo') +
-                    "'.\n\n" +
-                    "Isso pode significar que os dados não foram carregados corretamente do banco de dados.\n\n" +
-                    "Se você continuar, o valor no banco será sobrescrito para ZERO (R$ 0).\n\n" +
-                    "Deseja continuar mesmo assim?"
-                );
+            if (valorZerado && !formData.package && !isRetorno && !isConvenioOuLiminar) {
+                const msg = isEditing
+                    ? "⚠️ ATENÇÃO!\n\nO valor da sessão está zerado (R$ 0)" +
+                      (statusIndicaPagamento ? ", mas o status indica pagamento. Isso pode sobrescrever o valor no banco." : ".") +
+                      "\n\nDeseja salvar com R$ 0 mesmo assim?"
+                    : "⚠️ ATENÇÃO!\n\nVocê está agendando sem definir o valor da sessão (R$ 0).\n\nO sistema não conseguirá registrar a receita deste atendimento.\n\nDeseja continuar mesmo assim?";
+                const confirmar = confirm(msg);
                 if (!confirmar) {
                     setIsLoading(false);
                     return;
