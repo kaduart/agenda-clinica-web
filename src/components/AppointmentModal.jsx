@@ -90,6 +90,9 @@ export default function AppointmentModal({ appointment, professionals, patients,
         metadata: null,
     });
 
+    // Split payment: [{method, amount}] com 2+ formas
+    const [splitMethods, setSplitMethods] = React.useState([]);
+
     // 🆕 Estado para feriados da API
     const [holidays, setHolidays] = React.useState({});
     const [currentYear, setCurrentYear] = React.useState(new Date().getFullYear());
@@ -692,8 +695,9 @@ export default function AppointmentModal({ appointment, professionals, patients,
                 // 🩹 SEMPRE envia sessionValue = paymentAmount do CRM
                 // O backend usa sessionValue como fonte de verdade do valor
                 sessionValue: Number(formData.crm?.paymentAmount ?? formData.paymentAmount ?? 0),
-                paymentMethod: formData.crm?.paymentMethod || formData.paymentMethod,
+                paymentMethod: splitMethods.length >= 2 ? splitMethods[0].method : (formData.crm?.paymentMethod || formData.paymentMethod),
                 paymentAmount: Number(formData.crm?.paymentAmount ?? formData.paymentAmount ?? 0),
+                ...(splitMethods.length >= 2 ? { splitMethods: splitMethods.map(s => ({ method: s.method, amount: Number(s.amount) })) } : {}),
 
                 // Dados CRM
                 crm: formData.crm,
@@ -1368,6 +1372,25 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                     <option value="transferencia_bancaria">Transferência</option>
                                     <option value="outro">Outro</option>
                                 </select>
+                                {splitMethods.length === 0 ? (
+                                    <button type="button" onClick={() => setSplitMethods([{ method: formData.crm.paymentMethod || 'pix', amount: '' }, { method: 'dinheiro', amount: '' }])} className="mt-1 text-xs text-teal-600 underline">+ Dividir pagamento</button>
+                                ) : (
+                                    <div className="mt-2 space-y-1">
+                                        {splitMethods.map((s, i) => (
+                                            <div key={i} className="flex gap-1 items-center">
+                                                <select value={s.method} onChange={e => setSplitMethods(prev => prev.map((m, j) => j === i ? { ...m, method: e.target.value } : m))} className="flex-1 p-1.5 border border-gray-300 rounded text-xs">
+                                                    <option value="pix">Pix</option>
+                                                    <option value="dinheiro">Dinheiro</option>
+                                                    <option value="cartao_credito">Cartão Crédito</option>
+                                                    <option value="cartao_debito">Cartão Débito</option>
+                                                    <option value="transferencia_bancaria">Transferência</option>
+                                                </select>
+                                                <input type="number" value={s.amount} onChange={e => setSplitMethods(prev => prev.map((m, j) => j === i ? { ...m, amount: Number(e.target.value) } : m))} placeholder="R$" className="w-20 p-1.5 border border-gray-300 rounded text-xs" min="0" step="0.01" />
+                                            </div>
+                                        ))}
+                                        <button type="button" onClick={() => setSplitMethods([])} className="text-xs text-red-400 underline">× Remover split</button>
+                                    </div>
+                                )}
                             </div>
                             )}
                             <div>
