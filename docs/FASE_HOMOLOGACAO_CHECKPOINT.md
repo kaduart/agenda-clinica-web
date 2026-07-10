@@ -89,6 +89,15 @@ Se encontrar:
 
 ---
 
+## Débitos técnicos registrados
+
+| ID | Descrição | Risco | Decisão |
+|----|-----------|-------|---------|
+| DT-01 | Envio de lembretes usa snapshot de dados no modelo `Reminder` | Telefone antigo pode ser usado se contato mudar | Aceito por ora; refatorar para endpoint backend em sprint futura. |
+| DT-02 | Campos legados `reminderText`, `reminderDate`, `reminderTime`, `reminderDone` ainda existem no schema/model `Appointment` | Código morto; confusão futura | **Não remover antes da produção.** Remoção física do schema e cleanup de banco só após produção estável e confirmação de que nenhuma query depende dos campos. |
+
+---
+
 ## Próxima etapa: homologação operacional
 
 1. Criar marco de homologação (`AGENDA-HOMOLOGACAO-v1` ou equivalente).
