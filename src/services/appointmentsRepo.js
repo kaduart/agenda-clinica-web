@@ -408,3 +408,19 @@ export const isFirstPackagePoint = async (appointmentId, patientId) => {
 export const confirmPresence = async (id) => {
     return v2.confirmAppointmentPresence(id);
 };
+
+// ===========================================================
+// 🔍 READ HELPERS (ADAPTER V2)
+// ===========================================================
+
+export const getAppointmentById = async (id) => {
+    return v2.getAppointmentById(id);
+};
+
+export const getAppointmentsByPatient = async (patientId, options = {}) => {
+    return v2.getAppointmentsByPatient(patientId, options);
+};
+
+export const trackPostAppointmentStep = async (id, step) => {
+    return v2.trackPostAppointmentStep(id, step);
+};

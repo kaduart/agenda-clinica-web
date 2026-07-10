@@ -49,7 +49,7 @@ import { SPECIALTIES } from "./config/specialties";
 import ReminderModal from "./components/ReminderModal";
 import RemindersListModal from "./components/RemindersListModal";
 import PostAppointmentModal from "./components/PostAppointmentModal";
-import WhatsAppQRGlobal from "./components/WhatsAppQRGlobal";
+
 
 // crmExport removido pois a sincronização agora é automática no repo
 // import { ... } from "./services/crmExport"; 
@@ -164,17 +164,11 @@ export default function App() {
     setIsPostAppointmentOpen(true);
   };
 
-  const saveReminder = async (payload) => {
-    try {
-      const candidate = { ...reminderAppointment, ...payload };
-      await upsertAppointment({ editingAppointment: reminderAppointment, appointmentData: candidate });
-      setIsReminderOpen(false);
-      setReminderAppointment(null);
-      toast.success("Lembrete salvo!");
-    } catch (e) {
-      console.error("[saveReminder]", e);
-      toast.error("Erro ao salvar lembrete.");
-    }
+  // O modal de lembrete cria entidade Reminder diretamente (remindersRepo.addReminder).
+  // Não há mais upsert no campo legado reminderText do appointment.
+  const saveReminder = async () => {
+    // noop — mantido para compatibilidade com a prop onSave do ReminderModal.
+    console.warn('[saveReminder] Via legada chamada. Use Reminder entity (remindersRepo.addReminder).');
   };
 
   // ========== LISTENERS ==========
@@ -739,16 +733,13 @@ export default function App() {
   };
 
   const handleCloseModal = React.useCallback(() => {
-    const id = editingAppointment?.id || editingAppointment?._id;
-    const isPre = editingAppointment?.operationalStatus === 'pre_agendado';
-    if (isPre && id) {
-      cancelPreAppointment(id).catch(err =>
-        console.error('[handleCloseModal] Erro ao cancelar pre_agendado ao fechar modal:', err)
-      );
-    }
+    // O fechamento do modal NÃO cancela pré-agendamentos automaticamente.
+    // O cancelamento só ocorre via ações explícitas do usuário:
+    //   - botão "Cancelar" / menu de cancelamento na listagem (onCancel)
+    //   - mudança de status para cancelado dentro do modal (saveAppointment / handleConfirmPre)
     setIsModalOpen(false);
     setEditingAppointment(null);
-  }, [editingAppointment]);
+  }, []);
 
   const handleReloadPatients = React.useCallback(async () => {
     try {
@@ -889,7 +880,13 @@ export default function App() {
         }
       }
       if (filters.filterStatus) {
-        if (appointment.status !== filters.filterStatus) return false;
+        // O backend considera "Pendente" como scheduled + pending.
+        // No frontend, scheduled é traduzido como "Agendado" e pending como "Pendente".
+        if (filters.filterStatus === "Pendente") {
+          if (appointment.status !== "Pendente" && appointment.status !== "Agendado") return false;
+        } else if (appointment.status !== filters.filterStatus) {
+          return false;
+        }
       }
       return true;
     });
@@ -1082,6 +1079,7 @@ export default function App() {
             <WeeklyView
               appointments={calendarAppointments}
               professionals={professionals}
+              activeSpecialty={activeSpecialty}
               activeSpecialtyLabel={activeSpecialtyLabel}
               currentYear={currentYear}
               currentMonth={currentMonth}
@@ -1125,6 +1123,7 @@ export default function App() {
           <ReminderModal
             appointment={reminderAppointment}
             onSave={saveReminder}
+            // Nota: ReminderModal usa addReminder diretamente; onSave é legado.
             onClose={() => {
               setIsReminderOpen(false);
               setReminderAppointment(null);
@@ -1174,8 +1173,7 @@ export default function App() {
         />
       )}
       
-      {/* Modal QR Code Global */}
-      <WhatsAppQRGlobal />
+
     </div>
   );
 }

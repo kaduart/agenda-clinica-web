@@ -2,8 +2,8 @@ import React from "react";
 import { formatDateLocal, extractDateForInput } from "../utils/date";
 import { resolveSpecialtyKey } from "../utils/specialty";
 import { SERVICE_TYPE_LABELS, mapBackendServiceType } from "../utils/serviceType";
-import api from "../services/api";
 import { searchPatients } from "../services/patientsRepo";
+import { getAppointmentById, getAppointmentsByPatient } from "../services/appointmentsRepo";
 import { cancelPreAppointment } from "../services/preAppointmentsRepo";
 
 import { getHolidays, holidaysToMap, isTimeBlockedByHoliday as checkHolidayBlock } from "../services/calendarService";
@@ -333,8 +333,8 @@ export default function AppointmentModal({ appointment, professionals, patients,
         const fetchDetailsIfNeeded = async () => {
             setIsLoadingDetails(true);
             try {
-                const response = await api.get(`/api/v2/appointments/${id}`);
-                const payload = response.data.data || response.data;
+                const response = await getAppointmentById(id);
+                const payload = response.data || response;
                 const data = payload.appointment || payload;
 
                 // Só atualiza se o usuário ainda não interagiu com o formulário
@@ -492,8 +492,8 @@ export default function AppointmentModal({ appointment, professionals, patients,
             email: p.email || prev.email,
         }));
         try {
-            const res = await api.get('/api/v2/appointments', { params: { patientId: p._id, limit: 4 } });
-            const appts = res.data?.data?.appointments || [];
+            const res = await getAppointmentsByPatient(p._id, { limit: 4 });
+            const appts = res?.data?.appointments || [];
             const sorted = [...appts].sort((a, b) => new Date(b.date) - new Date(a.date));
             const responsible = sorted.find(a => a.responsible?.trim())?.responsible?.trim()
                 || sorted.find(a => a.patientInfo?.responsible?.trim())?.patientInfo?.responsible?.trim()
@@ -732,6 +732,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
 
     // Handler para confirmar pré-agendamento com loading
     const handleConfirmPre = async () => {
+        if (isLoading) return;
         if (!onConfirmPre) {
             console.error("❌ [handleConfirmPre] onConfirmPre não está definido");
             return;
@@ -826,7 +827,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
             <div className={`bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto relative ${isLoading ? "opacity-80 pointer-events-none" : ""}`}>
                 {/* Header */}
-                <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 z-10 flex justify-between items-center">
+                <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-3 z-10 flex justify-between items-center">
                     <div>
                         <h3 className="text-lg font-semibold text-gray-900">
                             {isPreExisting ? "Confirmar Pré-Agendamento" : isPreNew ? "Novo Pré-Agendamento" : isEdit ? "Editar Agendamento" : "Novo Agendamento"}
@@ -837,7 +838,11 @@ export default function AppointmentModal({ appointment, professionals, patients,
                             </p>
                         )}
                     </div>
-                    <button onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
+                    <button
+                        onClick={onClose}
+                        disabled={isLoading || isLoadingDetails}
+                        className={`p-1.5 rounded-lg text-gray-400 transition-colors ${isLoading || isLoadingDetails ? 'opacity-50 cursor-not-allowed' : 'hover:text-gray-600 hover:bg-gray-100'}`}
+                    >
                         <i className="fas fa-times text-xl"></i>
                     </button>
                 </div>
@@ -868,7 +873,8 @@ export default function AppointmentModal({ appointment, professionals, patients,
 
 
 
-                <form onSubmit={handleSubmit} className="px-6 py-4">
+                <form onSubmit={handleSubmit} className="px-6 py-3">
+                <div className="space-y-3">
                     {/* Banner: agendamento de pacote — somente leitura nesta tela */}
                     {isPackagePreAgendado && (
                         <div className="mb-4 flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 p-4">
@@ -880,8 +886,8 @@ export default function AppointmentModal({ appointment, professionals, patients,
                         </div>
                     )}
                     {/* Bloco: Dados do Paciente */}
-                    <div className="bg-blue-50/30 rounded-lg p-4 border border-blue-100">
-                        <h4 className="text-sm font-semibold text-blue-800 mb-3 flex items-center gap-2">
+                    <div className="bg-blue-50/30 rounded-lg p-3 border border-blue-100">
+                        <h4 className="text-sm font-semibold text-blue-800 mb-2 flex items-center gap-2">
                             <i className="fas fa-user text-blue-600"></i> Identificação do Paciente
                         </h4>
                         <div className="space-y-4">
@@ -921,7 +927,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                         name="patient"
                                         value={formData.patient}
                                         onChange={(e) => setFormData(prev => ({ ...prev, patient: e.target.value }))}
-                                        className="w-full p-3 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-medium bg-white"
+                                        className="w-full p-2.5 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-medium bg-white"
                                         placeholder="Nome completo *"
                                         required
                                         autoComplete="off"
@@ -946,7 +952,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                             value={formData.patient || ""}
                                             onChange={(e) => handlePatientChange(e.target.value)}
                                             onBlur={(e) => handlePatientBlur(e.target.value)}
-                                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 pr-10"
+                                            className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 pr-10"
                                             required
                                         />
                                         {isSearching ? (
@@ -1017,11 +1023,11 @@ export default function AppointmentModal({ appointment, professionals, patients,
                     </div>
 
                     {/* Seção: Contato e Responsável */}
-                    <div className="bg-purple-50/30 rounded-lg p-4 border border-purple-100">
-                        <h4 className="text-sm font-semibold text-purple-800 mb-3 flex items-center gap-2">
+                    <div className="bg-purple-50/30 rounded-lg p-3 border border-purple-100">
+                        <h4 className="text-sm font-semibold text-purple-800 mb-2 flex items-center gap-2">
                             <i className="fas fa-phone-alt text-purple-600"></i> Contato
                         </h4>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Telefone *</label>
                                 <input
@@ -1029,7 +1035,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                     name="phone"
                                     value={formData.phone}
                                     onChange={handleChange}
-                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                    className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                                     required
                                 />
                             </div>
@@ -1040,12 +1046,12 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                     name="birthDate"
                                     value={formData.birthDate}
                                     onChange={handleChange}
-                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                    className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                                     required
                                 />
                             </div>
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
                                 <input
@@ -1053,7 +1059,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                     name="email"
                                     value={formData.email}
                                     onChange={handleChange}
-                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                    className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                                 />
                             </div>
                             <div>
@@ -1063,15 +1069,15 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                     name="responsible"
                                     value={formData.responsible}
                                     onChange={handleChange}
-                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                    className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                                 />
                             </div>
                         </div>
                     </div>
 
                     {/* Seção: Dados do Agendamento */}
-                    <div className="bg-amber-50/30 rounded-lg p-4 border border-amber-100">
-                        <h4 className="text-sm font-semibold text-amber-800 mb-3 flex items-center gap-2">
+                    <div className="bg-amber-50/30 rounded-lg p-3 border border-amber-100">
+                        <h4 className="text-sm font-semibold text-amber-800 mb-2 flex items-center gap-2">
                             <i className="fas fa-calendar-alt text-amber-600"></i> Data e Hora
                         </h4>
                         
@@ -1096,7 +1102,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                             );
                         })()}
                         
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Data *</label>
                                 <input
@@ -1104,7 +1110,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                     name="date"
                                     value={formData.date}
                                     onChange={handleChange}
-                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                    className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                                     required
                                 />
                             </div>
@@ -1115,7 +1121,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                     name="time"
                                     value={formData.time}
                                     onChange={handleChange}
-                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                    className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                                     required
                                 />
                                 <p className="text-xs text-gray-500 mt-1">
@@ -1126,18 +1132,18 @@ export default function AppointmentModal({ appointment, professionals, patients,
                     </div>
 
                     {/* Seção: Profissional e Especialidade */}
-                    <div className="bg-emerald-50/30 rounded-lg p-4 border border-emerald-100">
-                        <h4 className="text-sm font-semibold text-emerald-800 mb-3 flex items-center gap-2">
+                    <div className="bg-emerald-50/30 rounded-lg p-3 border border-emerald-100">
+                        <h4 className="text-sm font-semibold text-emerald-800 mb-2 flex items-center gap-2">
                             <i className="fas fa-user-md text-emerald-600"></i> Profissional
                         </h4>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Profissional *</label>
                                 <select
                                     name="professional"
                                     value={formData.professional}
                                     onChange={handleChange}
-                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                    className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                                     required
                                 >
                                     <option value="">Selecione um profissional</option>
@@ -1154,7 +1160,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                     name="specialty"
                                     value={formData.specialty}
                                     onChange={handleChange}
-                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                    className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                                 >
                                     <option value="fonoaudiologia">Fonoaudiologia</option>
                                     <option value="psicologia">Psicologia</option>
@@ -1173,18 +1179,18 @@ export default function AppointmentModal({ appointment, professionals, patients,
                     </div>
 
                     {/* Seção: Status */}
-                    <div className="bg-rose-50/30 rounded-lg p-4 border border-rose-100">
-                        <h4 className="text-sm font-semibold text-rose-800 mb-3 flex items-center gap-2">
+                    <div className="bg-rose-50/30 rounded-lg p-3 border border-rose-100">
+                        <h4 className="text-sm font-semibold text-rose-800 mb-2 flex items-center gap-2">
                             <i className="fas fa-flag text-rose-600"></i> Status
                         </h4>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Status Operacional *</label>
                                 <select
                                     name="operationalStatus"
                                     value={formData.operationalStatus}
                                     onChange={(e) => { handleChange(e); }}
-                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                    className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                                 >
                                     <option value="scheduled">Agendado</option>
                                     <option value="pre_agendado">⭐ Pré-Agendado</option>
@@ -1197,8 +1203,8 @@ export default function AppointmentModal({ appointment, professionals, patients,
                     </div>
 
                     {/* Seção: Faturamento */}
-                    <div className="bg-indigo-50/30 rounded-lg p-4 border border-indigo-100">
-                        <div className="flex justify-between items-center mb-3">
+                    <div className="bg-indigo-50/30 rounded-lg p-3 border border-indigo-100">
+                        <div className="flex justify-between items-center mb-2">
                             <h4 className="text-sm font-semibold text-indigo-800 flex items-center gap-2">
                                 <i className="fas fa-dollar-sign text-indigo-600"></i> Faturamento
                             </h4>
@@ -1209,8 +1215,8 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                         if (!appointment?.id) return;
                                         setIsLoadingDetails(true);
                                         try {
-                                            const response = await api.get(`/api/v2/appointments/${appointment.id}`);
-                                            const payload = response.data.data || response.data;
+                                            const response = await getAppointmentById(appointment.id);
+                                            const payload = response.data || response;
                                             const data = payload.appointment || payload;
                                             setFormData(prev => ({
                                                 ...prev,
@@ -1256,14 +1262,14 @@ export default function AppointmentModal({ appointment, professionals, patients,
                         </div>
 
                         {formData.crm.serviceType !== 'return' && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Faturamento *</label>
                                 <select
                                     name="billingType"
                                     value={formData.billingType}
                                     onChange={handleChange}
-                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                    className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                                     required
                                 >
                                     <option value="particular">Particular</option>
@@ -1276,7 +1282,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                     name="paymentStatus"
                                     value={formData.paymentStatus}
                                     onChange={handleChange}
-                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                    className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                                     required
                                 >
                                     <option value="pending">Pendente</option>
@@ -1289,7 +1295,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                         )}
 
                         {formData.billingType === 'convenio' && (
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Convênio</label>
                                     <input
@@ -1297,7 +1303,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                         name="insuranceProvider"
                                         value={formData.insuranceProvider}
                                         onChange={handleChange}
-                                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                        className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                                         placeholder="Nome do convênio"
                                     />
                                 </div>
@@ -1308,7 +1314,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                         name="insuranceValue"
                                         value={formData.insuranceValue}
                                         onChange={handleChange}
-                                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                        className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                                         min="0"
                                         step="0.01"
                                         placeholder="0,00"
@@ -1321,7 +1327,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                         name="authorizationCode"
                                         value={formData.authorizationCode}
                                         onChange={handleChange}
-                                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                        className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                                         placeholder="Código da autorização"
                                     />
                                 </div>
@@ -1331,7 +1337,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                         {/* Info do Pacote */}
                         {formData.package && (
                             <div className="mb-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl">
-                                <h5 className="text-sm font-bold text-blue-900 mb-3 flex items-center gap-2">
+                                <h5 className="text-sm font-bold text-blue-900 mb-2 flex items-center gap-2">
                                     <i className="fas fa-box text-blue-600"></i> Pacote Ativo
                                 </h5>
                                 <div className="grid grid-cols-2 gap-3 text-sm">
@@ -1355,7 +1361,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                             </div>
                         )}
 
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                             {formData.crm.serviceType !== 'return' && (
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Forma de Pagamento (CRM)</label>
@@ -1363,7 +1369,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                     name="crm.paymentMethod"
                                     value={formData.crm.paymentMethod}
                                     onChange={handleChange}
-                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                    className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                                 >
                                     <option value="pix">Pix</option>
                                     <option value="dinheiro">Dinheiro</option>
@@ -1412,7 +1418,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                             }
                                         }));
                                     }}
-                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                    className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                                 >
                                     {Object.entries(SERVICE_TYPE_LABELS).map(([key, label]) => (
                                         <option key={key} value={key}>{label}</option>
@@ -1442,7 +1448,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                     value={formData.crm.paymentAmount}
                                     onChange={handleChange}
                                     disabled={formData.paymentStatus === 'paid' || !!formData.package}
-                                    className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 ${
+                                    className={`w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 ${
                                         formData.paymentStatus === 'paid' || !!formData.package
                                             ? 'bg-gray-100 text-gray-500 cursor-not-allowed border-gray-300'
                                             : 'border-gray-300'
@@ -1467,7 +1473,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                         </div>
 
                         {formData.crm.serviceType !== 'return' && (
-                        <div className="flex items-center gap-2 mt-4">
+                        <div className="flex items-center gap-2 mt-3">
                             <input
                                 id="usePackage"
                                 type="checkbox"
@@ -1484,14 +1490,14 @@ export default function AppointmentModal({ appointment, professionals, patients,
                     </div>
 
                     {/* Seção: Observações */}
-                    <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                    <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
                         <label className="block text-sm font-medium text-gray-700 mb-1">Observações</label>
                         <textarea
                             name="observations"
                             value={formData.observations}
                             onChange={handleChange}
                             rows="3"
-                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                            className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                         />
                     </div>
 
@@ -1499,13 +1505,15 @@ export default function AppointmentModal({ appointment, professionals, patients,
                     <div className="text-xs text-gray-400">
                         specialtyKey: <span className="font-mono">{formData.specialtyKey}</span>
                     </div>
+                </div>
 
                     {/* Botões de ação */}
-                    <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3 bg-gray-50 sticky bottom-0">
+                    <div className="px-6 py-3 border-t border-gray-200 flex justify-end gap-3 bg-gray-50 sticky bottom-0">
                         <button
                             type="button"
                             onClick={onClose}
-                            className="px-5 py-2 rounded-lg border border-gray-300 text-gray-700 font-medium hover:bg-gray-100 transition-colors"
+                            disabled={isLoading || isLoadingDetails}
+                            className={`px-5 py-2 rounded-lg border border-gray-300 text-gray-700 font-medium transition-colors ${isLoading || isLoadingDetails ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100'}`}
                         >
                             Cancelar
                         </button>

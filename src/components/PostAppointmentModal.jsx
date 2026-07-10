@@ -1,6 +1,6 @@
 import React from "react";
 import { sendWhatsAppMessage, sendWhatsAppMediaMessage } from "../services/baileysApi";
-import api from "../services/api";
+import { trackPostAppointmentStep } from "../services/appointmentsRepo";
 
 const STORAGE_KEY_MESSAGES = "postAppointmentMessages_v4";
 const STORAGE_KEY_GOOGLE_LINK = "postAppointmentGoogleLink";
@@ -162,7 +162,7 @@ export default function PostAppointmentModal({ appointment, onClose, onSent }) {
             // Persiste no backend em background
             const appointmentId = appointment.id || appointment._id || appointment.preAgendamentoId || appointment.appointmentId;
             if (appointmentId) {
-                api.patch(`/api/v2/appointments/${appointmentId}/post-appointment`, { step: type })
+                trackPostAppointmentStep(appointmentId, type)
                     .catch(e => {
                         console.error("[PostAppointmentModal] Erro ao registrar envio no banco:", e);
                         showToast("Mensagem enviada, mas não foi possível registrar no banco.", "warning");

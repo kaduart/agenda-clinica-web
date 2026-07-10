@@ -13,12 +13,10 @@ import api from "../../services/api.js";
 import {
     normalizeCrmBlock,
     normalizePatientInfo,
-    normalizePhone,
     normalizeSessionType
 } from "./normalizers";
 import {
-    buildAppointmentPayload,
-    buildPreAppointmentPayload
+    buildAppointmentPayload
 } from "../../utils/appointmentPayload";
 
 // ===============================
@@ -171,6 +169,24 @@ export async function getAvailableSlots({ doctorId, date }) {
     return response.data;
 }
 
+export async function getAppointmentById(id) {
+    const response = await api.get(`/api/v2/appointments/${id}`);
+    return response.data;
+}
+
+export async function getAppointmentsByPatient(patientId, options = {}) {
+    const { limit = 4, ...rest } = options;
+    const response = await api.get("/api/v2/appointments", {
+        params: { patientId, limit, ...rest }
+    });
+    return response.data;
+}
+
+export async function trackPostAppointmentStep(id, step) {
+    const response = await api.patch(`/api/v2/appointments/${id}/post-appointment`, { step });
+    return response.data;
+}
+
 export async function createAppointment(rawData) {
     const payload = buildAppointmentPayload(rawData, { mode: "create" });
 
@@ -299,6 +315,72 @@ export async function getCalendarData({ startDate, endDate, limit = 500, page = 
         return appointmentsRes;
     }
     return appointmentsRes?.data?.appointments || [];
+}
+
+// ===============================
+// 👤 PATIENTS
+// ===============================
+
+export async function getPatients(params = {}) {
+    const response = await api.get("/api/v2/patients", { params });
+    return response.data;
+}
+
+export async function searchPatients(term, options = {}) {
+    const response = await api.get("/api/v2/patients", {
+        params: { search: term, limit: options.limit || 10, ...options }
+    });
+    const payload = response.data;
+    if (Array.isArray(payload)) return payload;
+    return payload?.data?.patients || [];
+}
+
+export async function updatePatient(id, data) {
+    const response = await api.put(`/api/v2/patients/${id}`, data);
+    return response.data;
+}
+
+// ===============================
+// 👨‍⚕️ DOCTORS / PROFESSIONALS
+// ===============================
+
+export async function getActiveDoctors() {
+    const response = await api.get("/api/v2/doctors/active");
+    return response.data;
+}
+
+export async function createDoctor(payload) {
+    const response = await api.post("/api/v2/doctors", payload);
+    return response.data;
+}
+
+export async function deleteDoctor(id) {
+    const response = await api.delete(`/api/v2/doctors/${id}`);
+    return response.data;
+}
+
+// ===============================
+// 🔔 REMINDERS
+// ===============================
+
+export async function getReminders(filters = {}) {
+    const response = await api.get("/api/reminders", { params: filters });
+    return response.data;
+}
+
+export async function getReminderById(id) {
+    const response = await api.get(`/api/reminders/${id}`);
+    return response.data;
+}
+
+export async function createReminder(payload) {
+    const response = await api.post("/api/reminders", payload);
+    return response.data;
+}
+
+export async function updateReminder(id, patch) {
+    const response = await api.patch(`/api/reminders/${id}`, patch);
+    return response.data;
 }
 
 // ===============================

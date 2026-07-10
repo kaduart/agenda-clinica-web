@@ -1,4 +1,7 @@
 import React from "react";
+import { toast } from "react-toastify";
+import { sendViaExtension } from "../services/whatsappExtension";
+import { generateReminderMessage, generateProfessionalReminderMessage } from "../services/whatsappExtension";
 
 export default function RemindersListModal({
     open,
@@ -11,6 +14,7 @@ export default function RemindersListModal({
 }) {
     const [q, setQ] = React.useState("");
     const [status, setStatus] = React.useState("pending");
+    const [sending, setSending] = React.useState(false);
 
     if (!open) return null;
 
@@ -30,6 +34,91 @@ export default function RemindersListModal({
         pending: reminders.filter(r => r.status === "pending").length,
         done: reminders.filter(r => r.status === "done").length,
         canceled: reminders.filter(r => r.status === "canceled").length,
+    };
+
+    const handleSendReminders = async () => {
+        const pending = reminders.filter(r => r.status === "pending");
+        if (pending.length === 0) {
+            toast.info("Não há lembretes pendentes para enviar.");
+            return;
+        }
+
+        setSending(true);
+        let sent = 0;
+        let failed = 0;
+
+        for (const r of pending) {
+            const patientName = typeof r.patient === 'object'
+                ? (r.patient.name || r.patient.fullName || '')
+                : (r.patient || "");
+            const professionalName = typeof r.professional === 'object'
+                ? (r.professional.fullName || r.professional.name || '')
+                : (r.professional || "");
+
+            const appointmentLike = {
+                patientName,
+                fullName: patientName,
+                patient: { fullName: patientName },
+                professional: professionalName,
+                doctor: { fullName: professionalName },
+                date: r.date,
+                time: r.time,
+                specialty: r.specialty,
+                sessionType: r.specialty,
+                responsible: r.responsible,
+                notes: r.text,
+                observations: r.text,
+            };
+
+            // Paciente
+            if (r.patientPhone) {
+                try {
+                    const message = generateReminderMessage(appointmentLike);
+                    const result = await sendViaExtension(r.patientPhone, message);
+                    if (result.success) {
+                        sent++;
+                    } else {
+                        failed++;
+                        console.error(`[Enviar Lembretes] Erro paciente ${patientName}:`, result.error);
+                    }
+                } catch (err) {
+                    failed++;
+                    console.error(`[Enviar Lembretes] Exceção paciente ${patientName}:`, err);
+                }
+            }
+
+            // Profissional
+            if (r.professionalPhone) {
+                try {
+                    const message = generateProfessionalReminderMessage(appointmentLike);
+                    const result = await sendViaExtension(r.professionalPhone, message);
+                    if (result.success) {
+                        sent++;
+                    } else {
+                        failed++;
+                        console.error(`[Enviar Lembretes] Erro profissional ${professionalName}:`, result.error);
+                    }
+                } catch (err) {
+                    failed++;
+                    console.error(`[Enviar Lembretes] Exceção profissional ${professionalName}:`, err);
+                }
+            }
+
+            // Marca como concluído independentemente do envio, para não reenviar em loop
+            try {
+                await onDone?.(r);
+            } catch (err) {
+                console.error(`[Enviar Lembretes] Erro ao marcar done:`, err);
+            }
+        }
+
+        setSending(false);
+
+        if (failed === 0) {
+            toast.success(`${sent} mensagem(ns) enviada(s) com sucesso!`);
+        } else {
+            toast.warning(`${sent} enviada(s), ${failed} falha(s). Verifique o console.`);
+        }
     };
 
     return (
@@ -290,9 +379,22 @@ export default function RemindersListModal({
                                 Fechar
                             </button>
                             {stats.pending > 0 && (
-                                <button className="px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-xl hover:from-emerald-600 hover:to-teal-700 transition-all duration-200 font-medium shadow-md hover:shadow-lg">
-                                    <i className="fas fa-paper-plane mr-2"></i>
-                                    Enviar Lembretes
+                                <button
+                                    onClick={handleSendReminders}
+                                    disabled={sending}
+                                    className={`px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-xl hover:from-emerald-600 hover:to-teal-700 transition-all duration-200 font-medium shadow-md hover:shadow-lg flex items-center gap-2 ${sending ? 'opacity-70 cursor-not-allowed' : ''}`}
+                                >
+                                    {sending ? (
+                                        <>
+                                            <i className="fas fa-circle-notch fa-spin"></i>
+                                            Enviando...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <i className="fas fa-paper-plane"></i>
+                                            Enviar Lembretes
+                                        </>
+                                    )}
                                 </button>
                             )}
                         </div>

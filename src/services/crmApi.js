@@ -132,7 +132,7 @@ export const autoSendPreAgendamento = async (appointment) => {
             time: appointment.time,
             specialty: appointment.specialtyKey || appointment.specialty || "fonoaudiologia",
             patientInfo: {
-                fullName: patientNameForExport,
+                fullName: appointment.patientName || appointment.patient || "",
                 phone: (appointment.phone || "").replace(/\D/g, ""),
                 birthDate: appointment.birthDate,
                 email: appointment.email,
@@ -257,7 +257,13 @@ export const syncUpdateToCRM = async (appointment, updates) => {
                 birthDate: appointment.birthDate,
                 email: appointment.email,
             },
-            status: updates.status || appointment.status
+            status: updates.status || appointment.status,
+            // 🛡️ Preserva origem financeira do CRM — buildAppointmentPayload não pode inferir sozinho
+            billingType: appointment.billingType,
+            paymentMethod: appointment.paymentMethod,
+            insuranceProvider: appointment.insuranceProvider,
+            insuranceValue: appointment.insuranceValue,
+            authorizationCode: appointment.authorizationCode,
         };
 
         Object.keys(payload).forEach(key => {

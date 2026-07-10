@@ -1,4 +1,4 @@
-import api from './api';
+import { getHolidays as fetchHolidays } from '../api/v2/calendarV2Client';
 
 /**
  * 🗓️ Serviço de Calendário - API de Feriados
@@ -27,15 +27,9 @@ export const getHolidays = async (year) => {
   }
   
   try {
-    const response = await api.get(`/api/calendar/holidays?year=${targetYear}`);
-    
-    if (response.data?.success) {
-      const holidays = response.data.holidays;
-      holidaysCache[targetYear] = holidays; // Armazena no cache
-      return holidays;
-    }
-    
-    return [];
+    const holidays = await fetchHolidays(targetYear);
+    holidaysCache[targetYear] = holidays; // Armazena no cache
+    return holidays;
   } catch (error) {
     console.error('[calendarService] Erro ao buscar feriados:', error);
     return [];

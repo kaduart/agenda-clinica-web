@@ -60,6 +60,7 @@ function isOccupied(apt) {
 export default function WeeklyView({
     appointments,
     professionals,
+    activeSpecialty,
     activeSpecialtyLabel,
     currentYear,
     currentMonth,
@@ -179,7 +180,9 @@ export default function WeeklyView({
 
                     {/* Rows */}
                     <div className="space-y-2">
-                        {(professionals || []).map((pro) => (
+                        {(professionals || [])
+                            .filter((pro) => !activeSpecialty || activeSpecialty === "todas" || pro.specialty === activeSpecialty)
+                            .map((pro) => (
                             <div
                                 key={pro.id || pro.fullName}
                                 className="grid grid-cols-[240px_repeat(5,minmax(140px,1fr))] gap-2"

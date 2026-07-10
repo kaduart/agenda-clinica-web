@@ -5,8 +5,13 @@
  * 1. VPS externo (chip comum) - se configurado
  * 2. API Oficial da Meta (Business) - fallback
  */
-import api from './api.js';
-import { openWhatsAppQRModal } from '../components/WhatsAppQRGlobal.jsx';
+import {
+  getWhatsAppWebStatus,
+  sendWhatsAppWebMessage,
+  sendWhatsAppVpsMessage,
+  sendWhatsAppMetaText,
+} from '../api/v2/whatsappClient.js';
+
 import {
   generateProfessionalNewAppointmentMessage,
   generateProfessionalReminderMessage
@@ -20,17 +25,14 @@ export async function sendViaExtension(phone, message) {
 
   try {
     // 🟢 Verifica se WhatsApp está conectado antes de enviar
-    const statusRes = await api.get('/api/whatsapp-web/status', { timeout: 5000 });
-    if (!statusRes.data.ready) {
+    const statusRes = await getWhatsAppWebStatus({ timeout: 5000 });
+    if (!statusRes.ready) {
       return { success: false, error: 'WhatsApp não está conectado', needsReconnect: true };
     }
 
     // 🟢 Tenta WhatsApp Web nativo primeiro (chip comum / Business)
-    const response = await api.post('/api/whatsapp-web/send', { 
-      phone, 
-      message 
-    });
-    return { ...response.data, needsReconnect: false };
+    const response = await sendWhatsAppWebMessage({ phone, message });
+    return { ...response, needsReconnect: false };
   } catch (err) {
     const error = err.response?.data?.error || err.message || '';
     
@@ -39,11 +41,8 @@ export async function sendViaExtension(phone, message) {
       needsReconnect = true;
       
       try {
-        const response = await api.post('/api/whatsapp-vps/send', { 
-          phone, 
-          message 
-        });
-        return { ...response.data, needsReconnect: true };
+        const response = await sendWhatsAppVpsMessage({ phone, message });
+        return { ...response, needsReconnect: true };
       } catch (vpsErr) {
         const vpsError = vpsErr.response?.data?.error || '';
         
@@ -51,11 +50,8 @@ export async function sendViaExtension(phone, message) {
         if (vpsErr.response?.status === 404 || vpsError.includes('não configurado')) {
           
           try {
-            const response = await api.post('/api/whatsapp/send-text', { 
-              phone, 
-              text: message 
-            });
-            return { ...response.data, needsReconnect: true };
+            const response = await sendWhatsAppMetaText({ phone, text: message });
+            return { ...response, needsReconnect: true };
           } catch (metaErr) {
             const metaError = metaErr.response?.data?.error || metaErr.message;
             return { success: false, error: metaError, needsReconnect: true };

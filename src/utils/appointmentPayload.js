@@ -69,16 +69,19 @@ export function buildAppointmentPayload(raw, options = {}) {
     const notes = raw.observations || raw.notes || "";
 
     // --- Financeiro ---
+    const isUpdate = mode === 'update';
     const isRetorno = (crm.serviceType || raw.serviceType) === 'return';
     const paymentStatus = isRetorno ? 'not_applicable' : (raw.paymentStatus || "pending");
-    const billingType = raw.billingType || "particular";
+    // 🛡️ Em update, NÃO forçar fallback particular/pix — preserva origem financeira do CRM.
+    // Em create, particular/pix continuam sendo defaults seguros.
+    const billingType = raw.billingType || (isUpdate ? undefined : "particular");
     const insuranceProvider = raw.insuranceProvider || "";
     const insuranceValue = Number(raw.insuranceValue) || 0;
     const authorizationCode = raw.authorizationCode || "";
     const rawSessionValue = Number(raw.sessionValue ?? 0);
     const rawPaymentAmount = Number(raw.paymentAmount ?? crm.paymentAmount ?? 0);
     const sessionValue = isRetorno ? 0 : (rawSessionValue > 0 ? rawSessionValue : rawPaymentAmount);
-    const paymentMethod = raw.paymentMethod || crm.paymentMethod || "pix";
+    const paymentMethod = raw.paymentMethod || crm.paymentMethod || (isUpdate ? undefined : "pix");
     const paymentAmount = Number(raw.paymentAmount ?? crm.paymentAmount ?? 0);
 
     // --- Pacote ---
@@ -99,7 +102,7 @@ export function buildAppointmentPayload(raw, options = {}) {
     const crmBlock = {
         serviceType: crm.serviceType || raw.serviceType || derivedServiceType || "session",
         sessionType: crm.sessionType || raw.sessionType || specialty,
-        paymentMethod: crm.paymentMethod || paymentMethod,
+        ...(paymentMethod !== undefined && { paymentMethod: crm.paymentMethod || paymentMethod }),
         paymentAmount: crm.paymentAmount ?? paymentAmount,
         usePackage: !!crm.usePackage,
     };
@@ -130,12 +133,12 @@ export function buildAppointmentPayload(raw, options = {}) {
         notes,
         serviceType: crmBlock.serviceType,
         sessionType: crmBlock.sessionType,
-        paymentMethod: crmBlock.paymentMethod,
         paymentAmount: crmBlock.paymentAmount,
         sessionValue,
         crm: crmBlock,
         paymentStatus,
-        billingType,
+        ...(billingType !== undefined && { billingType }),
+        ...(paymentMethod !== undefined && { paymentMethod }),
         insuranceProvider,
         insuranceValue,
         authorizationCode,

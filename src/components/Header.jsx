@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import WhatsAppConnectModal from './WhatsAppConnectModal';
-import api from '../services/api.js';
+import { getWhatsAppWebStatus } from '../api/v2/whatsappClient.js';
 
 export default function Header({ view, setView, remindersPendingCount = 0, onOpenReminders }) {
     const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false);
@@ -16,8 +16,8 @@ export default function Header({ view, setView, remindersPendingCount = 0, onOpe
     useEffect(() => {
         async function checkStatus() {
             try {
-                const res = await api.get('/api/whatsapp-web/status', { timeout: 5000 });
-                setWhatsAppStatus(res.data);
+                const data = await getWhatsAppWebStatus({ timeout: 5000 });
+                setWhatsAppStatus(data);
             } catch {
                 setWhatsAppStatus({ ready: false, status: 'error' });
             }
@@ -97,7 +97,9 @@ export default function Header({ view, setView, remindersPendingCount = 0, onOpe
                             <i className="fas fa-list mr-2"></i> Lista
                         </button>
 
-                        <button
+                        {/* TODO: reativar quando CalendarView for implementado como calendário mensal real.
+                             Atualmente CalendarView é uma cópia de WeeklyView, então o botão fica oculto para evitar confusão. */}
+                        {/* <button
                             type="button"
                             className={`px-4 py-2 rounded-lg font-medium transition-all ${view === "calendar"
                                 ? "bg-white text-teal-700 shadow"
@@ -106,7 +108,7 @@ export default function Header({ view, setView, remindersPendingCount = 0, onOpe
                             onClick={() => setView("calendar")}
                         >
                             <i className="far fa-calendar-alt mr-2"></i> Calendário
-                        </button>
+                        </button> */}
 
                         <button
                             type="button"

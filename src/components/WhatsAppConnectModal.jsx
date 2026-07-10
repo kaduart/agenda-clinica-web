@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import api from '../services/api.js';
+import { getWhatsAppWebStatus, reconnectWhatsAppWeb } from '../api/v2/whatsappClient.js';
 
 export default function WhatsAppConnectModal({ isOpen, onClose }) {
   const [status, setStatus] = useState({ status: 'loading', ready: false, qrCode: null, qrTimestamp: null, error: null });
@@ -16,19 +16,19 @@ export default function WhatsAppConnectModal({ isOpen, onClose }) {
     abortControllerRef.current = new AbortController();
 
     try {
-      const response = await api.get('/api/whatsapp-web/status', {
+      const data = await getWhatsAppWebStatus({
         signal: abortControllerRef.current.signal,
         timeout: 8000, // timeout curto: se o backend congelou, falha rápido
       });
       console.log('[WA Modal] status recebido:', {
-        status: response.data?.status,
-        ready: response.data?.ready,
-        temQR: !!response.data?.qrCode,
-        updatedAt: response.data?.updatedAt,
-        pid: response.data?.pid,
-        uptime: response.data?.uptime,
+        status: data?.status,
+        ready: data?.ready,
+        temQR: !!data?.qrCode,
+        updatedAt: data?.updatedAt,
+        pid: data?.pid,
+        uptime: data?.uptime,
       });
-      setStatus(response.data);
+      setStatus(data);
     } catch (err) {
       if (err.name === 'AbortError' || err.code === 'ERR_CANCELED') {
         // Requisição cancelada intencionalmente — ignora
@@ -42,7 +42,7 @@ export default function WhatsAppConnectModal({ isOpen, onClose }) {
   async function handleReconnect() {
     setLoading(true);
     try {
-      await api.post('/api/whatsapp-web/reconnect', null, { timeout: 15000 });
+      await reconnectWhatsAppWeb({ timeout: 15000 });
       await fetchStatus();
     } catch (err) {
       console.error('[WhatsAppConnect] Erro ao reconectar:', err.message);

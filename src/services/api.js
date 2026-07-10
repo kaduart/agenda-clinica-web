@@ -12,7 +12,7 @@ const api = axios.create({
 // Interceptor para adicionar o token de autenticação
 api.interceptors.request.use(
     (config) => {
-        const token = import.meta.env.VITE_API_TOKEN || 'agenda_export_token_fono_inova_2025_secure_abc123';
+        const token = import.meta.env.VITE_API_TOKEN;
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
         }

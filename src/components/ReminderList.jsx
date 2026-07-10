@@ -1,8 +1,8 @@
-// components/ReminderList.jsx - VERSÃO API (sem Firebase)
+// components/ReminderList.jsx - VERSÃO API V2 (entidade Reminder real)
 import { useState, useEffect } from 'react';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import api from '../services/api';
+import { getReminders, updateReminder } from '../services/remindersRepo';
 import { toast } from 'react-toastify';
 
 export default function ReminderList() {
@@ -11,7 +11,7 @@ export default function ReminderList() {
 
   useEffect(() => {
     carregarLembretes();
-    
+
     // Atualizar a cada 5 minutos
     const interval = setInterval(carregarLembretes, 5 * 60 * 1000);
     return () => clearInterval(interval);
@@ -20,27 +20,24 @@ export default function ReminderList() {
   const carregarLembretes = async () => {
     try {
       setLoading(true);
-      
-      // Buscar agendamentos com lembretes pendentes
+
+      // Busca lembretes pendentes do dia atual
       const hoje = new Date().toISOString().split('T')[0];
-      const response = await api.get('/api/appointments', {
-        params: {
-          startDate: hoje,
-          endDate: hoje,
-          hasReminder: true,
-          reminderDone: false
-        }
+      const reminders = await getReminders({ status: 'pending', dueDate: hoje });
+      const lista = Array.isArray(reminders) ? reminders : [];
+
+      // Ordena por data/hora
+      lista.sort((a, b) => {
+        const dateA = `${a.dueDate || ''}T${a.dueTime || '00:00'}`;
+        const dateB = `${b.dueDate || ''}T${b.dueTime || '00:00'}`;
+        return dateA.localeCompare(dateB);
       });
-      
-      // Filtrar apenas os que têm lembretes
-      const comLembretes = response.data.filter(apt => 
-        apt.reminder && !apt.reminderDone
-      );
-      
-      setLembretes(comLembretes);
+
+      setLembretes(lista);
     } catch (error) {
       console.error('[carregarLembretes]', error);
       toast.error('Erro ao carregar lembretes');
+      setLembretes([]);
     } finally {
       setLoading(false);
     }
@@ -48,15 +45,25 @@ export default function ReminderList() {
 
   const marcarFeito = async (id) => {
     try {
-      await api.patch(`/api/appointments/${id}/reminder`, {
-        reminderDone: true
-      });
-      
-      setLembretes(prev => prev.filter(l => l.id !== id));
+      await updateReminder(id, { status: 'done' });
+
+      setLembretes(prev => prev.filter(l => (l._id || l.id) !== id));
       toast.success('Lembrete marcado como feito!');
     } catch (error) {
       console.error('[marcarFeito]', error);
       toast.error('Erro ao marcar lembrete');
+    }
+  };
+
+  const formatarDataHora = (reminder) => {
+    const dateStr = reminder.dueDate;
+    if (!dateStr) return 'N/A';
+    try {
+      const iso = typeof dateStr === 'string' ? dateStr : new Date(dateStr).toISOString();
+      return format(parseISO(iso.split('T')[0]), 'dd/MM', { locale: ptBR }) +
+        (reminder.dueTime ? ` ${reminder.dueTime}` : '');
+    } catch {
+      return 'N/A';
     }
   };
 
@@ -78,17 +85,20 @@ export default function ReminderList() {
       )}
 
       {lembretes.map(l => (
-        <div key={l.id} className="border p-3 mb-2 rounded bg-yellow-50">
+        <div key={l._id || l.id} className="border p-3 mb-2 rounded bg-yellow-50">
           <div className="flex justify-between items-start">
             <div>
-              <p className="font-semibold">{l.patientName || l.patient?.name || l.patient?.fullName || (typeof l.patient === 'string' ? l.patient : '')}</p>
+              <p className="font-semibold">{l.patient || 'Paciente não informado'}</p>
               <p className="text-sm text-gray-600">
-                Consulta: {l.date ? format(parseISO(l.date), 'dd/MM HH:mm', { locale: ptBR }) : 'N/A'}
+                Consulta: {formatarDataHora(l)}
               </p>
-              <p className="mt-2 text-sm font-medium">{l.reminder}</p>
+              <p className="mt-2 text-sm font-medium">{l.text}</p>
+              {l.professional && (
+                <p className="text-xs text-gray-500 mt-1">Profissional: {l.professional}</p>
+              )}
             </div>
-            <button 
-              onClick={() => marcarFeito(l.id)}
+            <button
+              onClick={() => marcarFeito(l._id || l.id)}
               className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
             >
               ✓ Feito
@@ -96,8 +106,8 @@ export default function ReminderList() {
           </div>
         </div>
       ))}
-      
-      <button 
+
+      <button
         onClick={carregarLembretes}
         className="mt-4 text-sm text-blue-600 hover:text-blue-800"
       >

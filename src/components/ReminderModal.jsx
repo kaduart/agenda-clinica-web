@@ -16,11 +16,13 @@ export default function ReminderModal({ appointment, onSave, onClose }) {
     React.useEffect(() => {
         if (!appointment) return;
 
+        // O lembrete é sempre uma nova entidade Reminder.
+        // Não reutilizamos campos legados (reminderText/reminderDate) do appointment.
         setForm({
-            reminderText: appointment.reminderText || "",
-            reminderDate: appointment.reminderDate || today,
-            reminderTime: appointment.reminderTime || "",
-            reminderDone: !!appointment.reminderDone,
+            reminderText: "",
+            reminderDate: today,
+            reminderTime: appointment?.time || "",
+            reminderDone: false,
         });
     }, [appointment]);
 
@@ -50,6 +52,11 @@ export default function ReminderModal({ appointment, onSave, onClose }) {
                 appointmentId: appointment?.id || null,
                 patient: appointment?.patientName || appointment?.patient?.name || appointment?.patient?.fullName || (typeof appointment?.patient === 'string' ? appointment.patient : '') || "",
                 professional: appointment?.professional || "",
+                patientPhone: appointment?.patient?.phone || appointment?.phone || appointment?.patientPhone || "",
+                professionalPhone: appointment?.doctor?.phoneNumber || appointment?.professional?.phoneNumber || "",
+                date: appointment?.date || "",
+                time: appointment?.time || "",
+                specialty: appointment?.specialty || appointment?.specialtyKey || "",
             });
 
             toast.success("Lembrete criado com sucesso!");

@@ -2,7 +2,13 @@
  * 🟢 API Baileys - Envia mensagens WhatsApp direto pelo backend
  */
 
-import api from "./api";
+import {
+  sendWhatsAppMessageWithFallback,
+  sendWhatsAppMetaMedia,
+  getBaileysStatus,
+  connectBaileys,
+  disconnectBaileys,
+} from "../api/v2/whatsappClient";
 import {
   generateProfessionalNewAppointmentMessage,
   generateProfessionalReminderMessage
@@ -13,39 +19,7 @@ import {
  * Só tenta Baileys se estiver conectado para evitar request desnecessário.
  */
 export async function sendWhatsAppMessage(phone, message) {
-  // 1. Verifica se Baileys está conectado antes de tentar
-  let baileysConnected = false;
-  try {
-    const status = await api.get('/api/baileys/status');
-    baileysConnected = status.data?.connected === true || status.data?.status === 'connected';
-  } catch (_) {}
-
-  if (baileysConnected) {
-    try {
-      const response = await api.post('/api/baileys/send', { phone, message });
-      return response.data;
-    } catch (_) {}
-  }
-
-  // 2. WhatsApp Web
-  try {
-    const response = await api.post('/api/whatsapp-web/send', { phone, message });
-    return response.data;
-  } catch (_) {}
-
-  // 3. VPS
-  try {
-    const response = await api.post('/api/whatsapp-vps/send', { phone, message });
-    return response.data;
-  } catch (_) {}
-
-  // 4. Meta API
-  try {
-    const response = await api.post('/api/whatsapp/send-text', { phone, text: message });
-    return response.data;
-  } catch (metaErr) {
-    return { success: false, error: metaErr.response?.data?.error || metaErr.message };
-  }
+  return sendWhatsAppMessageWithFallback({ phone, message });
 }
 
 /**
@@ -54,19 +28,7 @@ export async function sendWhatsAppMessage(phone, message) {
  */
 export async function sendWhatsAppMediaMessage(phone, file, caption = '') {
   try {
-    const formData = new FormData();
-    formData.append('phone', phone);
-    formData.append('type', 'image');
-    formData.append('caption', caption);
-    formData.append('file', file);
-
-    const response = await api.post('/api/whatsapp/send-media', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
-
-    return response.data;
+    return await sendWhatsAppMetaMedia({ phone, file, type: 'image', caption });
   } catch (error) {
     return {
       success: false,
@@ -80,8 +42,7 @@ export async function sendWhatsAppMediaMessage(phone, file, caption = '') {
  */
 export async function getStatus() {
   try {
-    const response = await api.get("/api/baileys/status");
-    return response.data;
+    return await getBaileysStatus();
   } catch (error) {
     console.error("[Baileys API] Erro ao verificar status:", error);
     throw error.response?.data || error;
@@ -93,8 +54,7 @@ export async function getStatus() {
  */
 export async function connect() {
   try {
-    const response = await api.post("/api/baileys/disconnect");
-    return response.data;
+    return await connectBaileys();
   } catch (error) {
     console.error("[Baileys API] Erro ao conectar:", error);
     throw error.response?.data || error;
@@ -106,8 +66,7 @@ export async function connect() {
  */
 export async function disconnect() {
   try {
-    const response = await api.post("/api/baileys/connect");
-    return response.data;
+    return await disconnectBaileys();
   } catch (error) {
     console.error("[Baileys API] Erro ao desconectar:", error);
     throw error.response?.data || error;

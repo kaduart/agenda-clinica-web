@@ -46,7 +46,7 @@ export default function AppointmentRow({ appointment, onEdit, onReminder, onGene
 
   const specialtyKey = resolveSpecialtyKey(appointment);
 
-  const hasReminder = !!(appointment.reminderText && !appointment.reminderDone);
+
 
   const patientName = appointment.patientName || appointment.patient?.name || appointment.patient?.fullName || (typeof appointment.patient === 'string' ? appointment.patient : '') || "";
   
@@ -258,9 +258,7 @@ export default function AppointmentRow({ appointment, onEdit, onReminder, onGene
           <div className="min-w-0">
             <div className={`font-semibold flex items-center gap-1.5 flex-wrap text-base leading-tight ${isCancelled ? 'line-through text-gray-500' : 'text-gray-900'}`}>
               <span className="truncate">{patientName || "-"}</span>
-              {hasReminder && (
-                <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-full bg-yellow-200 text-yellow-900 shrink-0">lembrete</span>
-              )}
+
               {isPre && getPreStatusBadge(preStatus)}
               {isPre && appointment.attemptCount > 0 && (
                 <span className="text-[10px] text-gray-500 shrink-0"><i className="fas fa-phone-alt"></i> {appointment.attemptCount}</span>
@@ -456,9 +454,9 @@ export default function AppointmentRow({ appointment, onEdit, onReminder, onGene
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)}></div>
                   <div className="absolute right-0 top-full mt-1 w-56 bg-white rounded-lg shadow-xl border border-gray-200 z-50 py-1">
-                    <button type="button" className={`w-full px-4 py-2 text-left text-sm flex items-center gap-2 ${hasReminder ? 'bg-yellow-50 text-yellow-900 hover:bg-yellow-100' : 'text-gray-700 hover:bg-gray-50'}`} onClick={() => { onReminder?.(appointment); setShowMenu(false); }}>
-                      <i className={`fas fa-sticky-note ${hasReminder ? 'text-yellow-600' : 'text-gray-500'}`}></i>
-                      {hasReminder ? 'Editar lembrete interno' : 'Adicionar lembrete interno'}
+                    <button type="button" className="w-full px-4 py-2 text-left text-sm flex items-center gap-2 text-gray-700 hover:bg-gray-50" onClick={() => { onReminder?.(appointment); setShowMenu(false); }}>
+                      <i className="fas fa-sticky-note text-gray-500"></i>
+                      Adicionar lembrete
                     </button>
                     {!isLivre && !isCancelled && (
                       <button type="button" className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-indigo-50 hover:text-indigo-800 flex items-center gap-2" onClick={() => { onGenerateCycle?.(appointment); setShowMenu(false); }}>

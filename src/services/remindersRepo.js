@@ -1,4 +1,4 @@
-import api from "./api";
+import * as v2 from "../api/v2/agendaV2Client";
 import io from 'socket.io-client';
 
 // Gerenciamento de Socket para Lembretes
@@ -17,8 +17,8 @@ export const listenReminders = (onData) => {
     // 1. Busca inicial via API
     const fetchList = async () => {
         try {
-            const res = await api.get('/api/reminders');
-            onData(res.data);
+            const reminders = await v2.getReminders();
+            onData(reminders);
         } catch (e) {
             console.error('Erro ao buscar lembretes:', e);
             onData([]);
@@ -43,8 +43,8 @@ export const listenReminders = (onData) => {
 
 export const addReminder = async (payload) => {
     try {
-        const res = await api.post('/api/reminders', payload);
-        return res.data._id;
+        const data = await v2.createReminder(payload);
+        return data._id || data.id;
     } catch (e) {
         console.error('Erro ao adicionar lembrete:', e);
         throw e;
@@ -53,7 +53,7 @@ export const addReminder = async (payload) => {
 
 export const updateReminder = async (id, patch) => {
     try {
-        await api.patch(`/api/reminders/${id}`, patch);
+        await v2.updateReminder(id, patch);
     } catch (e) {
         console.error('Erro ao atualizar lembrete:', e);
         throw e;
@@ -70,8 +70,7 @@ export const cancelReminder = async (id) => {
 
 export const snoozeReminderDays = async (id, days = 7) => {
     try {
-        const res = await api.get(`/api/reminders/${id}`);
-        const r = res.data;
+        const r = await v2.getReminderById(id);
         if (!r?.dueDate) return;
 
         const [y, m, d] = String(r.dueDate).split("-").map(Number);

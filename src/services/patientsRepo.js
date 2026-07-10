@@ -1,5 +1,5 @@
 
-import api from "./api";
+import * as v2 from "../api/v2/agendaV2Client";
 
 /**
  * Busca a lista completa de pacientes do CRM
@@ -7,14 +7,11 @@ import api from "./api";
  */
 export const fetchPatients = async () => {
     try {
-        const response = await api.get('/api/patients', {
-            params: {
-                limit: 1000 // Busca uma quantidade razoável para o autocomplete
-            }
-        });
+        const response = await v2.getPatients({ limit: 1000 });
 
-        // Retorna a lista de pacientes formatada
-        return response.data || [];
+        // API V2 retorna { data: { patients: [...] } }
+        const patients = response?.data?.patients || response?.data || response || [];
+        return Array.isArray(patients) ? patients : [];
     } catch (error) {
         console.error('[fetchPatients] Erro:', error.response?.data || error.message);
         
@@ -35,10 +32,8 @@ export const fetchPatients = async () => {
  */
 export const searchPatients = async (term) => {
     try {
-        const response = await api.get('/api/patients', {
-            params: { search: term, limit: 10 }
-        });
-        return Array.isArray(response.data) ? response.data : [];
+        const patients = await v2.searchPatients(term, { limit: 10 });
+        return Array.isArray(patients) ? patients : [];
     } catch (error) {
         console.error('[searchPatients] Erro:', error.response?.data || error.message);
         return [];
@@ -53,8 +48,8 @@ export const searchPatients = async (term) => {
  */
 export const updatePatient = async (patientId, data) => {
     try {
-        const response = await api.put(`/api/patients/${patientId}`, data);
-        return response.data;
+        const response = await v2.updatePatient(patientId, data);
+        return response;
     } catch (error) {
         console.error('[updatePatient] Erro:', error.response?.data || error.message);
         throw error;

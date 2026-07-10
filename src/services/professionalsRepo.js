@@ -1,11 +1,11 @@
 
-import api from "./api";
+import * as v2 from "../api/v2/agendaV2Client";
 
 export const listenProfessionals = (onData) => {
   const fetchData = async () => {
     try {
-      const response = await api.get('/api/v2/doctors/active');
-      const doctors = (response.data?.data?.doctors || [])
+      const response = await v2.getActiveDoctors();
+      const doctors = (response?.data?.doctors || [])
         .map(doc => ({
           id: doc._id?.toString() || doc.id,
           fullName: doc.fullName,
@@ -28,11 +28,11 @@ export const listenProfessionals = (onData) => {
 };
 
 export const addProfessional = async (payload) => {
-  const response = await api.post('/api/v2/doctors', payload);
-  return response.data;
+  const response = await v2.createDoctor(payload);
+  return response;
 };
 
 export const deleteProfessional = async (id) => {
-  const response = await api.delete(`/api/v2/doctors/${id}`);
-  return response.data;
+  const response = await v2.deleteDoctor(id);
+  return response;
 };
