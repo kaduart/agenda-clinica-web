@@ -5,6 +5,7 @@ import { SERVICE_TYPE_LABELS, mapBackendServiceType } from "../utils/serviceType
 import { searchPatients } from "../services/patientsRepo";
 import { getAppointmentById, getAppointmentsByPatient } from "../services/appointmentsRepo";
 import { cancelPreAppointment } from "../services/preAppointmentsRepo";
+import { confirmToast } from "../utils/confirmToast";
 
 import { getHolidays, holidaysToMap, isTimeBlockedByHoliday as checkHolidayBlock } from "../services/calendarService";
 
@@ -649,11 +650,11 @@ export default function AppointmentModal({ appointment, professionals, patients,
 
             if (valorZerado && !formData.package && !isRetorno && !isConvenioOuLiminar) {
                 const msg = isEditing
-                    ? "⚠️ ATENÇÃO!\n\nO valor da sessão está zerado (R$ 0)" +
+                    ? "O valor da sessão está zerado (R$ 0)" +
                       (statusIndicaPagamento ? ", mas o status indica pagamento. Isso pode sobrescrever o valor no banco." : ".") +
                       "\n\nDeseja salvar com R$ 0 mesmo assim?"
-                    : "⚠️ ATENÇÃO!\n\nVocê está agendando sem definir o valor da sessão (R$ 0).\n\nO sistema não conseguirá registrar a receita deste atendimento.\n\nDeseja continuar mesmo assim?";
-                const confirmar = confirm(msg);
+                    : "Você está agendando sem definir o valor da sessão (R$ 0).\n\nO sistema não conseguirá registrar a receita deste atendimento.\n\nDeseja continuar mesmo assim?";
+                const confirmar = await confirmToast(msg, { title: "Atenção", confirmText: "Continuar", confirmColor: "teal", cancelText: "Cancelar" });
                 if (!confirmar) {
                     setIsLoading(false);
                     return;
