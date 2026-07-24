@@ -27,6 +27,7 @@ export default function FiltersPanel({
     };
 
     const [dateInputValue, setDateInputValue] = useState(formatDateToBR(filters.filterDate));
+    const [showAdvanced, setShowAdvanced] = useState(!!(filters.filterStatus || filters.filterDay));
 
     // Sincroniza o input de texto quando a data é alterada externamente (date picker ou limpar filtros)
     useEffect(() => {
@@ -34,128 +35,181 @@ export default function FiltersPanel({
         setDateInputValue(formatDateToBR(filters.filterDate));
     }, [filters.filterDate]);
 
+    // Mantém os filtros avançados visíveis caso já estejam ativos (ex: vindos de outra tela)
+    useEffect(() => {
+        if (filters.filterStatus || filters.filterDay) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
+            setShowAdvanced(true);
+        }
+    }, [filters.filterStatus, filters.filterDay]);
+
+    const hasActiveFilters = Object.values(filters).filter(v => v !== "" && v !== null).length > 0;
+
     return (
-        <div className="relative z-10 pointer-events-auto bg-white rounded-2xl shadow-xl border border-gray-200 p-6">
+        <div className="relative z-10 pointer-events-auto bg-white rounded-2xl shadow-xl border border-gray-200 p-4">
             {/* Cabeçalho */}
-            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 mb-6">
-                <div className="flex items-center gap-3">
-                    <div className="p-3 bg-gradient-to-r from-emerald-500 to-teal-600 rounded-xl">
-                        <i className="fas fa-filter text-white text-xl"></i>
+            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-3 mb-4">
+                <div className="flex items-center gap-2">
+                    <div className="p-2 bg-gradient-to-r from-emerald-500 to-teal-600 rounded-lg">
+                        <i className="fas fa-filter text-white text-sm"></i>
                     </div>
-                    <div>
-                        <h2 className="text-2xl font-bold text-gray-800">Filtros</h2>
-                        <p className="text-gray-600 text-sm">Filtre os agendamentos</p>
-                    </div>
+                    <h2 className="text-lg font-bold text-gray-800">Filtros</h2>
                 </div>
 
-                <div className="flex flex-wrap gap-3 relative z-10">
+                <div className="flex flex-wrap gap-2 relative z-10">
                     <button
                         onClick={onNewAppointment}
-                        className="relative z-10 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white px-5 py-3 rounded-xl flex items-center gap-3 font-medium transition-all duration-200 shadow-md hover:shadow-lg"
+                        className="relative z-10 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white px-4 py-2.5 rounded-xl flex items-center gap-2 font-medium text-sm transition-all duration-200 shadow-md hover:shadow-lg"
                     >
                         <i className="fas fa-plus"></i> Novo Agendamento
                     </button>
 
                     <button
                         onClick={onOpenProfessionals}
-                        className="relative z-10 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-5 py-3 rounded-xl flex items-center gap-3 font-medium transition-all duration-200 shadow-md hover:shadow-lg"
+                        className="relative z-10 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-4 py-2.5 rounded-xl flex items-center gap-2 font-medium text-sm transition-all duration-200 shadow-md hover:shadow-lg"
                     >
                         <i className="fas fa-user-md"></i> Profissionais
                     </button>
 
-                    <button
-                        onClick={onResetFilters}
-                        className="relative z-10 bg-gradient-to-r from-red-500 to-pink-600 hover:from-red-600 hover:to-pink-700 text-white px-5 py-3 rounded-xl flex items-center gap-3 font-medium transition-all duration-200 shadow-md hover:shadow-lg"
-                    >
-                        <i className="fas fa-times-circle"></i> Limpar Filtros
-                    </button>
-                </div>
-            </div>
-
-            {/* Badge de filtros ativos */}
-            <div className="mb-6 p-4 bg-gradient-to-r from-emerald-50 to-teal-50 rounded-xl border border-emerald-100">
-                <div className="flex items-center justify-between">
-                    <div className="flex flex-wrap gap-2">
-                        {filters.filterDate && (
-                            <span className="px-4 py-2 bg-white text-emerald-700 rounded-xl text-sm font-semibold flex items-center gap-2 border border-emerald-200 shadow-sm">
-                                <i className="fas fa-calendar-day text-emerald-600"></i>
-                                Data: {filters.filterDate}
-                                <button
-                                    onClick={() => setFilters((p) => ({ ...p, filterDate: "" }))}
-                                    className="ml-2 w-6 h-6 flex items-center justify-center rounded-full bg-emerald-100 text-emerald-700 hover:bg-emerald-200 transition-colors"
-                                >
-                                    ×
-                                </button>
-                            </span>
-                        )}
-                        {filters.filterProfessional && (
-                            <span className="px-4 py-2 bg-white text-emerald-700 rounded-xl text-sm font-semibold flex items-center gap-2 border border-emerald-200 shadow-sm">
-                                <i className="fas fa-user-md text-emerald-600"></i>
-                                {filters.filterProfessional}
-                                <button
-                                    onClick={() => setFilters((p) => ({ ...p, filterProfessional: "" }))}
-                                    className="ml-2 w-6 h-6 flex items-center justify-center rounded-full bg-emerald-100 text-emerald-700 hover:bg-emerald-200 transition-colors"
-                                >
-                                    ×
-                                </button>
-                            </span>
-                        )}
-                        {filters.filterStatus && (
-                            <span className="px-4 py-2 bg-white text-emerald-700 rounded-xl text-sm font-semibold flex items-center gap-2 border border-emerald-200 shadow-sm">
-                                <i className="fas fa-flag text-emerald-600"></i>
-                                {filters.filterStatus}
-                                <button
-                                    onClick={() => setFilters((p) => ({ ...p, filterStatus: "" }))}
-                                    className="ml-2 w-6 h-6 flex items-center justify-center rounded-full bg-emerald-100 text-emerald-700 hover:bg-emerald-200 transition-colors"
-                                >
-                                    ×
-                                </button>
-                            </span>
-                        )}
-                        {filters.filterDay && (
-                            <span className="px-4 py-2 bg-white text-emerald-700 rounded-xl text-sm font-semibold flex items-center gap-2 border border-emerald-200 shadow-sm">
-                                <i className="fas fa-calendar-week text-emerald-600"></i>
-                                {["", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"][Number(filters.filterDay)] || filters.filterDay}
-                                <button
-                                    onClick={() => setFilters((p) => ({ ...p, filterDay: "" }))}
-                                    className="ml-2 w-6 h-6 flex items-center justify-center rounded-full bg-emerald-100 text-emerald-700 hover:bg-emerald-200 transition-colors"
-                                >
-                                    ×
-                                </button>
-                            </span>
-                        )}
-                        {filters.filterWeek !== null && (
-                            <span className="px-4 py-2 bg-white text-emerald-700 rounded-xl text-sm font-semibold flex items-center gap-2 border border-emerald-200 shadow-sm">
-                                <i className="fas fa-calendar-alt text-emerald-600"></i>
-                                Semana {filters.filterWeek + 1}
-                                <button
-                                    onClick={() => setFilters((p) => ({ ...p, filterWeek: null }))}
-                                    className="ml-2 w-6 h-6 flex items-center justify-center rounded-full bg-emerald-100 text-emerald-700 hover:bg-emerald-200 transition-colors"
-                                >
-                                    ×
-                                </button>
-                            </span>
-                        )}
-                    </div>
-
-                    {Object.values(filters).filter(v => v !== "" && v !== null).length > 0 && (
+                    {hasActiveFilters && (
                         <button
-                            type="button"
-                            className="text-sm text-emerald-600 hover:text-emerald-800 font-semibold flex items-center gap-2"
                             onClick={onResetFilters}
+                            className="relative z-10 bg-gradient-to-r from-red-500 to-pink-600 hover:from-red-600 hover:to-pink-700 text-white px-4 py-2.5 rounded-xl flex items-center gap-2 font-medium text-sm transition-all duration-200 shadow-md hover:shadow-lg"
                         >
-                            <i className="fas fa-times-circle"></i>
-                            Limpar todos
+                            <i className="fas fa-times-circle"></i> Limpar Filtros
                         </button>
                     )}
                 </div>
             </div>
 
-            {/* Filtros principais */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+            {/* Badge de filtros ativos - só aparece quando há algo filtrado */}
+            {hasActiveFilters && (
+                <div className="mb-4 p-2.5 bg-gradient-to-r from-emerald-50 to-teal-50 rounded-xl border border-emerald-100">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                        <div className="flex flex-wrap gap-2">
+                            {filters.filterPatientName && (
+                                <span className="px-3 py-1.5 bg-white text-emerald-700 rounded-lg text-xs font-semibold flex items-center gap-2 border border-emerald-200 shadow-sm">
+                                    <i className="fas fa-search text-emerald-600"></i>
+                                    Paciente: {filters.filterPatientName}
+                                    <button
+                                        onClick={() => setFilters((p) => ({ ...p, filterPatientName: "" }))}
+                                        className="ml-1 w-5 h-5 flex items-center justify-center rounded-full bg-emerald-100 text-emerald-700 hover:bg-emerald-200 transition-colors"
+                                    >
+                                        ×
+                                    </button>
+                                </span>
+                            )}
+                            {filters.filterDate && (
+                                <span className="px-3 py-1.5 bg-white text-emerald-700 rounded-lg text-xs font-semibold flex items-center gap-2 border border-emerald-200 shadow-sm">
+                                    <i className="fas fa-calendar-day text-emerald-600"></i>
+                                    Data: {filters.filterDate}
+                                    <button
+                                        onClick={() => setFilters((p) => ({ ...p, filterDate: "" }))}
+                                        className="ml-1 w-5 h-5 flex items-center justify-center rounded-full bg-emerald-100 text-emerald-700 hover:bg-emerald-200 transition-colors"
+                                    >
+                                        ×
+                                    </button>
+                                </span>
+                            )}
+                            {filters.filterProfessional && (
+                                <span className="px-3 py-1.5 bg-white text-emerald-700 rounded-lg text-xs font-semibold flex items-center gap-2 border border-emerald-200 shadow-sm">
+                                    <i className="fas fa-user-md text-emerald-600"></i>
+                                    {filters.filterProfessional}
+                                    <button
+                                        onClick={() => setFilters((p) => ({ ...p, filterProfessional: "" }))}
+                                        className="ml-1 w-5 h-5 flex items-center justify-center rounded-full bg-emerald-100 text-emerald-700 hover:bg-emerald-200 transition-colors"
+                                    >
+                                        ×
+                                    </button>
+                                </span>
+                            )}
+                            {filters.filterStatus && (
+                                <span className="px-3 py-1.5 bg-white text-emerald-700 rounded-lg text-xs font-semibold flex items-center gap-2 border border-emerald-200 shadow-sm">
+                                    <i className="fas fa-flag text-emerald-600"></i>
+                                    {filters.filterStatus}
+                                    <button
+                                        onClick={() => setFilters((p) => ({ ...p, filterStatus: "" }))}
+                                        className="ml-1 w-5 h-5 flex items-center justify-center rounded-full bg-emerald-100 text-emerald-700 hover:bg-emerald-200 transition-colors"
+                                    >
+                                        ×
+                                    </button>
+                                </span>
+                            )}
+                            {filters.filterDay && (
+                                <span className="px-3 py-1.5 bg-white text-emerald-700 rounded-lg text-xs font-semibold flex items-center gap-2 border border-emerald-200 shadow-sm">
+                                    <i className="fas fa-calendar-week text-emerald-600"></i>
+                                    {["", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"][Number(filters.filterDay)] || filters.filterDay}
+                                    <button
+                                        onClick={() => setFilters((p) => ({ ...p, filterDay: "" }))}
+                                        className="ml-1 w-5 h-5 flex items-center justify-center rounded-full bg-emerald-100 text-emerald-700 hover:bg-emerald-200 transition-colors"
+                                    >
+                                        ×
+                                    </button>
+                                </span>
+                            )}
+                            {filters.filterWeek !== null && (
+                                <span className="px-3 py-1.5 bg-white text-emerald-700 rounded-lg text-xs font-semibold flex items-center gap-2 border border-emerald-200 shadow-sm">
+                                    <i className="fas fa-calendar-alt text-emerald-600"></i>
+                                    Semana {filters.filterWeek + 1}
+                                    <button
+                                        onClick={() => setFilters((p) => ({ ...p, filterWeek: null }))}
+                                        className="ml-1 w-5 h-5 flex items-center justify-center rounded-full bg-emerald-100 text-emerald-700 hover:bg-emerald-200 transition-colors"
+                                    >
+                                        ×
+                                    </button>
+                                </span>
+                            )}
+                        </div>
+
+                        <button
+                            type="button"
+                            className="text-xs text-emerald-600 hover:text-emerald-800 font-semibold flex items-center gap-1"
+                            onClick={onResetFilters}
+                        >
+                            <i className="fas fa-times-circle"></i>
+                            Limpar todos
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Busca por paciente - prioridade máxima para o comercial encontrar rápido entre várias sessões */}
+            <div className="space-y-1.5 mb-3">
+                <label className="block text-xs font-semibold text-gray-700 flex items-center gap-1.5">
+                    <i className="fas fa-search text-emerald-600"></i>
+                    Buscar paciente
+                </label>
+                <div className="relative">
+                    <input
+                        type="text"
+                        placeholder="Digite o nome do paciente..."
+                        className="w-full p-2.5 pl-10 border-2 border-gray-200 rounded-lg focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all duration-200 text-gray-700 text-sm"
+                        value={filters.filterPatientName || ""}
+                        onChange={(e) => {
+                            setFilters((prev) => ({ ...prev, filterPatientName: e.target.value }));
+                        }}
+                    />
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                        <i className="fas fa-search"></i>
+                    </div>
+                    {filters.filterPatientName && (
+                        <button
+                            type="button"
+                            onClick={() => setFilters((prev) => ({ ...prev, filterPatientName: "" }))}
+                            className="absolute right-2.5 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 transition-colors"
+                            aria-label="Limpar busca"
+                        >
+                            ×
+                        </button>
+                    )}
+                </div>
+            </div>
+
+            {/* Filtros rápidos: Data + Profissional sempre visíveis, avançados escondidos */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[1fr_1fr_auto] gap-3 items-start">
                 {/* Data */}
-                <div className="space-y-2">
-                    <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                <div className="space-y-1.5">
+                    <label className="block text-xs font-semibold text-gray-700 flex items-center gap-1.5">
                         <i className="fas fa-calendar text-emerald-600"></i>
                         Data específica
                     </label>
@@ -163,7 +217,7 @@ export default function FiltersPanel({
                         <input
                             type="text"
                             placeholder="dd/mm/aaaa"
-                            className="w-full p-3.5 pr-12 border-2 border-gray-200 rounded-xl focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all duration-200 text-gray-700"
+                            className="w-full p-2.5 pr-10 border-2 border-gray-200 rounded-lg focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all duration-200 text-gray-700 text-sm"
                             value={dateInputValue}
                             onChange={(e) => {
                                 let raw = e.target.value.replace(/\D/g, '').substring(0, 8);
@@ -200,7 +254,7 @@ export default function FiltersPanel({
                         <button
                             type="button"
                             onClick={() => dateInputRef.current?.showPicker?.()}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-emerald-600 transition-colors"
+                            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-emerald-600 transition-colors"
                             aria-label="Abrir calendário"
                         >
                             <i className="fas fa-calendar"></i>
@@ -220,23 +274,17 @@ export default function FiltersPanel({
                             }}
                         />
                     </div>
-                    {filters.filterDate && (
-                        <p className="text-xs font-medium text-emerald-600 mt-2 flex items-center gap-1">
-                            <i className="fas fa-check-circle"></i>
-                            Mostrando apenas esta data
-                        </p>
-                    )}
                 </div>
 
                 {/* Profissional */}
-                <div className="space-y-2">
-                    <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                <div className="space-y-1.5">
+                    <label className="block text-xs font-semibold text-gray-700 flex items-center gap-1.5">
                         <i className="fas fa-user-md text-emerald-600"></i>
                         Profissional
                     </label>
                     <div className="relative">
                         <select
-                            className="w-full p-3.5 border-2 border-gray-200 rounded-xl focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all duration-200 appearance-none text-gray-700 bg-white"
+                            className="w-full p-2.5 border-2 border-gray-200 rounded-lg focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all duration-200 appearance-none text-gray-700 bg-white text-sm"
                             value={filters.filterProfessional}
                             onChange={(e) => {
                                 setFilters((prev) => ({ ...prev, filterProfessional: e.target.value }));
@@ -250,76 +298,87 @@ export default function FiltersPanel({
                                 </option>
                             ))}
                         </select>
-                        <div className="absolute right-4 top-1/2 transform -translate-y-1/2 pointer-events-none text-gray-400">
+                        <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none text-gray-400">
                             <i className="fas fa-chevron-down"></i>
                         </div>
                     </div>
                 </div>
 
-                {/* Status */}
-                <div className="space-y-2">
-                    <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                        <i className="fas fa-flag text-emerald-600"></i>
-                        Status
-                    </label>
-                    <div className="relative">
-                        <select
-                            className="w-full p-3.5 border-2 border-gray-200 rounded-xl focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all duration-200 appearance-none text-gray-700 bg-white"
-                            value={filters.filterStatus}
-                            onChange={(e) => {
-                                setFilters((prev) => ({ ...prev, filterStatus: e.target.value }));
-                            }}
-                        >
-                            <option value="">Todos os status</option>
-                            <option value="Confirmado">✅ Compareceu</option>
-                            <option value="Pendente">⏳ Pendente</option>
-                            <option value="Cancelado">❌ Cancelado</option>
-                        </select>
-                        <div className="absolute right-4 top-1/2 transform -translate-y-1/2 pointer-events-none text-gray-400">
-                            <i className="fas fa-chevron-down"></i>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Dia da semana */}
-                <div className="space-y-2">
-                    <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                        <i className="fas fa-calendar-week text-emerald-600"></i>
-                        Dia da semana
-                        {filters.filterDate && (
-                            <span className="text-xs font-normal text-gray-500 ml-2">(desativado)</span>
-                        )}
-                    </label>
-                    <div className="relative">
-                        <select
-                            className="w-full p-3.5 border-2 border-gray-200 rounded-xl focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all duration-200 appearance-none text-gray-700 bg-white disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed"
-                            value={filters.filterDay}
-                            disabled={!!filters.filterDate}
-                            onChange={(e) => {
-                                setFilters((prev) => ({ ...prev, filterDay: e.target.value }));
-                            }}
-                        >
-                            <option value="">Todos os dias</option>
-                            <option value="1">Segunda-feira</option>
-                            <option value="2">Terça-feira</option>
-                            <option value="3">Quarta-feira</option>
-                            <option value="4">Quinta-feira</option>
-                            <option value="5">Sexta-feira</option>
-                            <option value="6">Sábado</option>
-                        </select>
-                        <div className="absolute right-4 top-1/2 transform -translate-y-1/2 pointer-events-none text-gray-400">
-                            <i className="fas fa-chevron-down"></i>
-                        </div>
-                    </div>
-                    {!filters.filterDate && filters.filterDay && (
-                        <p className="text-xs font-medium text-emerald-600 mt-2 flex items-center gap-1">
-                            <i className="fas fa-check-circle"></i>
-                            Filtrando por dia da semana
-                        </p>
-                    )}
+                {/* Toggle de filtros avançados */}
+                <div className="flex md:justify-end lg:items-end h-full">
+                    <button
+                        type="button"
+                        onClick={() => setShowAdvanced((v) => !v)}
+                        className="w-full lg:w-auto h-[42px] px-4 border-2 border-gray-200 hover:border-emerald-400 rounded-lg flex items-center justify-center gap-2 text-sm font-medium text-gray-600 hover:text-emerald-700 transition-all duration-200"
+                    >
+                        <i className={`fas fa-sliders-h`}></i>
+                        {showAdvanced ? "Menos filtros" : "Mais filtros"}
+                        <i className={`fas fa-chevron-${showAdvanced ? "up" : "down"} text-xs`}></i>
+                    </button>
                 </div>
             </div>
 
+            {/* Filtros avançados: Status + Dia da semana */}
+            {showAdvanced && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3 pt-3 border-t border-gray-100">
+                    {/* Status */}
+                    <div className="space-y-1.5">
+                        <label className="block text-xs font-semibold text-gray-700 flex items-center gap-1.5">
+                            <i className="fas fa-flag text-emerald-600"></i>
+                            Status
+                        </label>
+                        <div className="relative">
+                            <select
+                                className="w-full p-2.5 border-2 border-gray-200 rounded-lg focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all duration-200 appearance-none text-gray-700 bg-white text-sm"
+                                value={filters.filterStatus}
+                                onChange={(e) => {
+                                    setFilters((prev) => ({ ...prev, filterStatus: e.target.value }));
+                                }}
+                            >
+                                <option value="">Todos os status</option>
+                                <option value="Confirmado">✅ Compareceu</option>
+                                <option value="Pendente">⏳ Pendente</option>
+                                <option value="Cancelado">❌ Cancelado</option>
+                            </select>
+                            <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none text-gray-400">
+                                <i className="fas fa-chevron-down"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Dia da semana */}
+                    <div className="space-y-1.5">
+                        <label className="block text-xs font-semibold text-gray-700 flex items-center gap-1.5">
+                            <i className="fas fa-calendar-week text-emerald-600"></i>
+                            Dia da semana
+                            {filters.filterDate && (
+                                <span className="text-xs font-normal text-gray-500 ml-1">(desativado)</span>
+                            )}
+                        </label>
+                        <div className="relative">
+                            <select
+                                className="w-full p-2.5 border-2 border-gray-200 rounded-lg focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all duration-200 appearance-none text-gray-700 bg-white disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed text-sm"
+                                value={filters.filterDay}
+                                disabled={!!filters.filterDate}
+                                onChange={(e) => {
+                                    setFilters((prev) => ({ ...prev, filterDay: e.target.value }));
+                                }}
+                            >
+                                <option value="">Todos os dias</option>
+                                <option value="1">Segunda-feira</option>
+                                <option value="2">Terça-feira</option>
+                                <option value="3">Quarta-feira</option>
+                                <option value="4">Quinta-feira</option>
+                                <option value="5">Sexta-feira</option>
+                                <option value="6">Sábado</option>
+                            </select>
+                            <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none text-gray-400">
+                                <i className="fas fa-chevron-down"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

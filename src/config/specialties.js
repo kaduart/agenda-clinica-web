@@ -73,7 +73,7 @@ export const SPECIALTIES = {
     },
     neuropsych_evaluation: {
         name: "Av. Neuropsico",
-        icon: "fa-brain",
+        icon: "fa-puzzle-piece",
         bgColor: "bg-rose-600",
         lightBg: "bg-rose-100",
         textColor: "text-rose-800",

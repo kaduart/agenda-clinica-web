@@ -98,6 +98,7 @@ export default function App() {
     filterStatus: "",
     filterDay: savedFilters.day,
     filterWeek: null,
+    filterPatientName: "",
   });
   
   // Salva a data no sessionStorage quando mudar (isolado por aba)
@@ -888,6 +889,14 @@ export default function App() {
           return false;
         }
       }
+      if (filters.filterPatientName && filters.filterPatientName.trim()) {
+        const pName = appointment.patientName
+          || appointment.patient?.name
+          || appointment.patient?.fullName
+          || (typeof appointment.patient === 'string' ? appointment.patient : '')
+          || '';
+        if (!normalizeForCompare(pName).includes(normalizeForCompare(filters.filterPatientName))) return false;
+      }
       return true;
     });
 
@@ -944,6 +953,113 @@ export default function App() {
     return base;
   }, [appointments, mappedPreAppointments, activeSpecialty, filters, currentYear, currentMonth, availableSlots]);
 
+  // Contagem por especialidade para os badges do SpecialtyTabs.
+  // Aplica os mesmos filtros de data/profissional/status/paciente do pipeline acima,
+  // mas SEM o filtro de especialidade, pra mostrar quantos agendamentos cada aba tem.
+  const specialtyCounts = React.useMemo(() => {
+    const weeks = getWeeksInMonth(currentYear, currentMonth);
+    const normalizeForCompare = (str) =>
+      (str || "").toString().trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+    const matchesDateFilters = (appointment) => {
+      if (filters.filterDate) {
+        return extractDateForInput(appointment.date) === filters.filterDate;
+      }
+      if (filters.filterDay) {
+        const dateStr = extractDateForInput(appointment.date);
+        if (!dateStr) return false;
+        const [y, m, d] = dateStr.split("-").map(Number);
+        if (new Date(y, m - 1, d).getDay() !== Number(filters.filterDay)) return false;
+      }
+      if (filters.filterWeek !== null && filters.filterWeek !== undefined) {
+        const w = weeks[filters.filterWeek];
+        if (!w) return false;
+        const toKey = (v) => (typeof v === "string" ? v.replaceAll("-", "") : formatDateLocal(v).replaceAll("-", ""));
+        const dKey = toKey(extractDateForInput(appointment.date));
+        if (!(dKey >= toKey(w.start) && dKey <= toKey(w.end))) return false;
+      }
+      return true;
+    };
+
+    const matchesSecondaryFilters = (appointment) => {
+      if (filters.filterProfessional) {
+        if (filters.filterProfessional.toLowerCase() === "livre") {
+          const pName = appointment.patient?.name || appointment.patient?.fullName || (typeof appointment.patient === 'string' ? appointment.patient : '') || "";
+          const isLivre =
+            (appointment.professional && appointment.professional.toLowerCase().includes("livre")) ||
+            (pName.toLowerCase().includes("livre")) ||
+            (appointment.observations && appointment.observations.toLowerCase().includes("livre"));
+          if (!isLivre) return false;
+        } else {
+          const selectedProf = (professionals || []).find(p => p.fullName === filters.filterProfessional);
+          const appointmentProfId = appointment.professionalId || appointment.doctor?.id || appointment.doctor?._id;
+          const selectedProfId = selectedProf?.id || selectedProf?._id;
+          if (selectedProfId && appointmentProfId && selectedProfId.toString() === appointmentProfId.toString()) {
+            // mantém o registro
+          } else if (normalizeForCompare(appointment.professional) !== normalizeForCompare(filters.filterProfessional)) {
+            return false;
+          }
+        }
+      }
+      if (filters.filterStatus) {
+        if (filters.filterStatus === "Pendente") {
+          if (appointment.status !== "Pendente" && appointment.status !== "Agendado") return false;
+        } else if (appointment.status !== filters.filterStatus) {
+          return false;
+        }
+      }
+      if (filters.filterPatientName && filters.filterPatientName.trim()) {
+        const pName = appointment.patientName
+          || appointment.patient?.name
+          || appointment.patient?.fullName
+          || (typeof appointment.patient === 'string' ? appointment.patient : '')
+          || '';
+        if (!normalizeForCompare(pName).includes(normalizeForCompare(filters.filterPatientName))) return false;
+      }
+      return true;
+    };
+
+    const isPreAgendamento = (appt) => appt?.operationalStatus === 'pre_agendado';
+
+    const reals = (appointments || []).filter(a => matchesDateFilters(a) && matchesSecondaryFilters(a));
+
+    let pres = mappedPreAppointments.filter(a => {
+      if (filters.filterDate && extractDateForInput(a.date) !== filters.filterDate) return false;
+      const realStatus = a.metadata?.preAgendamentoStatus || a.originalData?.status;
+      if (realStatus === 'desistiu' || realStatus === 'descartado') return false;
+      return matchesSecondaryFilters(a);
+    });
+    pres = pres.filter(appointment => {
+      const patientName = (appointment.patientName || appointment.patient?.name || appointment.patient?.fullName || '').toLowerCase().trim();
+      const hasRealAppointment = (appointments || []).some(real => {
+        if (isPreAgendamento(real)) return false;
+        const realPatientName = (real.patientName || real.patient?.name || real.patient?.fullName || '').toLowerCase().trim();
+        let samePatient = false;
+        if (patientName && realPatientName) {
+          samePatient = patientName.includes(realPatientName) || realPatientName.includes(patientName);
+          if (!samePatient) {
+            const preWords = patientName.split(/\s+/).filter(w => w.length > 2);
+            const realWords = realPatientName.split(/\s+/).filter(w => w.length > 2);
+            samePatient = preWords.filter(w => realWords.includes(w)).length >= 2;
+          }
+        }
+        return samePatient && extractDateForInput(real.date) === extractDateForInput(appointment.date) && real.time === appointment.time && real.professional === appointment.professional;
+      });
+      return !hasRealAppointment;
+    });
+
+    const seenIds = new Set();
+    const counts = { todas: 0 };
+    for (const appt of [...reals, ...pres]) {
+      if (seenIds.has(appt.id)) continue;
+      seenIds.add(appt.id);
+      counts.todas += 1;
+      const key = resolveSpecialtyKey(appt);
+      if (key) counts[key] = (counts[key] || 0) + 1;
+    }
+    return counts;
+  }, [appointments, mappedPreAppointments, filters, currentYear, currentMonth, professionals]);
+
   // ========== PROFESSIONALS ==========
   const onOpenProfessionals = () => {
     setIsProfessionalsModalOpen(true);
@@ -970,6 +1086,7 @@ export default function App() {
       filterStatus: "",
       filterDay: "",
       filterWeek: null,
+      filterPatientName: "",
     });
   };
 
@@ -1018,6 +1135,7 @@ export default function App() {
               <SpecialtyTabs
                 activeTab={activeSpecialty}
                 onTabChange={setActiveSpecialty}
+                counts={specialtyCounts}
               />
             </div>
 
