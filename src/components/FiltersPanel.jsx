@@ -27,7 +27,11 @@ export default function FiltersPanel({
     };
 
     const [dateInputValue, setDateInputValue] = useState(formatDateToBR(filters.filterDate));
-    const [showAdvanced, setShowAdvanced] = useState(!!(filters.filterStatus || filters.filterDay));
+    // Dia da semana vem pré-preenchido com o dia de hoje por padrão (e fica desativado
+    // enquanto houver data específica), então só conta como filtro "ativo" de verdade
+    // quando não há data específica selecionada.
+    const isDayFilterActive = !!filters.filterDay && !filters.filterDate;
+    const [showAdvanced, setShowAdvanced] = useState(!!filters.filterStatus || isDayFilterActive);
 
     // Sincroniza o input de texto quando a data é alterada externamente (date picker ou limpar filtros)
     useEffect(() => {
@@ -37,11 +41,11 @@ export default function FiltersPanel({
 
     // Mantém os filtros avançados visíveis caso já estejam ativos (ex: vindos de outra tela)
     useEffect(() => {
-        if (filters.filterStatus || filters.filterDay) {
+        if (filters.filterStatus || isDayFilterActive) {
             // eslint-disable-next-line react-hooks/set-state-in-effect
             setShowAdvanced(true);
         }
-    }, [filters.filterStatus, filters.filterDay]);
+    }, [filters.filterStatus, isDayFilterActive]);
 
     const hasActiveFilters = Object.values(filters).filter(v => v !== "" && v !== null).length > 0;
 
