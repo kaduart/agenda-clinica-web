@@ -177,8 +177,9 @@ export default function FiltersPanel({
                 </div>
             )}
 
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[minmax(240px,1.35fr)_minmax(180px,0.75fr)_minmax(240px,1fr)_auto] gap-3 items-end">
             {/* Busca por paciente - prioridade máxima para o comercial encontrar rápido entre várias sessões */}
-            <div className="space-y-1.5 mb-3">
+            <div className="space-y-1.5">
                 <label className="block text-xs font-semibold text-gray-700 flex items-center gap-1.5">
                     <i className="fas fa-search text-emerald-600"></i>
                     Buscar paciente
@@ -210,7 +211,6 @@ export default function FiltersPanel({
             </div>
 
             {/* Filtros rápidos: Data + Profissional sempre visíveis, avançados escondidos */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[1fr_1fr_auto] gap-3 items-start">
                 {/* Data */}
                 <div className="space-y-1.5">
                     <label className="block text-xs font-semibold text-gray-700 flex items-center gap-1.5">
@@ -309,7 +309,7 @@ export default function FiltersPanel({
                 </div>
 
                 {/* Toggle de filtros avançados */}
-                <div className="flex md:justify-end lg:items-end h-full">
+                <div className="flex items-end h-full">
                     <button
                         type="button"
                         onClick={() => setShowAdvanced((v) => !v)}
@@ -324,7 +324,7 @@ export default function FiltersPanel({
 
             {/* Filtros avançados: Status + Dia da semana */}
             {showAdvanced && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3 pt-3 border-t border-gray-100">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[minmax(240px,340px)_minmax(220px,300px)] gap-3 mt-3 pt-3 border-t border-gray-100 justify-start">
                     {/* Status */}
                     <div className="space-y-1.5">
                         <label className="block text-xs font-semibold text-gray-700 flex items-center gap-1.5">
@@ -333,7 +333,7 @@ export default function FiltersPanel({
                         </label>
                         <div className="relative">
                             <select
-                                className="w-full p-2.5 border-2 border-gray-200 rounded-lg focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all duration-200 appearance-none text-gray-700 bg-white text-sm"
+                                className="w-full p-2 border-2 border-gray-200 rounded-lg focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all duration-200 appearance-none text-gray-700 bg-white text-sm"
                                 value={filters.filterStatus}
                                 onChange={(e) => {
                                     setFilters((prev) => ({ ...prev, filterStatus: e.target.value }));
@@ -361,7 +361,7 @@ export default function FiltersPanel({
                         </label>
                         <div className="relative">
                             <select
-                                className="w-full p-2.5 border-2 border-gray-200 rounded-lg focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all duration-200 appearance-none text-gray-700 bg-white disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed text-sm"
+                                className="w-full p-2 border-2 border-gray-200 rounded-lg focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all duration-200 appearance-none text-gray-700 bg-white disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed text-sm"
                                 value={filters.filterDay}
                                 disabled={!!filters.filterDate}
                                 onChange={(e) => {
