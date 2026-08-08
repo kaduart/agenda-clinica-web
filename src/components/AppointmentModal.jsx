@@ -3,9 +3,10 @@ import { formatDateLocal, extractDateForInput } from "../utils/date";
 import { resolveSpecialtyKey } from "../utils/specialty";
 import { SERVICE_TYPE_LABELS, mapBackendServiceType } from "../utils/serviceType";
 import { searchPatients } from "../services/patientsRepo";
-import { getAppointmentById, getAppointmentsByPatient } from "../services/appointmentsRepo";
-import { cancelPreAppointment } from "../services/preAppointmentsRepo";
+import { cancelAppointment, getAppointmentById, getAppointmentsByPatient } from "../services/appointmentsRepo";
 import { confirmToast } from "../utils/confirmToast";
+import { formatPhoneBR, onlyDigits, validatePhoneBR } from "../utils/phone";
+import InputCurrency from "./InputCurrency";
 
 import { getHolidays, holidaysToMap, isTimeBlockedByHoliday as checkHolidayBlock } from "../services/calendarService";
 
@@ -533,6 +534,12 @@ export default function AppointmentModal({ appointment, professionals, patients,
         hasInteracted.current = true;
         const { name, value, type, checked } = e.target;
 
+        // Telefone: state guarda só dígitos, a máscara é aplicada na exibição
+        if (name === "phone") {
+            setFormData((prev) => ({ ...prev, phone: onlyDigits(value).slice(0, 11) }));
+            return;
+        }
+
         if (name === "specialty") {
             const newKey = resolveSpecialtyKey(value);
             // 🧠 Regra contextual: especialidades médicas defaultam para 'consultation'
@@ -554,12 +561,16 @@ export default function AppointmentModal({ appointment, professionals, patients,
         }
 
         if (name === "professional") {
-            const selectedProf = (professionals || []).find(p => p.fullName === value);
+            // `value` agora é o ID vindo do <option>. O nome continua no formData
+            // porque o payload e as telas de leitura ainda o usam.
+            const selectedProf = (professionals || []).find(
+                p => (p.id || p._id)?.toString() === value
+            );
             setFormData((prev) => ({
                 ...prev,
-                professional: value,
-                professionalName: value,
-                professionalId: selectedProf?.id || selectedProf?._id || "",
+                professional: selectedProf?.fullName || "",
+                professionalName: selectedProf?.fullName || "",
+                professionalId: value,
                 professionalPhone: selectedProf?.phoneNumber || "",
             }));
             return;
@@ -633,10 +644,20 @@ export default function AppointmentModal({ appointment, professionals, patients,
                 return;
             }
 
-            // Validação: telefone obrigatório com DDD (mínimo 10 dígitos)
-            const phoneDigits = (formData.phone || '').replace(/\D/g, '');
-            if (phoneDigits.length < 10) {
-                alert("Telefone obrigatório com DDD (ex: 62981665539)");
+            // Telefone: além do DDD, pega celular truncado (10 dígitos começando
+            // com 9), que o formato de fixo mascarava como se fosse válido.
+            const phoneDigits = onlyDigits(formData.phone);
+            // Sem doctorId o backend rejeita com "Dados incompletos para verificação
+            // de conflitos", mensagem que não diz à secretária o que fazer.
+            if (!formData.professionalId) {
+                alert("Selecione o profissional novamente — o vínculo com o cadastro dele se perdeu.");
+                setIsLoading(false);
+                return;
+            }
+
+            const phoneCheck = validatePhoneBR(formData.phone);
+            if (!phoneCheck.valid) {
+                alert(`${phoneCheck.reason}\n\nExemplos: (62) 98166-5539 ou (62) 3321-4455`);
                 setIsLoading(false);
                 return;
             }
@@ -663,11 +684,16 @@ export default function AppointmentModal({ appointment, professionals, patients,
 
             // Montar payload completo com todos os campos
             const dataToSave = {
+                // Envelope genérico: o backend aplica seu contrato allowlisted.
+                // Campo simples novo no formData não precisa ser repetido nas listas
+                // manuais abaixo para atravessar create/update e voltar pelo DTO.
+                clientFields: formData,
+
                 // Dados do paciente
                 patientName: formData.patient,
                 patientId: effectiveIsNewPatient ? null : formData.patientId,  // Só envia ID se for existente
                 isNewPatient: effectiveIsNewPatient,  // Flag para o backend saber
-                phone: formData.phone,
+                phone: phoneDigits,
                 birthDate: formData.birthDate,
                 email: formData.email,
                 responsible: formData.responsible,
@@ -743,7 +769,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
         if (formData.operationalStatus === 'canceled' || formData.operationalStatus === 'cancelado') {
             setIsLoading(true);
             try {
-                await cancelPreAppointment(appointment.id);
+                await cancelAppointment(appointment.id, "Cancelado via Web App");
                 onClose();
             } catch (err) {
                 alert("Erro ao cancelar: " + (err.response?.data?.error || err.message));
@@ -824,9 +850,32 @@ export default function AppointmentModal({ appointment, professionals, patients,
         return map[status] || status || '—';
     };
 
+    // Reconcilia nome → ID quando o formulário foi preenchido por um caminho que
+    // só tinha o nome (edição de agendamento antigo, clique em slot da agenda).
+    // Sem isto o select ficaria em branco e o payload sairia com doctorId vazio.
+    React.useEffect(() => {
+        if (formData.professionalId || !formData.professional) return;
+        if (!professionals?.length) return;
+
+        const match = professionals.find(p => p.fullName === formData.professional);
+        if (match) {
+            setFormData(prev => ({
+                ...prev,
+                professionalId: (match.id || match._id)?.toString() || "",
+                professionalPhone: prev.professionalPhone || match.phoneNumber || "",
+            }));
+        }
+    }, [formData.professionalId, formData.professional, professionals]);
+
+    // Só acusa erro a partir de 10 dígitos: antes disso o número ainda está sendo
+    // digitado e marcar o campo de vermelho a cada tecla seria ruído.
+    const phoneError = onlyDigits(formData.phone).length >= 10
+        ? validatePhoneBR(formData.phone).reason
+        : null;
+
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-            <div className={`bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto relative ${isLoading ? "opacity-80 pointer-events-none" : ""}`}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/40 backdrop-blur-sm">
+            <div className={`bg-white rounded-xl sm:rounded-2xl shadow-2xl w-full max-w-4xl max-h-[94vh] overflow-y-auto relative ${isLoading ? "opacity-80 pointer-events-none" : ""}`}>
                 {/* Header */}
                 <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-3 z-10 flex justify-between items-center">
                     <div>
@@ -874,11 +923,11 @@ export default function AppointmentModal({ appointment, professionals, patients,
 
 
 
-                <form onSubmit={handleSubmit} className="px-6 py-3">
-                <div className="space-y-3">
+                <form onSubmit={handleSubmit} className="px-4 sm:px-6 py-3">
+                <div className="grid grid-cols-1 xl:grid-cols-12 xl:grid-flow-row-dense gap-3 items-start">
                     {/* Banner: agendamento de pacote — somente leitura nesta tela */}
                     {isPackagePreAgendado && (
-                        <div className="mb-4 flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 p-4">
+                        <div className="xl:col-span-12 flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 p-3">
                             <span className="text-amber-500 text-lg leading-none">⚠️</span>
                             <div>
                                 <p className="text-sm font-semibold text-amber-800">Agendamento de pacote — gerenciado pelo CRM</p>
@@ -886,6 +935,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                             </div>
                         </div>
                     )}
+                    <div className="xl:col-span-5 space-y-3">
                     {/* Bloco: Dados do Paciente */}
                     <div className="bg-blue-50/30 rounded-lg p-3 border border-blue-100">
                         <h4 className="text-sm font-semibold text-blue-800 mb-2 flex items-center gap-2">
@@ -1013,7 +1063,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                                 {formData.patient}
                                             </p>
                                             <p className="text-xs text-green-600 mt-1">
-                                                Telefone: {formData.phone || "-"} |
+                                                Telefone: {formatPhoneBR(formData.phone) || "-"} |
                                                 Nasc: {formData.birthDate ? new Date(formData.birthDate).toLocaleDateString() : "-"}
                                             </p>
                                         </div>
@@ -1023,6 +1073,68 @@ export default function AppointmentModal({ appointment, professionals, patients,
                         </div>
                     </div>
 
+                    {/* Seção: Profissional e Especialidade */}
+                    <div className="bg-emerald-50/30 rounded-lg p-3 border border-emerald-100">
+                        <h4 className="text-sm font-semibold text-emerald-800 mb-2 flex items-center gap-2">
+                            <i className="fas fa-user-md text-emerald-600"></i> Profissional
+                        </h4>
+                        <div className="grid grid-cols-1 gap-3">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Profissional *</label>
+                                <select
+                                    name="professional"
+                                    value={formData.professionalId}
+                                    onChange={handleChange}
+                                    className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                    required
+                                >
+                                    <option value="">Selecione um profissional</option>
+                                    {(professionals || []).map((p) => (
+                                        <option key={p.id} value={p.id}>{p.fullName}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Especialidade *</label>
+                                <select
+                                    name="specialty"
+                                    value={formData.specialty}
+                                    onChange={handleChange}
+                                    className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                >
+                                    <option value="fonoaudiologia">Fonoaudiologia</option>
+                                    <option value="psicologia">Psicologia</option>
+                                    <option value="terapia_ocupacional">Terapia Ocupacional</option>
+                                    <option value="fisioterapia">Fisioterapia</option>
+                                    <option value="pediatria">Pediatria</option>
+                                    <option value="neuroped">Neuropediatria</option>
+                                    <option value="psicomotricidade">Psicomotricidade</option>
+                                    <option value="musicoterapia">Musicoterapia</option>
+                                    <option value="psicopedagogia">Psicopedagogia</option>
+                                    <option value="tongue_tie_test">Teste da Linguinha</option>
+                                    <option value="neuropsych_evaluation">Avaliação Neuropsicológica</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Status Operacional *</label>
+                                <select
+                                    name="operationalStatus"
+                                    value={formData.operationalStatus}
+                                    onChange={handleChange}
+                                    className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                >
+                                    <option value="scheduled">Agendado</option>
+                                    <option value="pre_agendado">⭐ Pré-Agendado</option>
+                                    <option value="completed">Concluído</option>
+                                    <option value="canceled">Cancelado</option>
+                                    <option value="missed">Faltou</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    </div>
+
+                    <div className="xl:col-span-7 space-y-3">
                     {/* Seção: Contato e Responsável */}
                     <div className="bg-purple-50/30 rounded-lg p-3 border border-purple-100">
                         <h4 className="text-sm font-semibold text-purple-800 mb-2 flex items-center gap-2">
@@ -1032,13 +1144,25 @@ export default function AppointmentModal({ appointment, professionals, patients,
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Telefone *</label>
                                 <input
-                                    type="text"
+                                    type="tel"
+                                    inputMode="numeric"
                                     name="phone"
-                                    value={formData.phone}
+                                    placeholder="(62) 99180-5470"
+                                    maxLength={15}
+                                    value={formatPhoneBR(formData.phone)}
                                     onChange={handleChange}
-                                    className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                    className={`w-full p-2.5 border rounded-lg focus:ring-2 ${
+                                        phoneError
+                                            ? "border-red-400 focus:ring-red-400 focus:border-red-400"
+                                            : "border-gray-300 focus:ring-teal-500 focus:border-teal-500"
+                                    }`}
                                     required
                                 />
+                                {phoneError && (
+                                    <p className="mt-1 text-xs text-red-600 flex items-center gap-1">
+                                        <i className="fas fa-exclamation-circle"></i> {phoneError}
+                                    </p>
+                                )}
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Data de nascimento *</label>
@@ -1131,80 +1255,10 @@ export default function AppointmentModal({ appointment, professionals, patients,
                             </div>
                         </div>
                     </div>
-
-                    {/* Seção: Profissional e Especialidade */}
-                    <div className="bg-emerald-50/30 rounded-lg p-3 border border-emerald-100">
-                        <h4 className="text-sm font-semibold text-emerald-800 mb-2 flex items-center gap-2">
-                            <i className="fas fa-user-md text-emerald-600"></i> Profissional
-                        </h4>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Profissional *</label>
-                                <select
-                                    name="professional"
-                                    value={formData.professional}
-                                    onChange={handleChange}
-                                    className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
-                                    required
-                                >
-                                    <option value="">Selecione um profissional</option>
-                                    {(professionals || []).map((p, idx) => (
-                                        <option key={idx} value={p.fullName}>
-                                            {p.fullName}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Especialidade *</label>
-                                <select
-                                    name="specialty"
-                                    value={formData.specialty}
-                                    onChange={handleChange}
-                                    className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
-                                >
-                                    <option value="fonoaudiologia">Fonoaudiologia</option>
-                                    <option value="psicologia">Psicologia</option>
-                                    <option value="terapia_ocupacional">Terapia Ocupacional</option>
-                                    <option value="fisioterapia">Fisioterapia</option>
-                                    <option value="pediatria">Pediatria</option>
-                                    <option value="neuroped">Neuropediatria</option>
-                                    <option value="psicomotricidade">Psicomotricidade</option>
-                                    <option value="musicoterapia">Musicoterapia</option>
-                                    <option value="psicopedagogia">Psicopedagogia</option>
-                                    <option value="tongue_tie_test">Teste da Linguinha</option>
-                                    <option value="neuropsych_evaluation">Avaliação Neuropsicológica</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Seção: Status */}
-                    <div className="bg-rose-50/30 rounded-lg p-3 border border-rose-100">
-                        <h4 className="text-sm font-semibold text-rose-800 mb-2 flex items-center gap-2">
-                            <i className="fas fa-flag text-rose-600"></i> Status
-                        </h4>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Status Operacional *</label>
-                                <select
-                                    name="operationalStatus"
-                                    value={formData.operationalStatus}
-                                    onChange={(e) => { handleChange(e); }}
-                                    className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
-                                >
-                                    <option value="scheduled">Agendado</option>
-                                    <option value="pre_agendado">⭐ Pré-Agendado</option>
-                                    <option value="completed">Concluído</option>
-                                    <option value="canceled">Cancelado</option>
-                                    <option value="missed">Faltou</option>
-                                </select>
-                            </div>
-                        </div>
                     </div>
 
                     {/* Seção: Faturamento */}
-                    <div className="bg-indigo-50/30 rounded-lg p-3 border border-indigo-100">
+                    <div className="xl:col-span-12 bg-indigo-50/30 rounded-lg p-3 border border-indigo-100">
                         <div className="flex justify-between items-center mb-2">
                             <h4 className="text-sm font-semibold text-indigo-800 flex items-center gap-2">
                                 <i className="fas fa-dollar-sign text-indigo-600"></i> Faturamento
@@ -1263,7 +1317,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                         </div>
 
                         {formData.crm.serviceType !== 'return' && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Faturamento *</label>
                                 <select
@@ -1292,6 +1346,32 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                     <option value="canceled">Cancelado</option>
                                 </select>
                             </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Serviço *</label>
+                                <select
+                                    value={formData.crm.serviceType || 'individual_session'}
+                                    onChange={(e) => {
+                                        hasInteracted.current = true;
+                                        const value = e.target.value;
+                                        setFormData(prev => ({
+                                            ...prev,
+                                            paymentStatus: value === 'return' ? 'not_applicable' : (prev.paymentStatus === 'not_applicable' ? 'pending' : prev.paymentStatus),
+                                            crm: {
+                                                ...prev.crm,
+                                                serviceType: value,
+                                                // sessionType SEMPRE é a especialidade clínica
+                                                sessionType: prev.specialtyKey || resolveSpecialtyKey(prev.specialty),
+                                                usePackage: value === 'package_session' || value === 'session'
+                                            }
+                                        }));
+                                    }}
+                                    className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                >
+                                    {Object.entries(SERVICE_TYPE_LABELS).map(([key, label]) => (
+                                        <option key={key} value={key}>{label}</option>
+                                    ))}
+                                </select>
+                            </div>
                         </div>
                         )}
 
@@ -1310,15 +1390,11 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Valor (R$)</label>
-                                    <input
-                                        type="number"
+                                    <InputCurrency
                                         name="insuranceValue"
                                         value={formData.insuranceValue}
                                         onChange={handleChange}
                                         className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
-                                        min="0"
-                                        step="0.01"
-                                        placeholder="0,00"
                                     />
                                 </div>
                                 <div>
@@ -1363,7 +1439,6 @@ export default function AppointmentModal({ appointment, professionals, patients,
                         )}
 
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                            {formData.crm.serviceType !== 'return' && (
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Forma de Pagamento (CRM)</label>
                                 <select
@@ -1392,39 +1467,17 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                                     <option value="cartao_debito">Cartão Débito</option>
                                                     <option value="transferencia_bancaria">Transferência</option>
                                                 </select>
-                                                <input type="number" value={s.amount} onChange={e => setSplitMethods(prev => prev.map((m, j) => j === i ? { ...m, amount: Number(e.target.value) } : m))} placeholder="R$" className="w-20 p-1.5 border border-gray-300 rounded text-xs" min="0" step="0.01" />
+                                                <InputCurrency
+                                                    name={`splitAmount-${i}`}
+                                                    value={s.amount}
+                                                    onChange={e => setSplitMethods(prev => prev.map((m, j) => j === i ? { ...m, amount: e.target.value } : m))}
+                                                    className="w-28 p-1.5 border border-gray-300 rounded text-xs"
+                                                />
                                             </div>
                                         ))}
                                         <button type="button" onClick={() => setSplitMethods([])} className="text-xs text-red-400 underline">× Remover split</button>
                                     </div>
                                 )}
-                            </div>
-                            )}
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Serviço *</label>
-                                <select
-                                    value={formData.crm.serviceType || 'individual_session'}
-                                    onChange={(e) => {
-                                        hasInteracted.current = true;
-                                        const value = e.target.value;
-                                        setFormData(prev => ({
-                                            ...prev,
-                                            paymentStatus: value === 'return' || value === 'return' ? 'not_applicable' : (prev.paymentStatus === 'not_applicable' ? 'pending' : prev.paymentStatus),
-                                            crm: {
-                                                ...prev.crm,
-                                                serviceType: value,
-                                                // sessionType SEMPRE é a especialidade clínica
-                                                sessionType: prev.specialtyKey || resolveSpecialtyKey(prev.specialty),
-                                                usePackage: value === 'package_session' || value === 'session'
-                                            }
-                                        }));
-                                    }}
-                                    className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
-                                >
-                                    {Object.entries(SERVICE_TYPE_LABELS).map(([key, label]) => (
-                                        <option key={key} value={key}>{label}</option>
-                                    ))}
-                                </select>
                             </div>
                             {formData.crm.serviceType === 'return' ? (
                                 <div>
@@ -1443,8 +1496,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                         </span>
                                     )}
                                 </label>
-                                <input
-                                    type="number"
+                                <InputCurrency
                                     name="crm.paymentAmount"
                                     value={formData.crm.paymentAmount}
                                     onChange={handleChange}
@@ -1454,9 +1506,6 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                             ? 'bg-gray-100 text-gray-500 cursor-not-allowed border-gray-300'
                                             : 'border-gray-300'
                                     }`}
-                                    min="0"
-                                    step="0.01"
-                                    placeholder="0,00"
                                 />
                                 {!!formData.package && (
                                     <p className="text-xs text-amber-700 mt-1 font-medium">
@@ -1471,41 +1520,36 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                 )}
                             </div>
                             )}
+                            {formData.crm.serviceType !== 'return' && (
+                                <div className="flex items-center gap-2 md:self-end min-h-[46px] px-3 rounded-lg border border-indigo-100 bg-white/60">
+                                    <input
+                                        id="usePackage"
+                                        type="checkbox"
+                                        name="crm.usePackage"
+                                        checked={!!formData.crm.usePackage}
+                                        onChange={handleChange}
+                                        className="w-4 h-4 text-teal-600 rounded focus:ring-teal-500"
+                                    />
+                                    <label htmlFor="usePackage" className="text-sm text-gray-700 font-medium cursor-pointer">
+                                        Usar pacote (se houver)
+                                    </label>
+                                </div>
+                            )}
                         </div>
-
-                        {formData.crm.serviceType !== 'return' && (
-                        <div className="flex items-center gap-2 mt-3">
-                            <input
-                                id="usePackage"
-                                type="checkbox"
-                                name="crm.usePackage"
-                                checked={!!formData.crm.usePackage}
-                                onChange={handleChange}
-                                className="w-4 h-4 text-teal-600 rounded focus:ring-teal-500"
-                            />
-                            <label htmlFor="usePackage" className="text-sm text-gray-700 font-medium">
-                                Usar pacote (se houver)
-                            </label>
-                        </div>
-                        )}
                     </div>
 
                     {/* Seção: Observações */}
-                    <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                    <div className="xl:col-span-12 bg-gray-50 rounded-lg p-3 border border-gray-200">
                         <label className="block text-sm font-medium text-gray-700 mb-1">Observações</label>
                         <textarea
                             name="observations"
                             value={formData.observations}
                             onChange={handleChange}
-                            rows="3"
+                            rows="2"
                             className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                         />
                     </div>
 
-                    {/* debug opcional */}
-                    <div className="text-xs text-gray-400">
-                        specialtyKey: <span className="font-mono">{formData.specialtyKey}</span>
-                    </div>
                 </div>
 
                     {/* Botões de ação */}

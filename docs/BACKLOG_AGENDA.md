@@ -101,7 +101,7 @@
 
 ### 9. Token hardcoded no fallback de `api.js` ✅ CONCLUÍDO
 - **Arquivo:** `src/services/api.js` (~linha 15), `src/constants.js`
-- **Problema:** token fixo no código (`agenda_export_token_fono_inova_2025_secure_abc123`).
+- **Problema:** token fixo no código (`<TOKEN_ANTIGO_REDACTED>`).
 - **Impacto:** risco de segurança; token presente no bundle; quebra em ambientes diferentes.
 - **Causa raiz:** categoria **segredo hardcoded**. O interceptor usava fallback `|| 'token...'` e `src/constants.js` exportava o mesmo token morto.
 - **Correção:**

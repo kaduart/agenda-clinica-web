@@ -1,7 +1,7 @@
 curl 'http://localhost:5000/api/pre-agendamento/69b9da644cbdcdf6ddc1a378/importar' \
   -H 'Accept: application/json, text/plain, */*' \
   -H 'Accept-Language: pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7' \
-  -H 'Authorization: Bearer agenda_export_token_fono_inova_2025_secure_abc123' \
+  -H 'Authorization: Bearer <TOKEN_ANTIGO_REDACTED>' \
   -H 'Connection: keep-alive' \
   -H 'Content-Type: application/json' \
   -H 'Origin: http://localhost:5174' \
@@ -77,9 +77,9 @@ curl 'http://localhost:5000/api/pre-agendamento/69b9da644cbdcdf6ddc1a378/importa
 [2026-03-17T22:48:37.493Z] GET → /api/pre-agendamento
 [2026-03-17T22:49:08.215Z] POST → /api/import-from-agenda
 === AUTH DEBUG ===
-Header completo: "Bearer agenda_export_token_fono_inova_2025_secure_abc123"
-Token extraído: "agenda_export_token_fono_inova_2025_secure_abc123"
-Token esperado: "agenda_export_token_fono_inova_2025_secure_abc123"
+Header completo: "Bearer <TOKEN_ANTIGO_REDACTED>"
+Token extraído: "<TOKEN_ANTIGO_REDACTED>"
+Token esperado: "<TOKEN_ANTIGO_REDACTED>"
 Tamanho token recebido: 49
 Tamanho token esperado: 49
 São iguais?: true

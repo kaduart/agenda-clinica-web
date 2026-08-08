@@ -22049,7 +22049,7 @@
 ]       curl 'http://localhost:5000/api/v2/appointments?startDate=2026-06-01&endDate=2026-06-30&limit=500' \
   -H 'Accept: application/json, text/plain, */*' \
   -H 'Accept-Language: pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7' \
-  -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMjgwNmZiZDMzMGJkNWJlYzhlOGQzNyIsInJvbGUiOiJhZG1pbiIsImlhdCI6MTc4MjEzMjY5MiwiZXhwIjoxNzgyMTM2MjkyfQ.AKhh4lAtrmMP_MmcRynbnKC_rT1L11FE547bpUOr_bA' \
+  -H 'Authorization: Bearer <JWT_ADMIN_REDACTED>' \
   -H 'Connection: keep-alive' \
   -H 'If-None-Match: W/"702e3-CSGJCa6JCD2ZljZ95qaHKF6vBB4"' \
   -H 'Origin: http://localhost:5173' \
@@ -22080,7 +22080,7 @@
   curl 'http://localhost:5000/api/v2/appointments?startDate=2026-06-22&endDate=2026-06-22&limit=500&page=1&includePreAgendamentos=true' \
   -H 'Accept: application/json, text/plain, */*' \
   -H 'Accept-Language: pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7' \
-  -H 'Authorization: Bearer agenda_export_token_fono_inova_2025_secure_abc123' \
+  -H 'Authorization: Bearer <TOKEN_ANTIGO_REDACTED>' \
   -H 'Connection: keep-alive' \
   -H 'If-None-Match: W/"6c4a-W8bjK3QGwq22IK9b5g8Z3i0LdE8"' \
   -H 'Origin: http://localhost:5174' \

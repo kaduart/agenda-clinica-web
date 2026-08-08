@@ -1,5 +1,12 @@
 # 🚀 Migração: Firebase → API REST (MongoDB)
 
+> ⚠️ **DOCUMENTO HISTÓRICO — não reflete a arquitetura vigente.**
+> Referências a `crmApi`, `preAppointmentsRepo` e a uma entidade `PreAppointment`
+> descrevem um estado já removido do código. Hoje `pre_agendado` é apenas o primeiro
+> estado do Appointment e **não existe `POST /api/v2/pre-appointments`**.
+> Arquitetura atual: `docs/architecture/ARCHITECTURE.md`.
+
+
 Guia para migrar a Agenda Externa do Firebase para API REST direta.
 
 ## 📋 Resumo da Mudança
@@ -69,7 +76,7 @@ VITE_FIREBASE_PROJECT_ID=xxx
 **DEPOIS:**
 ```env
 VITE_API_URL=https://fono-inova-crm-back.onrender.com
-VITE_API_TOKEN=agenda_export_token_fono_inova_2025_secure_abc123
+VITE_API_TOKEN=<TOKEN_ANTIGO_REDACTED>
 ```
 
 ### 5. Componentes que usam Firebase diretamente

@@ -73,10 +73,10 @@ Campos legados `appointment.reminderText`, `reminderDate`, `reminderTime`, `remi
 
 ### 🔒 Rotação do token
 
-O token antigo `agenda_export_token_fono_inova_2025_secure_abc123` pode estar no histórico do Git ou em builds anteriores. Considerá-lo potencialmente comprometido.
+O token antigo `<TOKEN_ANTIGO_REDACTED>` pode estar no histórico do Git ou em builds anteriores. Considerá-lo potencialmente comprometido.
 
 ```bash
-git log -S "agenda_export_token_fono_inova_2025_secure_abc123" --all
+git log -S "<TOKEN_ANTIGO_REDACTED>" --all
 ```
 
 Se encontrar:

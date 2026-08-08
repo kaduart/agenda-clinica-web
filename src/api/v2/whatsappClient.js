@@ -33,7 +33,7 @@ export async function getWhatsAppWebStatus(options = {}) {
 }
 
 export async function reconnectWhatsAppWeb(options = {}) {
-    const response = await api.post('/api/whatsapp-web/reconnect', null, options);
+    const response = await api.post('/api/whatsapp-web/reconnect', {}, options);
     return response.data;
 }
 

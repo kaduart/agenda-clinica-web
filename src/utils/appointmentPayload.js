@@ -120,6 +120,11 @@ export function buildAppointmentPayload(raw, options = {}) {
 
     // --- Monta payload base (SEMPRE explícito, NUNCA spread de raw) ---
     const payload = {
+        // Envelope opaco para o frontend; somente o contrato allowlisted do backend
+        // decide quais campos simples serão persistidos. Nunca é espalhado no model.
+        ...(raw.clientFields && typeof raw.clientFields === "object"
+            ? { clientFields: raw.clientFields }
+            : {}),
         patientId,
         isNewPatient,
         patientInfo,
@@ -166,35 +171,4 @@ export function buildAppointmentPayload(raw, options = {}) {
     });
 
     return payload;
-}
-
-/**
- * Sanitiza dados de pré-agendamento.
- * Mesma filosofia: nunca confiar no raw.
- */
-export function buildPreAppointmentPayload(raw) {
-    if (!raw || typeof raw !== "object") {
-        throw new Error("[buildPreAppointmentPayload] rawData inválido");
-    }
-
-    const patientName = resolvePatientName(raw);
-    const patientId = raw.patientId || null;
-
-    return {
-        patientId,
-        isNewPatient: !!raw.isNewPatient,
-        patientInfo: normalizePatientInfo({
-            fullName: patientName,
-            phone: raw.phone || "",
-            birthDate: raw.birthDate || null,
-            email: raw.email || null,
-        }),
-        professionalName: raw.professionalName || raw.professional || "",
-        doctorId: raw.professionalId || raw.doctorId || "",
-        specialty: normalizeSessionType(raw.specialty || raw.specialtyKey),
-        preferredDate: raw.preferredDate || raw.date || "",
-        preferredTime: raw.preferredTime || raw.time || "",
-        notes: raw.observations || raw.notes || "",
-        operationalStatus: "pre_agendado",
-    };
 }

@@ -131,10 +131,10 @@ Deixar a secretária executar sozinha:
 
 **⚠️ Ação de hardening obrigatória antes de produção:**
 
-Como o token antigo (`agenda_export_token_fono_inova_2025_secure_abc123`) pode estar no histórico do Git ou em builds anteriores, considerá-lo **potencialmente comprometido**. Executar:
+Como o token antigo (`<TOKEN_ANTIGO_REDACTED>`) pode estar no histórico do Git ou em builds anteriores, considerá-lo **potencialmente comprometido**. Executar:
 
 ```bash
-git log -S "agenda_export_token_fono_inova_2025_secure_abc123" --all
+git log -S "<TOKEN_ANTIGO_REDACTED>" --all
 ```
 
 Se encontrar no histórico:

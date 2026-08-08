@@ -6,7 +6,11 @@
 const axios = require('axios');
 
 const API_URL = process.env.API_URL || 'https://fono-inova-crm-back.onrender.com';
-const TOKEN = process.env.API_TOKEN || 'agenda_export_token_fono_inova_2025_secure_abc123';
+const TOKEN = process.env.API_TOKEN;
+if (!TOKEN) {
+    console.error('❌ Defina API_TOKEN no ambiente antes de rodar este script.');
+    process.exit(1);
+}
 
 const api = axios.create({
     baseURL: API_URL,

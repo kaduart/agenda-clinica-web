@@ -1,5 +1,12 @@
 # EVENT_DEPENDENCY_MATRIX.md — Agenda Externa
 
+> ⚠️ **DOCUMENTO HISTÓRICO — não reflete a arquitetura vigente.**
+> Referências a `crmApi`, `preAppointmentsRepo` e a uma entidade `PreAppointment`
+> descrevem um estado já removido do código. Hoje `pre_agendado` é apenas o primeiro
+> estado do Appointment e **não existe `POST /api/v2/pre-appointments`**.
+> Arquitetura atual: `docs/architecture/ARCHITECTURE.md`.
+
+
 **Version:** 1.0  
 **Date:** 2026-07-08  
 **Status:** Current State + Migration Reference  

@@ -370,13 +370,6 @@ export const syncDeleteWithPackage = async (appointmentId, patientId) => {
 };
 
 // ===========================================================
-// 🔄 RESTAURAR APPOINTMENT DE SESSÃO DE PACOTE
-// ===========================================================
-export const restoreAppointmentFromSession = async (sessionData) => {
-    return v2.recreateAppointmentFromSession(sessionData);
-};
-
-// ===========================================================
 // 🛡️ PROTEÇÃO: Impede exclusão do primeiro ponto de um pacote
 // ===========================================================
 export const isFirstPackagePoint = async (appointmentId, patientId) => {

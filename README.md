@@ -37,7 +37,8 @@ cp .env.example .env
 VITE_API_URL=https://fono-inova-crm-back.onrender.com
 
 # Token de autenticação (deve ser o mesmo do backend)
-VITE_API_TOKEN=agenda_export_token_fono_inova_2025_secure_abc123
+# Nunca versionar o valor real — pegar com o responsável pelo backend.
+VITE_API_TOKEN=<seu-token-aqui>
 ```
 
 ## 🧪 Desenvolvimento
@@ -74,7 +75,6 @@ src/
 │   └── ...
 ├── services/           # Serviços de API
 │   ├── api.js         # Configuração do Axios
-│   ├── crmApi.js      # API de integração com CRM
 │   ├── appointmentsRepo.js
 │   └── ...
 ├── utils/             # Utilitários
@@ -115,6 +115,11 @@ src/
 | `onSnapshot` | Socket.io + polling |
 
 ### Arquivos modificados
+
+> ⚠️ **Registro histórico da migração Firebase → API.** Não descreve a estrutura atual.
+> `crmApi.js` foi removido depois disso, junto com `preAppointmentsRepo.js` — eram fachadas
+> de uma collection `PreAppointment` que não existe mais (`pre_agendado` é estado do
+> Appointment). Para a estrutura vigente, veja a árvore de diretórios acima.
 
 - ✅ `src/services/crmApi.js` - Novo serviço (substitui crmExport.js)
 - ✅ `src/components/ReminderList.jsx` - Agora usa API

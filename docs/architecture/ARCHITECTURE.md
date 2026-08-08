@@ -170,8 +170,8 @@ Toda operação de escrita da Agenda Externa deve possuir um **Command** corresp
 | Criar paciente | `POST /api/v2/patients` | — (controller/service) | ⚠️ Parcial |
 | Editar paciente | `PUT /api/v2/patients/:id` | — | ❌ Criar Command |
 | Deletar paciente | `DELETE /api/v2/patients/:id` | — | ❌ Criar Command |
-| Criar pré-agendamento | `POST /api/v2/pre-appointments` | `expirePreAgendamentoCommand` (apenas expiração) | ⚠️ Legado |
-| Confirmar pré-agendamento | `POST /api/v2/pre-appointments/:id/confirm` | — | ⚠️ Legado |
+| Criar pré-agendamento | `POST /api/v2/appointments` com `operationalStatus: pre_agendado` | `createAppointmentCommand` | ✅ Canônico |
+| Confirmar pré-agendamento | `POST /api/v2/pre-appointments/:id/confirm` | `confirmPreAgendamentoCommand` | ✅ Canônico (in-place, mesmo `_id`) |
 | Editar administrativa | `PATCH /api/v2/appointments/:id/admin-edit` | — | ❌ Endpoint inexistente |
 | Adiar lembrete | `GET /api/reminders/:id` | — | ❌ Endpoint inexistente |
 
@@ -315,7 +315,7 @@ A Agenda Externa deve consumir **apenas endpoints V2** do CRM.
 | Appointment | CRIAR, EDITAR, CANCELAR, COMPLETAR, DELETAR, REAGENDAR | `/api/v2/appointments` e sub-rotas |
 | Patient | CRIAR, EDITAR, DELETAR, LISTAR | `/api/v2/patients` |
 | Package | CRIAR, EDITAR, CANCELAR, DELETAR | `/api/v2/packages` |
-| PreAppointment | CRIAR, CONFIRMAR, CANCELAR | `/api/v2/pre-appointments` |
+| ~~PreAppointment~~ | Não é entidade. `pre_agendado` é o primeiro estado do Appointment. Criação por `/api/v2/appointments`; `/api/v2/pre-appointments` é só fachada de triagem (`/:id/confirm`, `/:id/discard`, `/:id/contact`, `/:id/assign`) — **não existe `POST /`** | `/api/v2/appointments` |
 | Reminder | LISTAR, ADIAR, DESCARTAR | `/api/v2/reminders` |
 | Doctor / Availability | LISTAR | `/api/v2/doctors`, `/api/v2/availability` |
 

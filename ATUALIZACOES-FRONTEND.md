@@ -1,5 +1,12 @@
 # ✅ Atualizações do Frontend - Resumo
 
+> ⚠️ **DOCUMENTO HISTÓRICO — não reflete a arquitetura vigente.**
+> Referências a `crmApi`, `preAppointmentsRepo` e a uma entidade `PreAppointment`
+> descrevem um estado já removido do código. Hoje `pre_agendado` é apenas o primeiro
+> estado do Appointment e **não existe `POST /api/v2/pre-appointments`**.
+> Arquitetura atual: `docs/architecture/ARCHITECTURE.md`.
+
+
 ## 🎯 O que foi feito
 
 ### 1. Novos Arquivos Criados
