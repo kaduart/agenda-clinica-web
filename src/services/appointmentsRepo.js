@@ -125,6 +125,8 @@ const mapV2Appointment = (a) => {
         crm: a.crm || null,
         serviceType: a.serviceType || null,
         sessionValue: a.sessionValue || 0,
+        depositAmount: Number(a.depositAmount || 0),
+        remainingAmount: typeof a.remainingAmount === 'number' ? a.remainingAmount : null,
         paymentMethod: a.paymentMethod || null,
         package: a.package || null,
         responsible: a.responsible || '',

@@ -68,4 +68,18 @@ describe("DTO com objeto real do backend", () => {
         expect(result.time).toBe("16:00");
         expect(result.operationalStatus).toBe("pre_agendado");
     });
+
+    it("preserva sinal e saldo para a tela de edicao", () => {
+        const result = mapAppointmentResponseDTO({
+            _id: "appointment-with-deposit",
+            date: "2026-09-04T11:00:00.000Z",
+            sessionValue: 500,
+            depositAmount: 50,
+            remainingAmount: 450,
+        });
+
+        expect(result.sessionValue).toBe(500);
+        expect(result.depositAmount).toBe(50);
+        expect(result.remainingAmount).toBe(450);
+    });
 });

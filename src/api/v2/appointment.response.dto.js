@@ -89,6 +89,8 @@ export const mapAppointmentResponseDTO = (raw) => {
         crm: raw.crm || null,
         serviceType: raw.serviceType || null,
         sessionValue: raw.sessionValue || 0,
+        depositAmount: Number(raw.depositAmount || 0),
+        remainingAmount: typeof raw.remainingAmount === 'number' ? raw.remainingAmount : null,
         paymentMethod: raw.paymentMethod || null,
         package: packageObj,
         hasPackage,

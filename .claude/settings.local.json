@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "additionalDirectories": [
+      "/home/user/projetos/agenda-clinica-web/src/services"
+    ],
+    "allow": [
+      "Bash(npx eslint *)"
+    ]
+  }
+}

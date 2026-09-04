@@ -84,6 +84,15 @@ export function buildAppointmentPayload(raw, options = {}) {
     const paymentMethod = raw.paymentMethod || crm.paymentMethod || (isUpdate ? undefined : "pix");
     const paymentAmount = Number(raw.paymentAmount ?? crm.paymentAmount ?? 0);
 
+    // --- Sinal (entrada) ---
+    // O frontend só coleta e exibe; quem calcula e persiste o saldo é o backend
+    // (domain/payment/depositBalance.js). depositAmount=0 preserva 100% o
+    // comportamento legado (1 Payment cobrindo o valor total da consulta).
+    const depositAmount = Number(raw.depositAmount ?? 0);
+    const hasDeposit = depositAmount > 0;
+    const depositPaymentMethod = raw.depositPaymentMethod || paymentMethod;
+    const depositPaidAt = raw.depositPaidAt || null;
+
     // --- Pacote ---
     // Envia só o ObjectId — backend não aceita objeto populado no campo package
     const rawPkg = raw.package;
@@ -152,6 +161,7 @@ export function buildAppointmentPayload(raw, options = {}) {
         visualFlag,
         isJointSession,
         metadata,
+        ...(hasDeposit ? { depositAmount, depositPaymentMethod, depositPaidAt } : {}),
     };
 
     // --- Remarcação ---

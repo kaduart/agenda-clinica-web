@@ -95,6 +95,11 @@ export default function AppointmentModal({ appointment, professionals, patients,
     // Split payment: [{method, amount}] com 2+ formas
     const [splitMethods, setSplitMethods] = React.useState([]);
 
+    // Sinal (entrada): oculto por padrão — só neuropediatria/consultas médicas
+    // costumam usar, não faz sentido poluir o form de fonoaudiologia/psicologia etc.
+    const [showDepositField, setShowDepositField] = React.useState(false);
+    const submitLockRef = React.useRef(false);
+
     // 🆕 Estado para feriados da API
     const [holidays, setHolidays] = React.useState({});
     const [currentYear, setCurrentYear] = React.useState(new Date().getFullYear());
@@ -206,6 +211,10 @@ export default function AppointmentModal({ appointment, professionals, patients,
                 insuranceValue: appointment.insuranceValue || 0,
                 authorizationCode: appointment.authorizationCode || "",
                 package: appointment.package || null,
+                depositAmount: Number(appointment.depositAmount || appointment.raw?.depositAmount || 0),
+                remainingAmount: typeof appointment.remainingAmount === 'number'
+                    ? appointment.remainingAmount
+                    : (typeof appointment.raw?.remainingAmount === 'number' ? appointment.raw.remainingAmount : null),
 
                 // Dados do CRM - Backend retorna em campos DIRETOS (não dentro de objeto crm)
                 // Mapeia: serviceType → crm.serviceType, sessionValue → crm.paymentAmount, etc
@@ -232,6 +241,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                 metadata: appointment.metadata || null,
             };
             setFormData(formDataToSet);
+            setShowDepositField(Number(formDataToSet.depositAmount) > 0);
         } else {
             setFormData({
                 patient: "",
@@ -256,6 +266,9 @@ export default function AppointmentModal({ appointment, professionals, patients,
                 insuranceValue: 0,
                 authorizationCode: "",
                 package: null,
+                depositAmount: 0,
+                depositPaymentMethod: "",
+                remainingAmount: null,
                 crm: {
                     serviceType: "individual_session",
                     sessionType: resolveSpecialtyKey("Fonoaudiologia"),
@@ -605,7 +618,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        if (isLoading) return;
+        if (isLoading || submitLockRef.current) return;
 
         // Agendamento de pacote: bloqueia edição nesta tela
         if (isPackagePreAgendado) {
@@ -619,6 +632,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
             return;
         }
 
+        submitLockRef.current = true;
         setIsLoading(true);
 
         try {
@@ -682,6 +696,24 @@ export default function AppointmentModal({ appointment, professionals, patients,
                 }
             }
 
+            if ((isPreNew || isEdit) && Number(formData.depositAmount) > Number(formData.crm.paymentAmount || 0)) {
+                alert("O sinal não pode ser maior que o valor da consulta.");
+                setIsLoading(false);
+                return;
+            }
+
+            if ((isPreNew || isEdit) && showDepositField && Number(formData.depositAmount) <= 0) {
+                alert("Informe um valor de sinal recebido maior que zero ou remova o sinal.");
+                setIsLoading(false);
+                return;
+            }
+
+            if ((isPreNew || isEdit) && Number(formData.depositAmount) > 0 && !formData.depositPaymentMethod && !Number(appointment?.depositAmount || appointment?.raw?.depositAmount || 0)) {
+                alert("Selecione a forma de pagamento do sinal recebido.");
+                setIsLoading(false);
+                return;
+            }
+
             // Montar payload completo com todos os campos
             const dataToSave = {
                 // Envelope genérico: o backend aplica seu contrato allowlisted.
@@ -726,6 +758,14 @@ export default function AppointmentModal({ appointment, professionals, patients,
                 paymentAmount: Number(formData.crm?.paymentAmount ?? formData.paymentAmount ?? 0),
                 ...(splitMethods.length >= 2 ? { splitMethods: splitMethods.map(s => ({ method: s.method, amount: Number(s.amount) })) } : {}),
 
+                // Sinal (entrada) — só se aplica à criação de um novo pré-agendamento
+                // particular avulso (ver bloco "Sinal (entrada)" acima). O backend
+                // calcula o saldo; esta tela só coleta o valor recebido agora.
+                ...((isPreNew || isEdit) && Number(formData.depositAmount) > 0 && !Number(appointment?.depositAmount || appointment?.raw?.depositAmount || 0) ? {
+                    depositAmount: Number(formData.depositAmount),
+                    depositPaymentMethod: formData.depositPaymentMethod,
+                } : {}),
+
                 // Dados CRM
                 crm: formData.crm,
 
@@ -743,6 +783,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
             console.error("Erro ao salvar:", error);
             // Em caso de erro, mantém o modal aberto para o usuário corrigir
         } finally {
+            submitLockRef.current = false;
             setIsLoading(false);
         }
     };
@@ -1489,7 +1530,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                             ) : (
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Valor da Sessão (R$)
+                                    Valor total da consulta (R$)
                                     {formData.paymentStatus === 'paid' && (
                                         <span className="ml-2 text-xs font-normal text-green-600 bg-green-100 px-2 py-0.5 rounded">
                                             Pago
@@ -1519,6 +1560,98 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                     </p>
                                 )}
                             </div>
+                            )}
+                            {(isPreNew || isEdit) && !formData.package && formData.crm.serviceType !== 'return' && !['convenio', 'liminar'].includes(formData.billingType) && !['completed', 'canceled'].includes(appointment?.operationalStatus || '') && (
+                                Number(appointment?.depositAmount || appointment?.raw?.depositAmount || 0) > 0 ? (
+                                    <div className="md:col-span-3 border border-green-200 bg-green-50 rounded-lg p-3 mt-1">
+                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                            <div>
+                                                <span className="block text-xs font-medium text-green-700">Valor total da consulta</span>
+                                                <strong className="text-sm text-gray-900">{formatCurrency(Number(formData.crm.paymentAmount || 0))}</strong>
+                                            </div>
+                                            <div>
+                                                <span className="block text-xs font-medium text-green-700">Sinal já recebido</span>
+                                                <strong className="text-sm text-green-800">{formatCurrency(Number(formData.depositAmount || 0))}</strong>
+                                            </div>
+                                            <div>
+                                                <span className="block text-xs font-medium text-green-700">Saldo a receber</span>
+                                                <strong className="text-sm text-gray-900">{formatCurrency(Number(formData.remainingAmount || 0))}</strong>
+                                            </div>
+                                        </div>
+                                        <p className="text-xs text-green-700 mt-2">O sinal já entrou no caixa e não pode ser sobrescrito nesta edição.</p>
+                                    </div>
+                                ) : showDepositField ? (
+                                    <div className="md:col-span-3 border border-teal-200 bg-teal-50/40 rounded-lg p-3 mt-1">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <label className="text-sm font-semibold text-teal-800 flex items-center gap-2">
+                                                <i className="fas fa-hand-holding-usd text-teal-600"></i> Sinal recebido
+                                            </label>
+                                            <div className="flex items-center gap-2">
+                                                {Number(formData.depositAmount) > 0 && (
+                                                    <span className="text-xs font-normal text-teal-700 bg-teal-100 px-2 py-0.5 rounded-full">
+                                                        Saldo no dia: {formatCurrency(Math.max(Number(formData.crm.paymentAmount || 0) - Number(formData.depositAmount || 0), 0))}
+                                                    </span>
+                                                )}
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setShowDepositField(false);
+                                                        setFormData(prev => ({ ...prev, depositAmount: 0, depositPaymentMethod: '' }));
+                                                    }}
+                                                    className="text-xs text-red-400 underline"
+                                                >
+                                                        × Remover sinal recebido
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                            <div>
+                                                <label className="block text-xs text-gray-600 mb-1">Sinal efetivamente recebido (R$)</label>
+                                                <InputCurrency
+                                                    name="depositAmount"
+                                                    value={formData.depositAmount || 0}
+                                                    onChange={(e) => setFormData(prev => ({ ...prev, depositAmount: Number(e.target.value || 0) }))}
+                                                    className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                                    autoFocus
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs text-gray-600 mb-1">Forma de pagamento do sinal</label>
+                                                <select
+                                                    value={formData.depositPaymentMethod || ''}
+                                                    onChange={(e) => setFormData(prev => ({ ...prev, depositPaymentMethod: e.target.value }))}
+                                                    className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                                >
+                                                    <option value="">Selecione</option>
+                                                    <option value="pix">Pix</option>
+                                                    <option value="dinheiro">Dinheiro</option>
+                                                    <option value="cartao_credito">Cartão Crédito</option>
+                                                    <option value="cartao_debito">Cartão Débito</option>
+                                                    <option value="transferencia_bancaria">Transferência</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        {Number(formData.depositAmount) > Number(formData.crm.paymentAmount || 0) && (
+                                            <p className="text-xs text-red-600 mt-1 font-medium">
+                                                <i className="fas fa-exclamation-circle mr-1"></i>
+                                                O sinal não pode ser maior que o valor da consulta.
+                                            </p>
+                                        )}
+                                        <p className="text-xs text-teal-700 mt-2">
+                                            O saldo é calculado pelo sistema — esta tela só registra o valor recebido agora.
+                                        </p>
+                                    </div>
+                                ) : (
+                                    <div className="md:col-span-3 -mt-1">
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowDepositField(true)}
+                                            className="text-xs text-teal-600 underline flex items-center gap-1"
+                                        >
+                                            <i className="fas fa-hand-holding-usd"></i> + Registrar sinal recebido
+                                        </button>
+                                    </div>
+                                )
                             )}
                             {formData.crm.serviceType !== 'return' && (
                                 <div className="flex items-center gap-2 md:self-end min-h-[46px] px-3 rounded-lg border border-indigo-100 bg-white/60">
