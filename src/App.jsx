@@ -15,6 +15,7 @@ import CalendarView from "./components/CalendarView";
 import WeeklyView from "./components/WeeklyView";
 
 import AppointmentModal from "./components/AppointmentModal";
+import CancelReasonModal from "./components/CancelReasonModal";
 import ProfessionalsModal from "./components/ProfessionalsModal";
 
 import {
@@ -120,6 +121,22 @@ export default function App() {
   const [isRemindersListOpen, setIsRemindersListOpen] = React.useState(false);
   const [isPostAppointmentOpen, setIsPostAppointmentOpen] = React.useState(false);
   const [postAppointmentData, setPostAppointmentData] = React.useState(null);
+  const [cancelReasonRequest, setCancelReasonRequest] = React.useState(null);
+  const cancelReasonResolverRef = React.useRef(null);
+
+  const requestCancelReason = React.useCallback((defaultValue) => (
+    new Promise((resolve) => {
+      cancelReasonResolverRef.current = resolve;
+      setCancelReasonRequest({ defaultValue });
+    })
+  ), []);
+
+  const finishCancelReasonRequest = React.useCallback((reason) => {
+    const resolve = cancelReasonResolverRef.current;
+    cancelReasonResolverRef.current = null;
+    setCancelReasonRequest(null);
+    resolve?.(reason);
+  }, []);
 
   const [availableSlots, setAvailableSlots] = React.useState([]);
   const [isLoadingAppointments, setIsLoadingAppointments] = React.useState(true);
@@ -369,7 +386,7 @@ export default function App() {
       reason = "Descartado pela secretária";
     } else {
       // Para agendamento real: pede motivo
-      reason = prompt("Motivo do cancelamento:", "Cancelado pelo paciente");
+      reason = await requestCancelReason("Cancelado pelo paciente");
       if (!reason) {
         isCancellingRef.current = false;
         return;
@@ -595,7 +612,7 @@ export default function App() {
 
       // canceled → endpoint dedicado /cancel com todos os campos relevantes
       if (newStatus === 'canceled') {
-        const reason = prompt("Motivo do cancelamento:", "Cancelado pela secretária");
+        const reason = await requestCancelReason("Cancelado pela secretária");
         if (!reason) return;
         try {
           await cancelAppointment(appointmentId, reason, {
@@ -1160,6 +1177,14 @@ export default function App() {
       </main>
 
       {/* MODALS */}
+      {cancelReasonRequest && (
+        <CancelReasonModal
+          defaultValue={cancelReasonRequest.defaultValue}
+          onCancel={() => finishCancelReasonRequest(null)}
+          onConfirm={finishCancelReasonRequest}
+        />
+      )}
+
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn">
           <AppointmentModal
