@@ -155,7 +155,10 @@ export default function AppointmentModal({ appointment, professionals, patients,
                 : {};
             
             // 🆕 Resolve professionalId quando doctor vem como string (não populado) — caso V2
-            let resolvedProfId = dObj._id || appointment.professionalId || "";
+            // `doctor` pode vir populado ou somente como ObjectId em texto. O nome
+            // pode estar presente simultaneamente; isso não elimina o ID.
+            let resolvedProfId = dObj._id || appointment.professionalId ||
+                (typeof appointment.doctor === 'string' ? appointment.doctor : '') || "";
             let resolvedProfName = dObj.fullName || appointment.professional || appointment.professionalName || "";
             let resolvedProfPhone = dObj.phoneNumber || appointment.doctor?.phoneNumber || "";
             
@@ -1130,9 +1133,14 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                     required
                                 >
                                     <option value="">Selecione um profissional</option>
-                                    {(professionals || []).map((p) => (
-                                        <option key={p.id} value={p.id}>{p.fullName}</option>
-                                    ))}
+                                    {(professionals || []).map((p) => {
+                                        const professionalId = (p.id || p._id)?.toString() || '';
+                                        return (
+                                            <option key={professionalId || p.fullName} value={professionalId}>
+                                                {p.fullName}
+                                            </option>
+                                        );
+                                    })}
                                 </select>
                             </div>
                             <div>
@@ -1642,13 +1650,21 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                         </p>
                                     </div>
                                 ) : (
-                                    <div className="md:col-span-3 -mt-1">
+                                    <div className="md:col-span-3">
                                         <button
                                             type="button"
                                             onClick={() => setShowDepositField(true)}
-                                            className="text-xs text-teal-600 underline flex items-center gap-1"
+                                            className="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-lg border-2 border-dashed border-teal-300 bg-teal-50/60 hover:bg-teal-100/70 hover:border-teal-400 transition-colors text-left"
                                         >
-                                            <i className="fas fa-hand-holding-usd"></i> + Registrar sinal recebido
+                                            <span className="flex items-center gap-2.5 text-sm font-semibold text-teal-800">
+                                                <span className="flex items-center justify-center w-8 h-8 rounded-full bg-teal-100 text-teal-600">
+                                                    <i className="fas fa-hand-holding-usd"></i>
+                                                </span>
+                                                Registrar sinal recebido
+                                            </span>
+                                            <span className="text-xs text-teal-600 hidden sm:inline">
+                                                Só se o paciente já pagou uma entrada agora
+                                            </span>
                                         </button>
                                     </div>
                                 )

@@ -326,6 +326,10 @@ export default function App() {
 
       // Envia todos os campos necessários para o backend
       // O adapter V2 normaliza paymentMethod, serviceType e sessionType automaticamente
+      const existingDeposit = Number(
+        editingAppointment?.depositAmount || editingAppointment?.raw?.depositAmount || 0
+      );
+      const newDeposit = Number(appointmentData.depositAmount || 0);
       const importData = {
         doctorId: resolvedDoctorId,
         date: appointmentData.date,
@@ -343,7 +347,14 @@ export default function App() {
         specialty: appointmentData.specialty,
         specialtyKey: appointmentData.specialtyKey,
         // CRM cru — o adapter V2 normaliza antes de enviar
-        crm: appointmentData.crm
+        crm: appointmentData.crm,
+        // Ao confirmar/editar um pré-agendamento existente, encaminha somente
+        // um sinal novo. Sinal já registrado é histórico e nunca é reenviado.
+        ...(newDeposit > 0 && existingDeposit <= 0 ? {
+          depositAmount: newDeposit,
+          depositPaymentMethod: appointmentData.depositPaymentMethod,
+          ...(appointmentData.depositPaidAt ? { depositPaidAt: appointmentData.depositPaidAt } : {}),
+        } : {}),
       };
 
       await updateAppointmentDirect(appointmentId, {
