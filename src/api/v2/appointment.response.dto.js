@@ -80,6 +80,8 @@ export const mapAppointmentResponseDTO = (raw) => {
         status: translateStatus(raw.operationalStatus),
         billingType: raw.billingType || 'particular',
         insuranceProvider: raw.insuranceProvider || '',
+        insuranceValue: raw.insuranceValue ?? 0,
+        isAba: raw.isAba ?? null,
         observations: raw.notes || raw.observations || '',
         duration: raw.duration || 40,
         visualFlag: raw.visualFlag || null,

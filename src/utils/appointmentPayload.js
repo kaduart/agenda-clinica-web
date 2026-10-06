@@ -77,6 +77,7 @@ export function buildAppointmentPayload(raw, options = {}) {
     const billingType = raw.billingType || (isUpdate ? undefined : "particular");
     const insuranceProvider = raw.insuranceProvider || "";
     const insuranceValue = Number(raw.insuranceValue) || 0;
+    const isAba = Boolean(raw.isAba);
     const authorizationCode = raw.authorizationCode || "";
     const rawSessionValue = Number(raw.sessionValue ?? 0);
     const rawPaymentAmount = Number(raw.paymentAmount ?? crm.paymentAmount ?? 0);
@@ -155,6 +156,7 @@ export function buildAppointmentPayload(raw, options = {}) {
         ...(paymentMethod !== undefined && { paymentMethod }),
         insuranceProvider,
         insuranceValue,
+        isAba,
         authorizationCode,
         package: packageInfo,
         responsible,

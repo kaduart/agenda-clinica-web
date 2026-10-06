@@ -7,6 +7,7 @@ import { cancelAppointment, getAppointmentById, getAppointmentsByPatient } from 
 import { confirmToast } from "../utils/confirmToast";
 import { formatPhoneBR, onlyDigits, validatePhoneBR } from "../utils/phone";
 import InputCurrency from "./InputCurrency";
+import { getConvenioOptions } from "../api/v2/agendaV2Client";
 
 import { getHolidays, holidaysToMap, isTimeBlockedByHoliday as checkHolidayBlock } from "../services/calendarService";
 
@@ -79,6 +80,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
         billingType: "particular",
         insuranceProvider: "",
         insuranceValue: 0,
+        isAba: false,
         authorizationCode: "",
         package: null,
         crm: {
@@ -212,6 +214,8 @@ export default function AppointmentModal({ appointment, professionals, patients,
                 billingType: appointment.billingType || "particular",
                 insuranceProvider: appointment.insuranceProvider || "",
                 insuranceValue: appointment.insuranceValue || 0,
+                // Agendamento antigo (sem a flag) abre em branco — a pessoa precisa escolher
+                isAba: appointment.isAba ?? null,
                 authorizationCode: appointment.authorizationCode || "",
                 package: appointment.package || null,
                 depositAmount: Number(appointment.depositAmount || appointment.raw?.depositAmount || 0),
@@ -618,10 +622,63 @@ export default function AppointmentModal({ appointment, professionals, patients,
         });
     };
 
+    // ---- Convênio: lista cadastrada no CRM; Base preenche o valor pela tabela da terapia (+50% se ABA)
+    const [convenioOptions, setConvenioOptions] = React.useState([]);
+    const [convenioLoadError, setConvenioLoadError] = React.useState(false);
+    React.useEffect(() => {
+        if (formData.billingType !== 'convenio' || convenioOptions.length > 0) return;
+        let cancelled = false;
+        getConvenioOptions()
+            .then((list) => { if (!cancelled) { setConvenioOptions(list); setConvenioLoadError(false); } })
+            .catch((err) => {
+                console.error('[Agenda] Falha ao carregar convênios do CRM:', err?.response?.status, err?.message);
+                if (!cancelled) setConvenioLoadError(true);
+            });
+        return () => { cancelled = true; };
+    }, [formData.billingType]); // eslint-disable-line react-hooks/exhaustive-deps
+    const selectedConvenio = convenioOptions.find(c => c.code === formData.insuranceProvider);
+
+    const computeConvenioValue = (convenio, specialty, isAba) => {
+        if (!convenio?.supportsAba) return null; // só o Base tem tabela por terapia
+        const key = String(specialty || '').trim().toLowerCase();
+        const row = (convenio.specialtyValues || []).find(r => r.specialty === key && r.sessionValue > 0);
+        const base = row ? row.sessionValue : convenio.sessionValue;
+        if (!(base > 0)) return null;
+        return isAba ? Math.round(base * 1.5 * 100) / 100 : base;
+    };
+
+    const handleConvenioChange = (e) => {
+        const code = e.target.value;
+        const convenio = convenioOptions.find(c => c.code === code);
+        const value = computeConvenioValue(convenio, formData.specialtyKey || formData.specialty, false);
+        setFormData((prev) => ({
+            ...prev,
+            insuranceProvider: code,
+            // Base: obriga escolher Convencional/ABA (null = ainda não escolheu); valor só preenche após a escolha
+            isAba: convenio?.supportsAba ? null : false,
+            insuranceValue: convenio?.supportsAba ? 0 : (value ?? prev.insuranceValue),
+        }));
+    };
+
+    const handleAbaChoice = (isAba) => {
+        const value = computeConvenioValue(selectedConvenio, formData.specialtyKey || formData.specialty, isAba);
+        setFormData((prev) => ({
+            ...prev,
+            isAba,
+            ...(value != null ? { insuranceValue: value } : {}),
+        }));
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
 
         if (isLoading || submitLockRef.current) return;
+
+        // Convênio Base: ABA ou convencional precisa ser escolhido (valor muda 50% — evita erro no caixa)
+        if (formData.billingType === 'convenio' && selectedConvenio?.supportsAba && formData.isAba == null) {
+            alert('Convênio Base: escolha Convencional ou ABA antes de criar o agendamento.');
+            return;
+        }
 
         // Agendamento de pacote: bloqueia edição nesta tela
         if (isPackagePreAgendado) {
@@ -751,6 +808,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                 billingType: formData.billingType,
                 insuranceProvider: formData.insuranceProvider,
                 insuranceValue: Number(formData.insuranceValue || 0),
+                isAba: formData.isAba === true,
                 authorizationCode: formData.authorizationCode,
                 package: formData.package,
 
@@ -1428,14 +1486,47 @@ export default function AppointmentModal({ appointment, professionals, patients,
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Convênio</label>
-                                    <input
-                                        type="text"
+                                    <select
                                         name="insuranceProvider"
                                         value={formData.insuranceProvider}
-                                        onChange={handleChange}
+                                        onChange={handleConvenioChange}
                                         className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
-                                        placeholder="Nome do convênio"
-                                    />
+                                    >
+                                        <option value="">{convenioLoadError ? 'Não foi possível carregar os convênios' : 'Selecione o convênio'}</option>
+                                        {formData.insuranceProvider && !convenioOptions.some(c => c.code === formData.insuranceProvider) && (
+                                            <option value={formData.insuranceProvider}>{formData.insuranceProvider}</option>
+                                        )}
+                                        {convenioOptions.map(c => (
+                                            <option key={c.code} value={c.code}>{c.name}</option>
+                                        ))}
+                                    </select>
+                                    {selectedConvenio?.supportsAba && (
+                                        <div className={`mt-2 rounded-lg p-2 ${formData.isAba == null ? 'border-2 border-dashed border-amber-400 bg-amber-50' : ''}`} role="radiogroup" aria-label="Tipo de atendimento Base">
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <button
+                                                    type="button"
+                                                    role="radio"
+                                                    aria-checked={formData.isAba === false}
+                                                    onClick={() => handleAbaChoice(false)}
+                                                    className={`rounded-lg border-2 px-2 py-2 text-sm font-semibold transition-colors ${formData.isAba === false ? 'border-sky-600 bg-sky-100 text-sky-900' : 'border-gray-300 bg-white text-gray-600 hover:border-sky-400'}`}
+                                                >
+                                                    Convencional
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    role="radio"
+                                                    aria-checked={formData.isAba === true}
+                                                    onClick={() => handleAbaChoice(true)}
+                                                    className={`rounded-lg border-2 px-2 py-2 text-sm font-semibold transition-colors ${formData.isAba === true ? 'border-purple-600 bg-purple-100 text-purple-900' : 'border-gray-300 bg-white text-gray-600 hover:border-purple-400'}`}
+                                                >
+                                                    ABA (+50%)
+                                                </button>
+                                            </div>
+                                            {formData.isAba == null && (
+                                                <p className="mt-1 text-xs font-medium text-red-600">Escolha o tipo de atendimento: Convencional ou ABA.</p>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Valor (R$)</label>

@@ -21,6 +21,11 @@ const getRequestId = () => `${Date.now()}-${Math.random().toString(36).substring
 // 📅 APPOINTMENTS (V2 REAL)
 // ===============================
 
+export async function getConvenioOptions() {
+    const response = await api.get("/api/v2/appointments/convenio-options");
+    return response.data?.data || [];
+}
+
 export async function getAppointments(params = {}) {
     const response = await api.get("/api/v2/appointments", { params });
     return response.data;
