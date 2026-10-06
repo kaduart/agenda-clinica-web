@@ -12,19 +12,30 @@ export default function Header({ view, setView, remindersPendingCount = 0, onOpe
         return () => window.removeEventListener('open-whatsapp-connect', handler);
     }, []);
 
-    // Poll status do WhatsApp a cada 10s
+    // Poll do status do WhatsApp (só alimenta a bolinha do cabeçalho): a cada 30s e somente com a
+    // aba visível; ao voltar para a aba, atualiza na hora. O modal de conexão tem polling próprio.
     useEffect(() => {
+        let inFlight = false;
         async function checkStatus() {
+            if (document.hidden || inFlight) return;
+            inFlight = true;
             try {
                 const data = await getWhatsAppWebStatus({ timeout: 5000 });
                 setWhatsAppStatus(data);
             } catch {
                 setWhatsAppStatus({ ready: false, status: 'error' });
+            } finally {
+                inFlight = false;
             }
         }
         checkStatus();
-        const interval = setInterval(checkStatus, 10000);
-        return () => clearInterval(interval);
+        const interval = setInterval(checkStatus, 30000);
+        const onVisible = () => { if (!document.hidden) checkStatus(); };
+        document.addEventListener('visibilitychange', onVisible);
+        return () => {
+            clearInterval(interval);
+            document.removeEventListener('visibilitychange', onVisible);
+        };
     }, []);
 
     const isConnected = whatsAppStatus.ready;

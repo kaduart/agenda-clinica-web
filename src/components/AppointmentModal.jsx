@@ -11,6 +11,7 @@ import { getConvenioOptions } from "../api/v2/agendaV2Client";
 
 import { getHolidays, holidaysToMap, isTimeBlockedByHoliday as checkHolidayBlock } from "../services/calendarService";
 
+import { apiErrorText } from "../utils/apiError";
 /**
  * 🔥 UNIFICAÇÃO: patient populado é a única fonte de verdade
  * Elimina dependência de patientInfo quebrado
@@ -874,7 +875,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                 await cancelAppointment(appointment.id, "Cancelado via Web App");
                 onClose();
             } catch (err) {
-                alert("Erro ao cancelar: " + (err.response?.data?.error || err.message));
+                alert("Erro ao cancelar: " + apiErrorText(err));
             } finally {
                 setIsLoading(false);
             }

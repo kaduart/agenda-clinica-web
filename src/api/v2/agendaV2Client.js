@@ -21,9 +21,18 @@ const getRequestId = () => `${Date.now()}-${Math.random().toString(36).substring
 // 📅 APPOINTMENTS (V2 REAL)
 // ===============================
 
-export async function getConvenioOptions() {
+// A lista de convênios muda raramente: 5 min de cache evita refazer a chamada a cada abertura do modal.
+const CONVENIO_OPTIONS_TTL_MS = 5 * 60 * 1000;
+let convenioOptionsCache = { at: 0, list: null };
+
+export async function getConvenioOptions({ force = false } = {}) {
+    if (!force && convenioOptionsCache.list && Date.now() - convenioOptionsCache.at < CONVENIO_OPTIONS_TTL_MS) {
+        return convenioOptionsCache.list;
+    }
     const response = await api.get("/api/v2/appointments/convenio-options");
-    return response.data?.data || [];
+    const list = response.data?.data || [];
+    convenioOptionsCache = { at: Date.now(), list };
+    return list;
 }
 
 export async function getAppointments(params = {}) {
@@ -112,7 +121,12 @@ export async function createAppointment(rawData) {
 export async function rescheduleAppointment(id, rawData) {
     const payload = buildAppointmentPayload(rawData, { mode: "update", id });
 
-    const response = await api.post(`/api/v2/appointments/${id}/reschedule`, payload, {
+    // O CRM expõe PATCH /:id/reschedule e usa só data, hora e motivo (o resto é carregado do agendamento).
+    const response = await api.patch(`/api/v2/appointments/${id}/reschedule`, {
+        date: payload.date,
+        time: payload.time,
+        reason: rawData?.rescheduleReason || rawData?.reason || undefined
+    }, {
         headers: { "x-client-request-id": getRequestId() },
         timeout: 30000
     });
@@ -125,16 +139,6 @@ export async function rescheduleAppointment(id, rawData) {
 
 export async function getPackages(params = {}) {
     const response = await api.get("/api/v2/packages", { params });
-    return response.data;
-}
-
-export async function deletePackageSession(packageId, sessionId) {
-    const response = await api.delete(`/api/v2/packages/${packageId}/sessions/${sessionId}`);
-    return response.data;
-}
-
-export async function cancelPackageSession(packageId, sessionId, reason = "Cancelado via agenda") {
-    const response = await api.patch(`/api/v2/packages/${packageId}/sessions/${sessionId}/cancel`, { reason });
     return response.data;
 }
 

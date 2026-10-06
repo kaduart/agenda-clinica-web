@@ -337,41 +337,6 @@ export const deleteCycle = async (cycleId) => {
 };
 
 // ===========================================================
-// 🔁 SINCRONIZAÇÃO: Remove sessão do pacote ao excluir appointment
-// ===========================================================
-export const syncDeleteWithPackage = async (appointmentId, patientId) => {
-    if (!patientId) return { synced: false, reason: 'no_patient_id' };
-    try {
-        const packagesRes = await v2.getPackages({ patientId, limit: 100 });
-        const packages = packagesRes?.data?.packages || packagesRes?.packages || [];
-        if (!packages.length) return { synced: false, reason: 'no_packages' };
-
-        for (const pkg of packages) {
-            const session = (pkg.sessions || []).find(s => s.appointmentId === appointmentId);
-            if (session && session.sessionId) {
-                try {
-                    await v2.deletePackageSession(pkg._id || pkg.packageId, session.sessionId);
-                    return { synced: true, packageId: pkg._id || pkg.packageId, sessionId: session.sessionId };
-                } catch (deleteErr) {
-                    console.warn(`[syncDeleteWithPackage] Falha ao deletar sessão, tentando cancelar:`, deleteErr.message);
-                    try {
-                        await v2.cancelPackageSession(pkg._id || pkg.packageId, session.sessionId);
-                        return { synced: true, packageId: pkg._id || pkg.packageId, sessionId: session.sessionId, mode: 'cancel' };
-                    } catch (cancelErr) {
-                        console.error(`[syncDeleteWithPackage] Falha ao cancelar sessão:`, cancelErr.message);
-                        return { synced: false, reason: 'delete_and_cancel_failed' };
-                    }
-                }
-            }
-        }
-        return { synced: false, reason: 'session_not_found' };
-    } catch (error) {
-        console.error("[syncDeleteWithPackage] Erro:", error);
-        return { synced: false, reason: 'error', error: error.message };
-    }
-};
-
-// ===========================================================
 // 🛡️ PROTEÇÃO: Impede exclusão do primeiro ponto de um pacote
 // ===========================================================
 export const isFirstPackagePoint = async (appointmentId, patientId) => {

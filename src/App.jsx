@@ -15,6 +15,7 @@ import CalendarView from "./components/CalendarView";
 import WeeklyView from "./components/WeeklyView";
 
 import AppointmentModal from "./components/AppointmentModal";
+import { apiErrorText } from "./utils/apiError";
 import CancelReasonModal from "./components/CancelReasonModal";
 import ProfessionalsModal from "./components/ProfessionalsModal";
 
@@ -300,7 +301,7 @@ export default function App() {
 
     } catch (e) {
       console.error("❌ ERRO:", e);
-      toast.error("Erro ao excluir: " + (e.response?.data?.error || e.message));
+      toast.error("Erro ao excluir: " + apiErrorText(e));
     }
   };
 
@@ -367,7 +368,7 @@ export default function App() {
       forceRefreshAppointments();
     } catch (err) {
       console.error("❌ Erro ao confirmar pré-agendamento:", err);
-      toast.error("Erro ao confirmar: " + (err.response?.data?.error || err.message));
+      toast.error("Erro ao confirmar: " + apiErrorText(err));
     }
   };
 
@@ -489,7 +490,7 @@ export default function App() {
       return `Faltou preencher: ${missing.join(', ')}.`;
     }
 
-    return 'Erro ao salvar: ' + (data?.message || data?.error || err.message);
+    return 'Erro ao salvar: ' + apiErrorText(err);
   };
 
   const saveAppointment = async (appointmentData) => {
@@ -599,7 +600,7 @@ export default function App() {
             handleReloadPatients();
           } catch (patientErr) {
             console.error('[saveAppointment] Erro ao atualizar paciente:', patientErr);
-            toast.error("Telefone do paciente não atualizado: " + (patientErr.response?.data?.error || patientErr.message));
+            toast.error("Telefone do paciente não atualizado: " + apiErrorText(patientErr));
           }
         }
         toast.success("Agendamento atualizado!");
@@ -607,7 +608,7 @@ export default function App() {
         setEditingAppointment(null);
         forceRefreshAppointments();
       } catch (err) {
-        const msg = err.response?.data?.error || err.message;
+        const msg = apiErrorText(err);
         toast.error("Erro ao salvar: " + msg);
         throw err;
       }
@@ -637,7 +638,7 @@ export default function App() {
           setEditingAppointment(null);
           forceRefreshAppointments();
         } catch (err) {
-          toast.error("Erro ao cancelar: " + (err.response?.data?.error || err.message));
+          toast.error("Erro ao cancelar: " + apiErrorText(err));
           throw err;
         }
         return;
@@ -724,7 +725,7 @@ export default function App() {
               handleReloadPatients();
             } catch (patientErr) {
               console.error('[saveAppointment] Erro ao atualizar paciente:', patientErr);
-              toast.error("Telefone do paciente não atualizado: " + (patientErr.response?.data?.error || patientErr.message));
+              toast.error("Telefone do paciente não atualizado: " + apiErrorText(patientErr));
             }
           }
           toast.success("Agendamento atualizado!");
@@ -733,7 +734,7 @@ export default function App() {
           forceRefreshAppointments();
           return;
         } catch (adminErr) {
-          toast.error("Erro ao salvar: " + (adminErr.response?.data?.error || adminErr.message));
+          toast.error("Erro ao salvar: " + apiErrorText(adminErr));
           throw adminErr;
         }
       }
@@ -1062,7 +1063,7 @@ export default function App() {
       listenProfessionals(setProfessionals);
     } catch (e) {
       console.error("[handleAddProfessional]", e);
-      toast.error(e?.response?.data?.error?.message || e?.response?.data?.message || "Erro ao adicionar profissional.");
+      toast.error(apiErrorText(e, "Erro ao adicionar profissional."));
       throw e; // re-throw para o modal saber que falhou e não resetar o form
     }
   };
