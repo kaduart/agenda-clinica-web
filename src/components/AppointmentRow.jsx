@@ -316,10 +316,11 @@ export default function AppointmentRow({ appointment, onEdit, onReminder, onGene
             const m2 = !!appointment.reviewRequestSentAt;
             const bothSent = m1 && m2;
             const anySent = m1 || m2;
-            const label = bothSent ? "Pós-atend. ✓" : m1 ? "Cuidado ✓" : m2 ? "Avaliação ✓" : "Pós-atend.";
+            // Rótulo diz o PRÓXIMO passo: 1) perguntar como foi → 2) pedir avaliação no Google
+            const label = bothSent ? "Avaliação enviada" : m1 ? "Pedir avaliação" : m2 ? "Avaliação enviada" : "Como foi?";
             const tooltipLines = [
-              m1 ? `Msg 1 enviada em ${new Date(appointment.postAppointmentSentAt).toLocaleString("pt-BR")}` : "Msg 1: não enviada",
-              m2 ? `Msg 2 enviada em ${new Date(appointment.reviewRequestSentAt).toLocaleString("pt-BR")}` : "Msg 2: não enviada",
+              m1 ? `1) "Como foi?" enviada em ${new Date(appointment.postAppointmentSentAt).toLocaleString("pt-BR")}` : '1) "Como foi o atendimento?": não enviada',
+              m2 ? `2) Pedido de avaliação no Google enviado em ${new Date(appointment.reviewRequestSentAt).toLocaleString("pt-BR")}` : "2) Pedido de avaliação no Google: não enviado",
             ].join("\n");
             return (
               <button
@@ -337,9 +338,9 @@ export default function AppointmentRow({ appointment, onEdit, onReminder, onGene
                   if (!patientPhone) { showToast('Paciente sem telefone cadastrado', 'error'); return; }
                   onPostAppointment?.(appointment);
                 }}
-                title={anySent ? tooltipLines : patientPhone ? "Enviar pós-atendimento" : "Paciente sem telefone cadastrado"}
+                title={anySent ? tooltipLines : patientPhone ? "Pós-atendimento: pergunte como foi e depois peça a avaliação no Google" : "Paciente sem telefone cadastrado"}
               >
-                <i className={`fas ${anySent ? "fa-check" : "fa-star"}`}></i>
+                <i className={`fas ${bothSent || (m2 && !m1) ? "fa-check" : "fa-star"}`}></i>
                 {label}
               </button>
             );
@@ -373,7 +374,7 @@ export default function AppointmentRow({ appointment, onEdit, onReminder, onGene
                         onClick={() => { handleWhatsAppSend('confirm'); setShowWhatsAppMenu(false); }}
                         disabled={sendingWhatsApp === 'confirm'}
                       >
-                        {sendingWhatsApp === 'confirm' ? <i className="fas fa-spinner fa-spin text-emerald-600"></i> : <i className="fab fa-whatsapp text-emerald-600"></i>} Confirmar agendamento
+                        {sendingWhatsApp === 'confirm' ? <i className="fas fa-spinner fa-spin text-emerald-600"></i> : <i className="fab fa-whatsapp text-emerald-600"></i>} Enviar confirmação
                       </button>
                     )}
                     {patientPhone && (
@@ -383,7 +384,7 @@ export default function AppointmentRow({ appointment, onEdit, onReminder, onGene
                         onClick={() => { handleWhatsAppSend('reminder'); setShowWhatsAppMenu(false); }}
                         disabled={sendingWhatsApp === 'reminder'}
                       >
-                        {sendingWhatsApp === 'reminder' ? <i className="fas fa-spinner fa-spin text-amber-600"></i> : <i className="fas fa-bell text-amber-600"></i>} Lembrete de atendimento
+                        {sendingWhatsApp === 'reminder' ? <i className="fas fa-spinner fa-spin text-amber-600"></i> : <i className="fas fa-bell text-amber-600"></i>} Enviar lembrete (dia anterior)
                       </button>
                     )}
 
@@ -403,7 +404,7 @@ export default function AppointmentRow({ appointment, onEdit, onReminder, onGene
                         onClick={() => { handleWhatsAppSendProfessional('notify'); setShowWhatsAppMenu(false); }}
                         disabled={sendingWhatsApp === 'notify_prof'}
                       >
-                        {sendingWhatsApp === 'notify_prof' ? <i className="fas fa-spinner fa-spin text-blue-600"></i> : <i className="fas fa-user-md text-blue-600"></i>} Avisar agendamento
+                        {sendingWhatsApp === 'notify_prof' ? <i className="fas fa-spinner fa-spin text-blue-600"></i> : <i className="fas fa-user-md text-blue-600"></i>} Avisar novo agendamento
                       </button>
                     )}
                     {professionalPhone && (
@@ -413,7 +414,7 @@ export default function AppointmentRow({ appointment, onEdit, onReminder, onGene
                         onClick={() => { handleWhatsAppSendProfessional('reminder'); setShowWhatsAppMenu(false); }}
                         disabled={sendingWhatsApp === 'reminder_prof'}
                       >
-                        {sendingWhatsApp === 'reminder_prof' ? <i className="fas fa-spinner fa-spin text-blue-600"></i> : <i className="far fa-clock text-blue-600"></i>} Lembrar atendimento
+                        {sendingWhatsApp === 'reminder_prof' ? <i className="fas fa-spinner fa-spin text-blue-600"></i> : <i className="far fa-clock text-blue-600"></i>} Lembrar do atendimento
                       </button>
                     )}
                   </div>
