@@ -2,22 +2,19 @@ import React from "react";
 import { sendWhatsAppMessage, sendWhatsAppMediaMessage } from "../services/baileysApi";
 import { trackPostAppointmentStep } from "../services/appointmentsRepo";
 
-const STORAGE_KEY_MESSAGES = "postAppointmentMessages_v4";
+const STORAGE_KEY_MESSAGES = "postAppointmentMessages_v5";
 const STORAGE_KEY_GOOGLE_LINK = "postAppointmentGoogleLink";
 
 const NL = '\n​\n';
 
 const DEFAULT_MESSAGE_1 =
-    '👋 {{SAUDACAO}}{{RESPONSAVEL_SAUDACAO}}!' + NL +
-    'Passamos para saber como foi a consulta de *{{NOME}}* hoje aqui na Clínica Fono Inova 💚' + NL +
-    'Tudo correu bem? O atendimento atendeu as expectativas de vocês?';
+    '{{SAUDACAO}}{{RESPONSAVEL_SAUDACAO}}! Como foi o atendimento de *{{NOME}}* hoje aqui na Clínica Fono Inova? ' +
+    'Queremos saber se vocês se sentiram bem acolhidos. 💚';
 
 const DEFAULT_MESSAGE_2 =
-    'Fico muito feliz em saber! 😊' + NL +
-    'Sua opinião é muito importante pra nós.' + NL +
-    'Você poderia reservar 1 minutinho para deixar uma avaliação no Google? Ajuda muito outras famílias a encontrarem nossa clínica 🙏' + NL +
-    '👉 {{LINK}}' + NL +
-    'Obrigada! 💙';
+    'Que bom saber! 😊 Se puder, conta no Google o que mais ajudou *{{NOME}}* (o atendimento, a evolução, o acolhimento da equipe). Leva 1 minutinho e ajuda outras famílias de Anápolis a encontrarem um cuidado de confiança:' + NL +
+    '{{LINK}}' + NL +
+    'Obrigada por confiar na Fono Inova! 💚';
 
 const DEFAULT_GOOGLE_LINK = "https://g.page/r/CR6aUdS_hstDEBM/review";
 

@@ -902,7 +902,11 @@ export default function App() {
       if (filters.filterStatus) {
         // O backend considera "Pendente" como scheduled + pending.
         // No frontend, scheduled é traduzido como "Agendado" e pending como "Pendente".
-        if (filters.filterStatus === "Pendente") {
+        if (filters.filterStatus === "Falta avaliação Google") {
+          // Atendimentos confirmados/concluídos que ainda não receberam o pedido de avaliação no Google
+          const okStatus = appointment.operationalStatus === "completed" || appointment.operationalStatus === "confirmed";
+          if (!okStatus || appointment.__isVirtual || appointment.reviewRequestSentAt) return false;
+        } else if (filters.filterStatus === "Pendente") {
           if (appointment.status !== "Pendente" && appointment.status !== "Agendado") return false;
         } else if (appointment.status !== filters.filterStatus) {
           return false;
@@ -1018,7 +1022,11 @@ export default function App() {
         }
       }
       if (filters.filterStatus) {
-        if (filters.filterStatus === "Pendente") {
+        if (filters.filterStatus === "Falta avaliação Google") {
+          // Atendimentos confirmados/concluídos que ainda não receberam o pedido de avaliação no Google
+          const okStatus = appointment.operationalStatus === "completed" || appointment.operationalStatus === "confirmed";
+          if (!okStatus || appointment.__isVirtual || appointment.reviewRequestSentAt) return false;
+        } else if (filters.filterStatus === "Pendente") {
           if (appointment.status !== "Pendente" && appointment.status !== "Agendado") return false;
         } else if (appointment.status !== filters.filterStatus) {
           return false;

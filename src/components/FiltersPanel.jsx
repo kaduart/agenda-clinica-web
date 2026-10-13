@@ -343,6 +343,7 @@ export default function FiltersPanel({
                                 <option value="Confirmado">✅ Compareceu</option>
                                 <option value="Pendente">⏳ Pendente</option>
                                 <option value="Cancelado">❌ Cancelado</option>
+                                <option value="Falta avaliação Google">⭐ Falta pedir avaliação Google</option>
                             </select>
                             <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none text-gray-400">
                                 <i className="fas fa-chevron-down"></i>

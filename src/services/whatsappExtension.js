@@ -107,9 +107,6 @@ export function generateConfirmationMessage(paciente) {
     : paciente.patient?.guardianName?.split(' ')[0]
     || paciente.patientInfo?.guardianName?.split(' ')[0]
     || null;
-  const saudacao = responsavel 
-    ? `${getSaudacao()}, ${responsavel}! Tudo certinho? 💚` 
-    : `${getSaudacao()}! Tudo certinho? 💚`;
   const nomePaciente = paciente.patientName || paciente.patient?.fullName || paciente.patient?.name || paciente.fullName || paciente.name || 'Paciente';
 
   const dateStr = extractDateString(paciente.date);
@@ -118,12 +115,15 @@ export function generateConfirmationMessage(paciente) {
   const diaSemana = dateObj ? dateObj.toLocaleDateString('pt-BR', { weekday: 'long' }) : '';
   const hora = paciente.time || '';
 
-  return saudacao + '\n\u200B\n' +
-    'Tudo certo! O agendamento do *' + nomePaciente + '* está confirmado para a *avaliação inicial* no dia *' + data + ' (' + diaSemana + ')* às *' + hora + '* 💚' + '\n\u200B\n' +
-    'Ficamos muito felizes em receber vocês e preparar tudo com carinho ✨' + '\n\u200B\n' +
-    'Se surgir qualquer dúvida antes do dia, é só chamar aqui.' + '\n\u200B\n' +
-    '📲 Um dia antes, enviamos outra mensagem para confirmar, combinado?' + '\n\u200B\n' +
-    'Te espero no dia e horário marcados! 😊';
+  // Avaliação inicial x sessão (pacote/sessão avulsa): evita chamar toda consulta de "avaliação inicial"
+  const tipoRaw = String(paciente.sessionType || paciente.serviceType || paciente.type || '');
+  const ehSessao = /sess|pacote/i.test(tipoRaw);
+  const tipoTexto = ehSessao ? 'atendimento' : 'avaliação inicial';
+  const prof = paciente.professional || paciente.doctor?.fullName || '';
+  const profTexto = prof ? ' com *' + prof + '*' : '';
+
+  return `${getSaudacao()}${responsavel ? ', ' + responsavel : ''}! O ${tipoTexto} do *${nomePaciente}*${profTexto} está confirmado para *${diaSemana}, ${data}, às ${hora}*, na Clínica Fono Inova (Av. Minas Gerais, 405, Jundiaí).` + '\n\u200B\n' +
+    'Um dia antes, enviamos um lembrete rápido. Se precisar remarcar, é só responder aqui. 💚';
 }
 
 /**
@@ -139,12 +139,9 @@ export function generateReminderMessage(paciente) {
   
   const dateStr = extractDateString(paciente.date);
   const dateObj = dateStr ? new Date(dateStr + 'T12:00:00') : null;
-  const data = dateObj ? dateObj.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : '';
   const dataCompleta = dateObj ? dateObj.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '';
   const hora = paciente.time || '';
   const profissional = paciente.professional || paciente.doctor?.fullName || '';
-  const especialidade = paciente.specialty || paciente.sessionType || '';
-  
   // Verifica se é hoje, amanhã ou outro dia
   const hoje = new Date();
   const hojeStr = hoje.toISOString().split('T')[0];
@@ -156,36 +153,15 @@ export function generateReminderMessage(paciente) {
   const ehHoje = dateStr === hojeStr;
   const ehAmanha = dateStr === amanhaStr;
   
-  if (ehHoje) {
-    const saudacao = responsavel 
-      ? '👋 ' + getSaudacao() + ', ' + responsavel + '!' 
-      : '👋 ' + getSaudacao() + '!';
-    return saudacao + '\n\u200B\n' +
-      'Passando para lembrar que *hoje* temos atendimento agendado na Clínica Fono Inova:' + '\n\u200B\n' +
-      '👶 Paciente: *' + nomePaciente + '*' + '\n' +
-      '🕓 *' + hora + '* *' + profissional + '*' + '\n\u200B\n' +
-      'Posso confirmar sua presença?' + '\n\u200B\n' +
-      'Até mais 😊';
-  }
-  
-  const saudacao = responsavel 
-    ? '👋 ' + getSaudacao() + ', ' + responsavel + '!' 
-    : '👋 ' + getSaudacao() + '!';
-  
-  // Define o texto da data (amanhã, dia da semana, ou data)
-  let dataTexto;
-  if (ehAmanha) {
-    dataTexto = 'amanhã (' + dataCompleta + ')';
-  } else {
-    dataTexto = dataCompleta;
-  }
-  
-  return saudacao + '\n\u200B\n' +
-    'Passando para lembrar que *' + dataTexto + '* temos atendimento agendado na Clínica Fono Inova:' + '\n\u200B\n' +
-    '👶 Paciente: *' + nomePaciente + '*' + '\n' +
-    '🕓 *' + hora + '* *' + profissional + '*' + '\n\u200B\n' +
-    'Posso confirmar sua presença?' + '\n\u200B\n' +
-    'Até mais 😊';
+  const quando = ehHoje
+    ? '*hoje, às ' + hora + '*'
+    : ehAmanha
+      ? '*amanhã (' + dataCompleta + '), às ' + hora + '*'
+      : '*' + dataCompleta + ', às ' + hora + '*';
+  const profTexto = profissional ? ' com *' + profissional + '*' : '';
+
+  return `${getSaudacao()}${responsavel ? ', ' + responsavel : ''}! Lembrete: o atendimento do *${nomePaciente}*${profTexto} é ${quando}, na Clínica Fono Inova.` + '\n\u200B\n' +
+    'Pode confirmar presença? Se precisar remarcar, é só responder aqui. 💚';
 }
 
 export {
