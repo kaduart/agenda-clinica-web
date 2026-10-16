@@ -56,6 +56,23 @@ function resolvePatientData(appointment, foundPatient) {
 }
 
 export default function AppointmentModal({ appointment, professionals, patients, appointments, onSave, onConfirmPre, requestCancelReason, onClose, onReloadPatients, authError }) {
+    const [activeStep, setActiveStep] = React.useState(0);
+    const stepContentRef = React.useRef(null);
+    const goToStep = (step) => {
+        setActiveStep(step);
+        stepContentRef.current?.scrollTo({ top: 0 });
+    };
+    React.useEffect(() => { setActiveStep(0); }, [appointment?.id]);
+    const revealInvalidField = (event) => {
+        const field = event.target;
+        const panel = field.closest('[data-appointment-step]');
+        if (panel && Number(panel.dataset.appointmentStep) !== activeStep) {
+            event.preventDefault();
+            goToStep(Number(panel.dataset.appointmentStep));
+            requestAnimationFrame(() => { field.focus(); field.reportValidity(); });
+        }
+    };
+
     // 🎯 Estado inicial LIMPO — sempre começa como novo pré-agendamento Fono
     // O useEffect principal abaixo sobrescreve quando estiver editando um existente
     const [formData, setFormData] = React.useState({
@@ -982,17 +999,17 @@ export default function AppointmentModal({ appointment, professionals, patients,
         : null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/40 backdrop-blur-sm">
-            <div className={`bg-white rounded-xl sm:rounded-2xl shadow-2xl w-full max-w-4xl max-h-[94vh] overflow-y-auto relative ${isLoading ? "opacity-80 pointer-events-none" : ""}`}>
+        <div role="dialog" aria-modal="true" aria-labelledby="appointment-modal-title" className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/40 backdrop-blur-sm">
+            <div className={`bg-white rounded-xl sm:rounded-2xl shadow-2xl w-full ${activeStep === 2 ? "max-w-4xl" : activeStep === 1 ? "max-w-2xl" : "max-w-xl"} max-h-[94vh] overflow-hidden flex flex-col relative transition-[max-width] duration-200 motion-reduce:transition-none ${isLoading ? "opacity-80 pointer-events-none" : ""}`}>
                 {/* Header */}
-                <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-3 z-10 flex justify-between items-center">
+                <div className="sticky top-0 bg-white border-b border-gray-200 px-5 py-2.5 z-10 flex justify-between items-center">
                     <div>
-                        <h3 className="text-lg font-semibold text-gray-900">
+                        <h3 id="appointment-modal-title" className="text-lg font-semibold text-gray-900">
                             {isPreExisting ? "Confirmar Pré-Agendamento" : isPreNew ? "Novo Pré-Agendamento" : isEdit ? "Editar Agendamento" : "Novo Agendamento"}
                         </h3>
                         {source && (
                             <p className="text-xs text-indigo-600 font-medium mt-0.5">
-                                Origem: <span className="uppercase">{source}</span>
+                                Origem: <span>{{ INSURANCE_PLAN: 'Planejamento do convênio', insurance_plan: 'Planejamento do convênio' }[source] || String(source).replace(/_/g, ' ')}</span>
                             </p>
                         )}
                     </div>
@@ -1017,7 +1034,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                 )}
 
                 {/* Aviso de dados zerados */}
-                {isEdit && !isLoadingDetails && formData.crm.paymentAmount === 0 && (
+                {activeStep === 2 && isEdit && !isLoadingDetails && formData.crm.paymentAmount === 0 && (
                     <div className="mx-6 mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
                         <p className="text-sm text-amber-800 flex items-start gap-2">
                             <i className="fas fa-exclamation-triangle mt-0.5"></i>
@@ -1031,8 +1048,23 @@ export default function AppointmentModal({ appointment, professionals, patients,
 
 
 
-                <form onSubmit={handleSubmit} className="px-4 sm:px-6 py-3">
-                <div className="grid grid-cols-1 xl:grid-cols-12 xl:grid-flow-row-dense gap-3 items-start">
+                <div className="shrink-0 border-b border-slate-200 px-4 py-2.5 sm:px-5">
+                    <nav aria-label="Etapas do agendamento" className="relative mx-auto max-w-xl">
+                        <div aria-hidden="true" className="absolute left-[16.666%] right-[16.666%] top-4 h-1 rounded-full bg-slate-200"><div className="h-full rounded-full bg-teal-500 transition-all" style={{ width: `${activeStep / 2 * 100}%` }} /></div>
+                        <ol className="relative grid grid-cols-3">
+                            {['Paciente', 'Atendimento', 'Financeiro'].map((label, index) => <li key={label} className="flex justify-center">
+                                <button type="button" disabled={isLoading || isLoadingDetails} onClick={() => goToStep(index)} aria-current={activeStep === index ? 'step' : undefined} className="flex flex-col items-center gap-2 rounded-lg px-2 text-xs sm:text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-teal-600 disabled:opacity-50">
+                                    <span className={`flex h-9 w-9 items-center justify-center rounded-full border-2 font-semibold ${activeStep > index ? 'border-teal-600 bg-teal-600 text-white' : activeStep === index ? 'border-teal-600 bg-white text-teal-700' : 'border-slate-200 bg-white text-slate-500'}`}>
+                                        {activeStep > index ? <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="m5 12 4 4L19 6" /></svg> : activeStep === index ? <span className="h-3 w-3 rounded-full bg-teal-600" aria-hidden="true" /> : index + 1}
+                                    </span><span className={activeStep === index ? 'font-semibold text-teal-900' : 'text-slate-600'}>{label}</span>
+                                </button>
+                            </li>)}
+                        </ol>
+                    </nav>
+                    {formData.patient && <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-600"><span className="font-medium text-slate-800">{formData.patient}</span>{formData.professional && <span>{formData.professional}</span>}{formData.date && <span>{String(formData.date).split('T')[0].split('-').reverse().join('/')}{formData.time ? ` · ${formData.time}` : ''}</span>}</div>}
+                </div>
+                <form onSubmit={(event) => { if (activeStep < 2) { event.preventDefault(); goToStep(activeStep + 1); } else { handleSubmit(event); } }} onInvalidCapture={revealInvalidField} className="flex min-h-0 flex-col overflow-hidden">
+                <div ref={stepContentRef} className="min-h-0 overflow-y-auto overscroll-contain px-4 py-3 sm:px-5 text-left [&_label]:text-left">
                     {/* Banner: agendamento de pacote — somente leitura nesta tela */}
                     {isPackagePreAgendado && (
                         <div className="xl:col-span-12 flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 p-3">
@@ -1043,9 +1075,9 @@ export default function AppointmentModal({ appointment, professionals, patients,
                             </div>
                         </div>
                     )}
-                    <div className="xl:col-span-5 space-y-3">
+<section data-appointment-step="0" aria-label="Paciente" style={{ display: activeStep === 0 ? undefined : "none" }} className="space-y-3">
                     {/* Bloco: Dados do Paciente */}
-                    <div className="bg-blue-50/30 rounded-lg p-3 border border-blue-100">
+                    <div className="bg-white rounded-lg p-3 border border-slate-200">
                         <h4 className="text-sm font-semibold text-blue-800 mb-2 flex items-center gap-2">
                             <i className="fas fa-user text-blue-600"></i> Identificação do Paciente
                         </h4>
@@ -1181,75 +1213,8 @@ export default function AppointmentModal({ appointment, professionals, patients,
                         </div>
                     </div>
 
-                    {/* Seção: Profissional e Especialidade */}
-                    <div className="bg-emerald-50/30 rounded-lg p-3 border border-emerald-100">
-                        <h4 className="text-sm font-semibold text-emerald-800 mb-2 flex items-center gap-2">
-                            <i className="fas fa-user-md text-emerald-600"></i> Profissional
-                        </h4>
-                        <div className="grid grid-cols-1 gap-3">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Profissional *</label>
-                                <select
-                                    name="professional"
-                                    value={formData.professionalId}
-                                    onChange={handleChange}
-                                    className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
-                                    required
-                                >
-                                    <option value="">Selecione um profissional</option>
-                                    {(professionals || []).map((p) => {
-                                        const professionalId = (p.id || p._id)?.toString() || '';
-                                        return (
-                                            <option key={professionalId || p.fullName} value={professionalId}>
-                                                {p.fullName}
-                                            </option>
-                                        );
-                                    })}
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Especialidade *</label>
-                                <select
-                                    name="specialty"
-                                    value={formData.specialty}
-                                    onChange={handleChange}
-                                    className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
-                                >
-                                    <option value="fonoaudiologia">Fonoaudiologia</option>
-                                    <option value="psicologia">Psicologia</option>
-                                    <option value="terapia_ocupacional">Terapia Ocupacional</option>
-                                    <option value="fisioterapia">Fisioterapia</option>
-                                    <option value="pediatria">Pediatria</option>
-                                    <option value="neuroped">Neuropediatria</option>
-                                    <option value="psicomotricidade">Psicomotricidade</option>
-                                    <option value="musicoterapia">Musicoterapia</option>
-                                    <option value="psicopedagogia">Psicopedagogia</option>
-                                    <option value="tongue_tie_test">Teste da Linguinha</option>
-                                    <option value="neuropsych_evaluation">Avaliação Neuropsicológica</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Status Operacional *</label>
-                                <select
-                                    name="operationalStatus"
-                                    value={formData.operationalStatus}
-                                    onChange={handleChange}
-                                    className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
-                                >
-                                    <option value="scheduled">Agendado</option>
-                                    <option value="pre_agendado">⭐ Pré-Agendado</option>
-                                    <option value="completed">Concluído</option>
-                                    <option value="canceled">Cancelado</option>
-                                    <option value="missed">Faltou</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-                    </div>
-
-                    <div className="xl:col-span-7 space-y-3">
                     {/* Seção: Contato e Responsável */}
-                    <div className="bg-purple-50/30 rounded-lg p-3 border border-purple-100">
+                    <div className="bg-white rounded-lg p-3 border border-slate-200">
                         <h4 className="text-sm font-semibold text-purple-800 mb-2 flex items-center gap-2">
                             <i className="fas fa-phone-alt text-purple-600"></i> Contato
                         </h4>
@@ -1313,8 +1278,77 @@ export default function AppointmentModal({ appointment, professionals, patients,
                         </div>
                     </div>
 
+
+</section>
+<section data-appointment-step="1" aria-label="Atendimento" style={{ display: activeStep === 1 ? undefined : "none" }} className="space-y-2">
+                    {/* Seção: Profissional e Especialidade */}
+                    <div className="bg-white rounded-lg p-2.5 border border-slate-200">
+                        <h4 className="text-sm font-semibold text-emerald-800 mb-2 flex items-center gap-2">
+                            <i className="fas fa-user-md text-emerald-600"></i> Profissional
+                        </h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-2 [&>div:first-child]:sm:col-span-2">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Profissional *</label>
+                                <select
+                                    name="professional"
+                                    value={formData.professionalId}
+                                    onChange={handleChange}
+                                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                    required
+                                >
+                                    <option value="">Selecione um profissional</option>
+                                    {(professionals || []).map((p) => {
+                                        const professionalId = (p.id || p._id)?.toString() || '';
+                                        return (
+                                            <option key={professionalId || p.fullName} value={professionalId}>
+                                                {p.fullName}
+                                            </option>
+                                        );
+                                    })}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Especialidade *</label>
+                                <select
+                                    name="specialty"
+                                    value={formData.specialty}
+                                    onChange={handleChange}
+                                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                >
+                                    <option value="fonoaudiologia">Fonoaudiologia</option>
+                                    <option value="psicologia">Psicologia</option>
+                                    <option value="terapia_ocupacional">Terapia Ocupacional</option>
+                                    <option value="fisioterapia">Fisioterapia</option>
+                                    <option value="pediatria">Pediatria</option>
+                                    <option value="neuroped">Neuropediatria</option>
+                                    <option value="psicomotricidade">Psicomotricidade</option>
+                                    <option value="musicoterapia">Musicoterapia</option>
+                                    <option value="psicopedagogia">Psicopedagogia</option>
+                                    <option value="tongue_tie_test">Teste da Linguinha</option>
+                                    <option value="neuropsych_evaluation">Avaliação Neuropsicológica</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Status Operacional *</label>
+                                <select
+                                    name="operationalStatus"
+                                    value={formData.operationalStatus}
+                                    onChange={handleChange}
+                                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                >
+                                    <option value="scheduled">Agendado</option>
+                                    <option value="pre_agendado">⭐ Pré-Agendado</option>
+                                    <option value="completed">Concluído</option>
+                                    <option value="canceled">Cancelado</option>
+                                    <option value="missed">Faltou</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+
                     {/* Seção: Dados do Agendamento */}
-                    <div className="bg-amber-50/30 rounded-lg p-3 border border-amber-100">
+                    <div className="bg-white rounded-lg p-2.5 border border-slate-200">
                         <h4 className="text-sm font-semibold text-amber-800 mb-2 flex items-center gap-2">
                             <i className="fas fa-calendar-alt text-amber-600"></i> Data e Hora
                         </h4>
@@ -1340,7 +1374,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                             );
                         })()}
                         
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-[190px_minmax(0,1fr)] [&_input[type=time]]:max-w-[160px] gap-3">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Data *</label>
                                 <input
@@ -1348,7 +1382,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                     name="date"
                                     value={formData.date}
                                     onChange={handleChange}
-                                    className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                                     required
                                 />
                             </div>
@@ -1359,7 +1393,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                     name="time"
                                     value={formData.time}
                                     onChange={handleChange}
-                                    className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                                     required
                                 />
                                 <p className="text-xs text-gray-500 mt-1">
@@ -1368,10 +1402,27 @@ export default function AppointmentModal({ appointment, professionals, patients,
                             </div>
                         </div>
                     </div>
+                    
+
+                    {/* Seção: Observações */}
+                    <div className="xl:col-span-12 bg-gray-50 rounded-lg p-2.5 border border-gray-200">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Observações</label>
+                        <textarea
+                            name="observations"
+                            value={formData.observations}
+                            onChange={handleChange}
+                            rows="1"
+                            className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                        />
                     </div>
 
+                
+
+
+</section>
+<section data-appointment-step="2" aria-label="Financeiro" style={{ display: activeStep === 2 ? undefined : "none" }} className="space-y-3">
                     {/* Seção: Faturamento */}
-                    <div className="xl:col-span-12 bg-indigo-50/30 rounded-lg p-3 border border-indigo-100">
+                    <div className="xl:col-span-12 bg-white rounded-lg p-3 border border-slate-200">
                         <div className="flex justify-between items-center mb-2">
                             <h4 className="text-sm font-semibold text-indigo-800 flex items-center gap-2">
                                 <i className="fas fa-dollar-sign text-indigo-600"></i> Faturamento
@@ -1784,22 +1835,11 @@ export default function AppointmentModal({ appointment, professionals, patients,
                         </div>
                     </div>
 
-                    {/* Seção: Observações */}
-                    <div className="xl:col-span-12 bg-gray-50 rounded-lg p-3 border border-gray-200">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Observações</label>
-                        <textarea
-                            name="observations"
-                            value={formData.observations}
-                            onChange={handleChange}
-                            rows="2"
-                            className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
-                        />
-                    </div>
 
+</section>
                 </div>
-
                     {/* Botões de ação */}
-                    <div className="px-6 py-3 border-t border-gray-200 flex justify-end gap-3 bg-gray-50 sticky bottom-0">
+                    <div className="px-4 sm:px-5 py-3 border-t border-gray-200 flex flex-wrap justify-end gap-2 bg-gray-50 shrink-0">
                         <button
                             type="button"
                             onClick={onClose}
@@ -1809,7 +1849,8 @@ export default function AppointmentModal({ appointment, professionals, patients,
                             Cancelar
                         </button>
                         
-                        {isPreExisting ? (
+                        {activeStep > 0 && <button type="button" disabled={isLoading || isLoadingDetails} onClick={() => goToStep(activeStep - 1)} className="mr-auto rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-white">Voltar</button>}
+                        {activeStep < 2 ? <button type="button" onClick={(event) => { event.preventDefault(); goToStep(activeStep + 1); }} disabled={isLoading || isLoadingDetails} className="rounded-lg bg-teal-700 px-5 py-2 font-semibold text-white hover:bg-teal-800 disabled:opacity-50">Continuar</button> : isPreExisting ? (
                             // Pré-agendamento EXISTENTE: botão que confirma/converte
                             <button
                                 type="button"
