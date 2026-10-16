@@ -19,16 +19,16 @@ export default function AppointmentTable({
     const specialty = SPECIALTIES[activeSpecialty] || SPECIALTIES.todas;
 
     return (
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-visible">
             {/* Cabeçalho */}
-            <div className="bg-white border-b border-gray-100 px-6 py-4">
+            <div className="bg-white border-b border-gray-100 px-5 py-3.5 rounded-t-xl">
                 <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
                     <div className="flex items-center gap-3">
                         <div className={`p-2 rounded-lg bg-gray-50 border border-gray-200`}>
                             <i className={`fas ${specialty.icon} text-gray-600 text-xl`}></i>
                         </div>
                         <div>
-                            <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                            <h3 className="text-base font-semibold text-gray-900 flex items-center gap-2">
                                 {specialty.name}
                                 <span className="text-xs font-medium bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
                                     {appointments.length} registro{appointments.length !== 1 ? 's' : ''}
@@ -79,8 +79,8 @@ export default function AppointmentTable({
                 ) : (
                     <>
                         {/* Header row — espelha as colunas do AppointmentRow */}
-                        <div className="flex items-center gap-3 px-4 py-2 mb-2 border-b border-gray-200">
-                            <div className="w-40 shrink-0 hidden sm:flex items-center">
+                        <div className="hidden sm:flex items-center gap-3 px-4 py-2 mb-1 border-b border-gray-200">
+                            <div className="w-36 shrink-0 flex items-center">
                                 <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
                                     <i className="fas fa-clock text-xs"></i> Horário / Profissional
                                 </span>
@@ -90,7 +90,7 @@ export default function AppointmentTable({
                                     <i className="fas fa-user text-xs"></i> Paciente
                                 </span>
                             </div>
-                            <div className="w-36 shrink-0 flex items-center">
+                            <div className="w-32 shrink-0 hidden lg:flex items-center">
                                 <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
                                     <i className="fas fa-stethoscope text-xs"></i> Área / Tipo
                                 </span>
@@ -113,7 +113,7 @@ export default function AppointmentTable({
                         </div>
 
                         {/* Rows */}
-                        <div className="space-y-1.5">
+                        <div className="divide-y divide-gray-100">
                             {appointments.map((appointment, index) => (
                                 <AppointmentRow
                                     key={appointment.id}

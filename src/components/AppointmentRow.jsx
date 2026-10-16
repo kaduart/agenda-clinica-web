@@ -21,26 +21,26 @@ export default function AppointmentRow({ appointment, onEdit, onReminder, onGene
       case "paid":
       case "Confirmado":
       case "Compareceu":
-        return "bg-emerald-600 text-white border border-emerald-700";
+        return "bg-emerald-50 text-emerald-700 border border-emerald-200";
       case "scheduled":
       case "pending":
       case "Pendente":
       case "Agendado":
-        return "bg-blue-600 text-white border border-blue-700";
+        return "bg-blue-50 text-blue-700 border border-blue-200";
       case "completed":
       case "Concluído":
       case "concluido":
-        return "bg-gray-600 text-white border border-gray-700";
+        return "bg-slate-100 text-slate-700 border border-slate-200";
       case "canceled":
       case "Cancelado":
-        return "bg-gray-400 text-white border border-gray-500";
+        return "bg-gray-100 text-gray-600 border border-gray-200";
       case "missed":
-        return "bg-rose-600 text-white border border-rose-700";
+        return "bg-rose-50 text-rose-700 border border-rose-200";
       case "pre_agendado":
       case "Pré-Agendado":
-        return "bg-violet-600 text-white border border-violet-700";
+        return "bg-violet-50 text-violet-700 border border-violet-200";
       default:
-        return "bg-gray-500 text-white border border-gray-600";
+        return "bg-gray-100 text-gray-700 border border-gray-200";
     }
   };
 
@@ -70,15 +70,11 @@ export default function AppointmentRow({ appointment, onEdit, onReminder, onGene
   const rowToneBySpecialty = (key) => {
     const s = SPECIALTIES[key];
     if (!s) {
-      return { bg: "bg-white", hover: "hover:bg-gray-100", border: "border-l-gray-400", text: "text-gray-700" };
+      return { marker: "bg-gray-400", bg: "bg-white", text: "text-gray-700" };
     }
-    // Deriva a cor de borda a partir do textColor (ex: text-teal-700 → border-l-teal-500)
-    const colorBase = s.textColor.replace("text-", "").replace(/-\d+$/, "");
-    const hoverBg = s.lightBg.replace(/-\d+$/, '-200').replace("bg-", "hover:bg-");
     return {
+      marker: s.bgColor,
       bg: s.lightBg,
-      hover: hoverBg,
-      border: `border-l-${colorBase}-600`,
       text: s.textColor,
     };
   };
@@ -124,13 +120,19 @@ export default function AppointmentRow({ appointment, onEdit, onReminder, onGene
   };
 
   const tone = rowToneBySpecialty(specialtyKey);
-  const rowAccent = isCancelled
-    ? "border-l-[6px] border-l-gray-400 bg-gray-100"
+  const rowSurface = isCancelled
+    ? "bg-gray-100 hover:bg-gray-200"
     : isLivre
-      ? "border-l-[6px] border-l-emerald-600 bg-emerald-100 hover:bg-emerald-200"
+      ? "bg-emerald-100 hover:brightness-[0.98]"
       : isPre
-        ? "border-l-[6px] border-l-violet-600 bg-violet-100 hover:bg-violet-200"
-        : `border-l-[6px] ${tone.border} ${tone.bg} ${tone.hover}`;
+        ? "bg-violet-100 hover:brightness-[0.98]"
+        : `${tone.bg} hover:brightness-[0.98]`;
+
+  const rowMarker = isCancelled
+    ? "bg-gray-400"
+    : isPre
+      ? "bg-violet-500"
+      : tone.marker;
 
   // Handler para enviar mensagem WhatsApp
   const handleWhatsAppSend = async (type) => {
@@ -230,13 +232,15 @@ export default function AppointmentRow({ appointment, onEdit, onReminder, onGene
   const canConfirmWhatsApp = patientPhone && (isPre || appointment.operationalStatus === 'scheduled');
 
   return (
-    <div className={`flex items-stretch gap-3 px-4 py-3 rounded-xl border border-gray-200 border-l-[5px] transition-all shadow-sm ${rowAccent} ${isCancelled ? 'opacity-60 grayscale' : ''}`}>
+    <div className={`relative flex flex-wrap sm:flex-nowrap items-stretch gap-x-3 gap-y-2 px-4 py-2.5 transition-colors ${rowSurface}`}>
+
+      <span className={`absolute left-0 top-3 bottom-3 w-px rounded-full ${rowMarker}`} aria-hidden="true"></span>
 
       {/* Data/Hora + Profissional agrupados */}
-      <div className="w-40 shrink-0 hidden sm:flex flex-col justify-center">
-        <div className="text-gray-900 font-bold text-sm leading-tight tracking-tight flex items-center gap-1.5">
+      <div className={`w-[4.75rem] sm:w-36 shrink-0 flex flex-col justify-center ${isCancelled ? 'text-gray-400' : ''}`}>
+        <div className="text-gray-950 font-semibold text-base leading-tight tracking-tight tabular-nums flex flex-col sm:flex-row sm:items-center sm:gap-1.5">
           <span>{appointment.time || "-"}</span>
-          <span className="text-gray-300">|</span>
+          <span className="hidden sm:inline text-gray-300">|</span>
           <span className="text-xs text-gray-500 font-medium">
             {(() => {
               const [y, m, d] = (appointment.date || "").split("-");
@@ -246,13 +250,13 @@ export default function AppointmentRow({ appointment, onEdit, onReminder, onGene
             })()}
           </span>
         </div>
-        <div className="text-gray-600 text-xs truncate mt-1">
+        <div className="text-gray-500 text-[11px] sm:text-xs truncate mt-1" title={appointment.doctor?.fullName || appointment.professional?.fullName || appointment.professional?.name || ""}>
           {appointment.doctor?.fullName || appointment.professional?.fullName || appointment.professional?.name || (typeof appointment.professional === 'string' ? appointment.professional : null) || "-"}
         </div>
       </div>
 
       {/* Paciente */}
-      <div className="flex-[1.2] min-w-0 flex items-center">
+      <div className={`flex-[1.2] min-w-0 flex items-center ${isCancelled ? 'opacity-60' : ''}`}>
         <div className="flex items-start gap-2.5">
           <span className="shrink-0 mt-0.5 w-5 text-center text-gray-400">{getSourceIcon(source)}</span>
           <div className="min-w-0">
@@ -284,31 +288,31 @@ export default function AppointmentRow({ appointment, onEdit, onReminder, onGene
       </div>
 
       {/* Área + Tipo agrupados */}
-      <div className="w-36 shrink-0 flex flex-col justify-center">
+      <div className={`w-32 shrink-0 hidden lg:flex flex-col justify-center min-w-0 ${isCancelled ? 'opacity-60' : ''}`}>
         <div className={`font-semibold text-base ${tone.text || 'text-gray-900'}`}>{SPECIALTIES[specialtyKey]?.name || appointment.specialty || "-"}</div>
         {(() => {
           const st = resolveServiceType(appointment);
           if (!st) return null;
           const label = getServiceTypeLabel(st);
           const colorClass = getServiceTypeColorClass(st);
-          return label ? <span className={`mt-1 inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium ${colorClass}`}>{label}</span> : null;
+          return label ? <span className={`mt-1 inline-flex w-fit max-w-full items-center px-2 py-0.5 rounded-md text-xs font-medium truncate ${colorClass}`} title={label}>{label}</span> : null;
         })()}
       </div>
 
       {/* Anotações */}
-      <div className="w-32 shrink-0 hidden xl:flex items-center">
+      <div className={`w-32 shrink-0 hidden xl:flex items-center ${isCancelled ? 'opacity-60' : ''}`}>
         <div className="text-sm text-gray-600 truncate" title={appointment.observations || ""}>{appointment.observations || "-"}</div>
       </div>
 
       {/* Status */}
       <div className="w-28 shrink-0 text-center hidden md:flex items-center justify-center">
-        <span className={`px-3 py-1 inline-flex text-xs font-bold rounded-full whitespace-nowrap ${getStatusColor(appointment.operationalStatus)}`}>
+        <span className={`px-2.5 py-1 inline-flex text-xs font-semibold rounded-full whitespace-nowrap ${getStatusColor(appointment.operationalStatus)}`}>
           {isPre ? 'Pré-agendado' : (appointment.status || appointment.operationalStatus || "-")}
         </span>
       </div>
 
       {/* Ações contextuais */}
-      <div className="w-52 shrink-0 flex items-center justify-end">
+      <div className="w-full sm:w-52 shrink-0 flex items-center justify-end border-t border-gray-100 pt-2 sm:border-0 sm:pt-0">
         <div className="flex items-center gap-1">
           {/* Confirmado/Concluído: Avaliação Google / pós-atendimento em destaque */}
           {canSendPostAppointment && (() => {
@@ -325,13 +329,13 @@ export default function AppointmentRow({ appointment, onEdit, onReminder, onGene
             return (
               <button
                 type="button"
-                className={`px-2.5 py-1.5 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 shadow-sm ${
+                className={`min-h-10 px-3 py-2 text-xs font-semibold whitespace-nowrap rounded-lg transition-colors flex items-center gap-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
                   bothSent
-                    ? "text-white bg-emerald-600 hover:bg-emerald-700"
+                    ? "text-emerald-700 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 focus-visible:ring-emerald-400"
                     : anySent
-                      ? "text-white bg-teal-500 hover:bg-teal-600"
+                      ? "text-teal-700 bg-teal-50 border border-teal-200 hover:bg-teal-100 focus-visible:ring-teal-400"
                       : patientPhone
-                        ? "text-white bg-amber-500 hover:bg-amber-600"
+                        ? "text-amber-800 bg-amber-50 border border-amber-300 hover:bg-amber-100 focus-visible:ring-amber-400"
                         : "text-amber-700 bg-amber-100 cursor-not-allowed opacity-70"
                 }`}
                 onClick={() => {
@@ -351,9 +355,10 @@ export default function AppointmentRow({ appointment, onEdit, onReminder, onGene
             <div className="relative">
               <button
                 type="button"
-                className="p-2 text-emerald-600 hover:text-emerald-800 hover:bg-emerald-100 rounded-lg transition-colors"
+                className="w-10 h-10 inline-flex items-center justify-center text-emerald-600 hover:text-emerald-800 hover:bg-emerald-100 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
                 onClick={() => setShowWhatsAppMenu(!showWhatsAppMenu)}
                 title="WhatsApp"
+                aria-label="Abrir opções do WhatsApp"
               >
                 <i className="fab fa-whatsapp text-base"></i>
               </button>
@@ -370,7 +375,7 @@ export default function AppointmentRow({ appointment, onEdit, onReminder, onGene
                     {patientPhone && (
                       <button
                         type="button"
-                        className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-emerald-50 hover:text-emerald-800 flex items-center gap-2 disabled:opacity-50"
+                        className="w-full min-h-11 px-4 py-2 text-left text-sm text-gray-700 hover:bg-emerald-50 hover:text-emerald-800 flex items-center gap-2 disabled:opacity-50"
                         onClick={() => { handleWhatsAppSend('confirm'); setShowWhatsAppMenu(false); }}
                         disabled={sendingWhatsApp === 'confirm'}
                       >
@@ -380,7 +385,7 @@ export default function AppointmentRow({ appointment, onEdit, onReminder, onGene
                     {patientPhone && (
                       <button
                         type="button"
-                        className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-amber-50 hover:text-amber-800 flex items-center gap-2 disabled:opacity-50"
+                        className="w-full min-h-11 px-4 py-2 text-left text-sm text-gray-700 hover:bg-amber-50 hover:text-amber-800 flex items-center gap-2 disabled:opacity-50"
                         onClick={() => { handleWhatsAppSend('reminder'); setShowWhatsAppMenu(false); }}
                         disabled={sendingWhatsApp === 'reminder'}
                       >
@@ -400,7 +405,7 @@ export default function AppointmentRow({ appointment, onEdit, onReminder, onGene
                     {professionalPhone && (
                       <button
                         type="button"
-                        className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-800 flex items-center gap-2 disabled:opacity-50"
+                        className="w-full min-h-11 px-4 py-2 text-left text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-800 flex items-center gap-2 disabled:opacity-50"
                         onClick={() => { handleWhatsAppSendProfessional('notify'); setShowWhatsAppMenu(false); }}
                         disabled={sendingWhatsApp === 'notify_prof'}
                       >
@@ -410,7 +415,7 @@ export default function AppointmentRow({ appointment, onEdit, onReminder, onGene
                     {professionalPhone && (
                       <button
                         type="button"
-                        className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-800 flex items-center gap-2 disabled:opacity-50"
+                        className="w-full min-h-11 px-4 py-2 text-left text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-800 flex items-center gap-2 disabled:opacity-50"
                         onClick={() => { handleWhatsAppSendProfessional('reminder'); setShowWhatsAppMenu(false); }}
                         disabled={sendingWhatsApp === 'reminder_prof'}
                       >
@@ -427,9 +432,10 @@ export default function AppointmentRow({ appointment, onEdit, onReminder, onGene
           {isCancelled && !appointment.__isVirtual && (
             <button
               type="button"
-              className="p-2 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-100 rounded-lg transition-colors"
+              className="w-10 h-10 inline-flex items-center justify-center text-indigo-600 hover:text-indigo-800 hover:bg-indigo-100 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
               onClick={() => onEdit(appointment)}
               title="Reagendar"
+              aria-label="Reagendar atendimento"
             >
               <i className="fas fa-calendar-plus text-sm"></i>
             </button>
@@ -439,7 +445,7 @@ export default function AppointmentRow({ appointment, onEdit, onReminder, onGene
           {!isLivre && !isCancelled && !isCompleted && !appointment.__isVirtual && onCancel && (
             <button
               type="button"
-              className="p-2 text-rose-600 hover:text-rose-800 hover:bg-rose-100 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400"
+              className="w-10 h-10 inline-flex items-center justify-center text-rose-600 hover:text-rose-800 hover:bg-rose-100 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400"
               onClick={() => onCancel(appointment)}
               title="Cancelar agendamento"
               aria-label="Cancelar agendamento"
@@ -451,9 +457,10 @@ export default function AppointmentRow({ appointment, onEdit, onReminder, onGene
           {/* Editar */}
           <button
             type="button"
-            className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-100 rounded-lg transition-colors"
+            className="w-10 h-10 inline-flex items-center justify-center text-blue-600 hover:text-blue-800 hover:bg-blue-100 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
             onClick={() => onEdit(appointment)}
             title={appointment.__isVirtual ? "Agendar" : "Editar"}
+            aria-label={appointment.__isVirtual ? "Agendar horário" : "Editar agendamento"}
           >
             <i className={`fas ${appointment.__isVirtual ? 'fa-calendar-plus' : 'fa-edit'} text-sm`}></i>
           </button>
@@ -461,7 +468,7 @@ export default function AppointmentRow({ appointment, onEdit, onReminder, onGene
           {/* Menu de ações avançadas */}
           {!appointment.__isVirtual && (
             <div className="relative">
-              <button type="button" className="p-2 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors" onClick={() => setShowMenu(!showMenu)} title="Mais opções">
+              <button type="button" className="w-10 h-10 inline-flex items-center justify-center text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-400" onClick={() => setShowMenu(!showMenu)} title="Mais opções" aria-label="Abrir mais opções">
                 <i className="fas fa-ellipsis-v text-sm"></i>
               </button>
               {showMenu && (
