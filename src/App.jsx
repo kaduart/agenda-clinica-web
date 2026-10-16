@@ -125,10 +125,10 @@ export default function App() {
   const [cancelReasonRequest, setCancelReasonRequest] = React.useState(null);
   const cancelReasonResolverRef = React.useRef(null);
 
-  const requestCancelReason = React.useCallback((defaultValue) => (
+  const requestCancelReason = React.useCallback((defaultValue, appointment = null, options = {}) => (
     new Promise((resolve) => {
       cancelReasonResolverRef.current = resolve;
-      setCancelReasonRequest({ defaultValue });
+      setCancelReasonRequest({ defaultValue, appointment, title: options.title });
     })
   ), []);
 
@@ -384,25 +384,28 @@ export default function App() {
     isCancellingRef.current = true;
     
     const isPre = appointment.operationalStatus === 'pre_agendado';
-    const actionName = isPre ? "descartar este pré-agendamento" : "cancelar este agendamento";
 
     let reason = "Cancelado via Web App";
+    let cancelRequester; // quem SOLICITOU (sempre obrigatório no modal, inclusive em pré-agendamento)
 
     if (isPre) {
-      // Para pré-agendamento: descarta (status = 'descartado')
-      const ok = await confirmToast(`Deseja ${actionName}?`, { confirmText: "Confirmar", confirmColor: "red" });
-      if (!ok) {
+      // Pré-agendamento também exige QUEM solicitou (mesmo modal do cancelamento).
+      const answer = await requestCancelReason("", appointment, { title: "Descartar pré-agendamento" });
+      if (!answer) {
         isCancellingRef.current = false;
         return;
       }
-      reason = "Descartado pela secretária";
+      reason = answer.reason;
+      cancelRequester = answer.cancelRequester;
     } else {
       // Para agendamento real: pede motivo
-      reason = await requestCancelReason("Cancelado pelo paciente");
-      if (!reason) {
+      const answer = await requestCancelReason("", appointment);
+      if (!answer) {
         isCancellingRef.current = false;
         return;
       }
+      reason = answer.reason;
+      cancelRequester = answer.cancelRequester;
     }
 
     const isCompleted = appointment.operationalStatus === 'completed';
@@ -410,15 +413,15 @@ export default function App() {
     try {
       if (isPre) {
         // Pré-agendamento: cancela (status = 'cancelado')
-        await cancelAppointment(appointment.id, "Cancelado via Web App");
+        await cancelAppointment(appointment.id, reason, { cancelRequester });
         toast.success("Pré-agendamento cancelado!");
       } else if (isCompleted) {
         // Agendamento concluído: requer forceCancel explícito, sem estornar pagamento
-        await cancelAppointment(appointment.id, reason, { forceCancel: true, reverseFinancial: false });
+        await cancelAppointment(appointment.id, reason, { forceCancel: true, reverseFinancial: false, cancelRequester });
         toast.success("Agendamento revertido (force_cancelled). Pagamento preservado.");
       } else {
         // Agendamento real: cancela (soft delete / status cancelado)
-        await cancelAppointment(appointment.id, reason);
+        await cancelAppointment(appointment.id, reason, { cancelRequester });
         toast.success("Agendamento cancelado!");
       }
       // Force refresh imediato para atualizar a lista
@@ -624,10 +627,12 @@ export default function App() {
 
       // canceled → endpoint dedicado /cancel com todos os campos relevantes
       if (newStatus === 'canceled') {
-        const reason = await requestCancelReason("Cancelado pela secretária");
-        if (!reason) return;
+        const answer = await requestCancelReason("", editingAppointment);
+        if (!answer) return;
+        const reason = answer.reason;
         try {
           await cancelAppointment(appointmentId, reason, {
+            cancelRequester: answer.cancelRequester,
             forceCancel: originalStatus === 'completed',
             reverseFinancial: false,
             notes: appointmentData.observations ?? appointmentData.notes,
@@ -1200,6 +1205,8 @@ export default function App() {
       {cancelReasonRequest && (
         <CancelReasonModal
           defaultValue={cancelReasonRequest.defaultValue}
+          appointment={cancelReasonRequest.appointment}
+          title={cancelReasonRequest.title}
           onCancel={() => finishCancelReasonRequest(null)}
           onConfirm={finishCancelReasonRequest}
         />
@@ -1214,6 +1221,7 @@ export default function App() {
             appointments={appointments}
             onSave={saveAppointment}
             onConfirmPre={onConfirmPreAppointment}
+            requestCancelReason={requestCancelReason}
             onClose={handleCloseModal}
             onReloadPatients={handleReloadPatients}
             authError={patientsError === 'auth'}

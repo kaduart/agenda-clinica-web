@@ -64,6 +64,9 @@ export async function cancelAppointment(id, reason = "Cancelado via Web App", op
         reason,
         confirmedAbsence: options.confirmedAbsence || false,
         notifyPatient: options.notifyPatient || false,
+        // Quem SOLICITOU o cancelamento (patient | professional | clinic). Contrato: docs/CANCEL_REQUESTER_INTEGRATION_CONTRACT.md
+        ...(options.cancelRequester && { cancelRequester: options.cancelRequester }),
+        ...(options.cancelRequestedAt && { cancelRequestedAt: options.cancelRequestedAt }),
         forceCancel: options.forceCancel || false,
         reverseFinancial: options.reverseFinancial || false,
         ...(options.notes != null && { notes: options.notes }),

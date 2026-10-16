@@ -55,7 +55,7 @@ function resolvePatientData(appointment, foundPatient) {
     };
 }
 
-export default function AppointmentModal({ appointment, professionals, patients, appointments, onSave, onConfirmPre, onClose, onReloadPatients, authError }) {
+export default function AppointmentModal({ appointment, professionals, patients, appointments, onSave, onConfirmPre, requestCancelReason, onClose, onReloadPatients, authError }) {
     // 🎯 Estado inicial LIMPO — sempre começa como novo pré-agendamento Fono
     // O useEffect principal abaixo sobrescreve quando estiver editando um existente
     const [formData, setFormData] = React.useState({
@@ -870,9 +870,14 @@ export default function AppointmentModal({ appointment, professionals, patients,
 
         // Se o status foi alterado para cancelado, cancela em vez de confirmar
         if (formData.operationalStatus === 'canceled' || formData.operationalStatus === 'cancelado') {
+            // Descartar/cancelar pré-agendamento também exige QUEM solicitou.
+            const answer = requestCancelReason
+                ? await requestCancelReason("", appointment, { title: "Descartar pré-agendamento" })
+                : null;
+            if (!answer) return;
             setIsLoading(true);
             try {
-                await cancelAppointment(appointment.id, "Cancelado via Web App");
+                await cancelAppointment(appointment.id, answer.reason, { cancelRequester: answer.cancelRequester });
                 onClose();
             } catch (err) {
                 alert("Erro ao cancelar: " + apiErrorText(err));

@@ -435,6 +435,19 @@ export default function AppointmentRow({ appointment, onEdit, onReminder, onGene
             </button>
           )}
 
+          {/* Cancelar (atalho): abre o modal simples "quem solicitou + motivo" */}
+          {!isLivre && !isCancelled && !isCompleted && !appointment.__isVirtual && onCancel && (
+            <button
+              type="button"
+              className="p-2 text-rose-600 hover:text-rose-800 hover:bg-rose-100 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400"
+              onClick={() => onCancel(appointment)}
+              title="Cancelar agendamento"
+              aria-label="Cancelar agendamento"
+            >
+              <i className="fas fa-ban text-sm" aria-hidden="true"></i>
+            </button>
+          )}
+
           {/* Editar */}
           <button
             type="button"
