@@ -43,9 +43,12 @@ export default function CancelReasonModal({ defaultValue = "", appointment = nul
     const [requester, setRequester] = React.useState(null);
     const reasonRef = React.useRef(null);
     const firstOptionRef = React.useRef(null);
+    const formRef = React.useRef(null);
 
     React.useEffect(() => {
-        firstOptionRef.current?.focus();
+        // Foco inicial no próprio diálogo (não numa opção): o contorno de foco não pode
+        // parecer uma opção já selecionada.
+        formRef.current?.focus();
         const handleEscape = (event) => {
             if (event.key === "Escape") onCancel();
         };
@@ -82,8 +85,10 @@ export default function CancelReasonModal({ defaultValue = "", appointment = nul
             aria-labelledby="cancel-reason-title"
         >
             <form
+                ref={formRef}
+                tabIndex={-1}
                 onSubmit={handleSubmit}
-                className="flex max-h-full w-full max-w-xl flex-col overflow-hidden rounded-3xl bg-white text-left shadow-2xl"
+                className="flex max-h-full w-full max-w-xl flex-col overflow-hidden rounded-3xl bg-white text-left shadow-2xl focus:outline-none"
             >
                 <header className="shrink-0 px-5 pt-5 sm:px-6">
                     <div className="flex items-center justify-between gap-4">

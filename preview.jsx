@@ -1,0 +1,11 @@
+import React from 'react';
+import {createRoot} from 'react-dom/client';
+import AppointmentModal from './src/components/AppointmentModal.jsx';
+import api from './src/services/api.js';
+import './src/index.css';
+api.interceptors.request.clear();
+api.defaults.adapter=async config=>({data:{data:[],items:[],holidays:[]},status:200,statusText:'OK',headers:{},config});
+const professional={id:'demo-professional',_id:'demo-professional',fullName:'Débora Menezes — profissional fictícia',specialty:'fonoaudiologia'};
+const patient={id:'demo-patient',_id:'demo-patient',fullName:'Maria de Souza — paciente fictícia',phone:'62999999999',dateOfBirth:'2019-06-10'};
+const appointment={id:'ext_demo',patient,patientId:patient.id,professional:professional.fullName,professionalId:professional.id,phone:patient.phone,birthDate:patient.dateOfBirth,date:'2026-10-20',time:'10:40',operationalStatus:'scheduled',billingType:'particular',paymentAmount:160,paymentMethod:'pix',specialty:'fonoaudiologia'};
+createRoot(document.getElementById('root')).render(<AppointmentModal appointment={appointment} professionals={[professional]} patients={[patient]} appointments={[]} onSave={async()=>{}} onClose={()=>{}} onReloadPatients={async()=>{}} />);

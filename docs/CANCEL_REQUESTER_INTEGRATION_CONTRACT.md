@@ -1,8 +1,6 @@
 # Contrato — quem solicitou o cancelamento (integrações)
 
-> Cópia do contrato mantido no repo CRM (`back/docs/CANCEL_REQUESTER_INTEGRATION_CONTRACT.md`). Nenhum código da agenda foi alterado.
-
-Atualizado em 2026-10-16. Vale para **Agenda Externa** (repo `agenda`) e **Amanda** (WhatsApp).
+Atualizado em 2026-10-16 (revisado: prazo exato, pré-agendado, cancelamentos automáticos). Vale para **Agenda Externa** (repo `agenda`) e **Amanda** (WhatsApp).
 Regra de ouro: **nunca inferir o solicitante** pelo token de serviço, pelo texto do motivo ou pelo
 status "falta confirmada". Só o canal que *sabe* quem pediu deve informar.
 
@@ -33,11 +31,45 @@ Resposta inclui `notification`: `{ status: not_requested | queued | already_queu
 
 Todos os "Não informado" aparecem no relatório (aba *Sem identificação*), com o canal de origem.
 
+## Quando a obrigatoriedade passa a valer (instante exato)
+
+Fuso: America/Sao_Paulo (UTC-3). Constante: `LEGACY_GRACE_ENDS_AT_ISO = 2026-12-01T00:00:00-03:00`
+em `domain/appointment/cancelRequester.js`.
+
+- Até **30/11/2026 23:59:59.999** (o dia 30 inteiro) o backend ainda aceita cancelamento **de usuário do CRM** sem
+  solicitante e marca `cancelChannel=legacy_client`.
+- A partir de **01/12/2026 00:00:00** passa a responder **400 MISSING_CANCEL_REQUESTER**.
+- Teste: `tests/unit/cancelRequesterGrace.test.js` (cobre 23:59:59.999 do dia 30 e 00:00:00 do dia 1º).
+
+| Canal | Solicitante | Valia antes do prazo | Vale a partir de 01/12/2026 00:00 |
+|---|---|---|---|
+| CRM — usuário logado (calendário, financeiro, liminar, convênio, pacotes) | obrigatório | aceita ausência (telas antigas) → `legacy_client` | **obrigatório (400 sem ele)** |
+| Agenda externa — `PATCH /v2/appointments/:id/cancel` (token `agenda-service`) | opcional no backend; **o modal novo da agenda sempre envia** | opcional → "Não informado" + `agenda_service` | **continua opcional no backend** (decisão pendente de endurecer; ver abaixo) |
+| Agenda externa — sync legado `/import-from-agenda/agenda-externa/cancel` | opcional | opcional | continua opcional |
+| Amanda (WhatsApp) | não existe caminho que cancele agendamento | — | — |
+
+> Endurecer o canal `agenda-service`: remover `required: !req.user?.isService` em `routes/appointment.v2.js`
+> **somente depois** de a agenda externa estar em produção com o modal novo. Não há data definida; não é automático.
+
+## Pré-agendado
+
+Descartar/cancelar um **pré-agendamento** é um cancelamento: na agenda externa exige **quem solicitou** + motivo, igual a
+um agendamento normal (ícone da linha **e** troca de status para cancelado no modal de edição). No CRM o backend já exigia
+o solicitante para qualquer cancelamento de usuário. "Confirmar" um pré-agendamento (virar agendamento) **não** é
+cancelamento e não pergunta nada.
+
+## Cancelamentos automáticos (`cancelSource`)
+
+Contam como automáticos (separados dos manuais sem solicitante) os cancelamentos cujo `cancelSource` está em
+`SYSTEM_CANCEL_SOURCES`. Passaram a ser marcados em 2026-10-16: `liminar_plan_update` (dia da semana removido do plano da
+liminar), `unconfirmed_auto` (job das 18h) e `package_exhausted` (pacote esgotado). **Histórico antes disso não tem a marca
+e continua como "Não informado"** — não é reclassificado nem inferido pelo texto do motivo.
+
 ## O que cada integração precisa fazer
 
 ### Agenda Externa
 1. No `CancelReasonModal`, perguntar **"Quem solicitou?"** (3 opções, sem padrão) além do motivo.
-2. Enviar `cancelRequester` (e `cancelRequestedAt` se a secretária informar) em `cancelAppointment(...)`.
+2. Enviar `cancelRequester` (e `cancelRequestedAt` se a secretária informar) em `cancelAppointment(...)`. **Feito** (2026-10-16): modal novo, ícone na linha, pré-agendado incluído.
 3. Não enviar `notifyPatient: true` sem checkbox visível ao usuário (hoje envia sempre `false`).
 4. Depois que a agenda enviar o campo, o backend poderá passar a exigi-lo também para `agenda-service`
    (remover `required: !req.user?.isService` em `routes/appointment.v2.js`).
