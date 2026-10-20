@@ -167,16 +167,16 @@ export function generateReminderMessage(paciente) {
   const ehHoje = dateStr === hojeStr;
   const ehAmanha = dateStr === amanhaStr;
   
-  const diaTexto = ehHoje ? `Hoje (${dataCompleta})` : ehAmanha ? `Amanhã (${dataCompleta})` : dataCompleta;
+  const quando = ehHoje
+    ? `hoje, às *${hora}*`
+    : ehAmanha
+      ? `amanhã, às *${hora}*`
+      : `no dia *${dataCompleta}*, às *${hora}*`;
+  const comProfissional = profissional ? ` com *${profissional}*` : '';
 
-  return `${getSaudacao()}${responsavel ? `, ${responsavel}` : ''}! 💚\n\n` +
-    `🔔 *Lembrete de atendimento*\n\n` +
-    `👤 Paciente: *${nomePaciente}*\n` +
-    `📅 Data: *${diaTexto}*\n` +
-    `⏰ Horário: *${hora}*\n` +
-    `${profissional ? `👩‍⚕️ Profissional: *${profissional}*\n` : ''}` +
-    `📍 Clínica Fono Inova\nAv. Minas Gerais, 405 — Jundiaí\n\n` +
-    `Selecione abaixo se poderá comparecer:`;
+  return `${getSaudacao()}${responsavel ? `, ${responsavel}` : ''}! 💚\n` +
+    `Estamos te esperando ${quando}, para o atendimento de *${nomePaciente}*${comProfissional}, na Clínica Fono Inova.\n` +
+    `Por favor, confirme sua presença na opção abaixo.`;
 }
 
 export {
