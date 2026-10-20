@@ -74,7 +74,10 @@ export default function RemindersListModal({
             if (r.patientPhone) {
                 try {
                     const message = generateReminderMessage(appointmentLike);
-                    const result = await sendViaExtension(r.patientPhone, message);
+                    const result = await sendViaExtension(r.patientPhone, message, {
+                        appointmentId: r.id || r._id || r.appointmentId,
+                        purpose: 'attendance_confirmation',
+                    });
                     if (result.success) {
                         sent++;
                     } else {

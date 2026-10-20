@@ -10,6 +10,7 @@ import {
   sendWhatsAppWebMessage,
   sendWhatsAppVpsMessage,
   sendWhatsAppMetaText,
+  markAttendanceConfirmationSent,
 } from '../api/v2/whatsappClient.js';
 
 import {
@@ -20,7 +21,7 @@ import {
 /**
  * Envia mensagem (usa VPS se disponível, senão API Meta Business)
  */
-export async function sendViaExtension(phone, message) {
+export async function sendViaExtension(phone, message, context = {}) {
   let needsReconnect = false;
 
   try {
@@ -31,7 +32,7 @@ export async function sendViaExtension(phone, message) {
     }
 
     // 🟢 Tenta WhatsApp Web nativo primeiro (chip comum / Business)
-    const response = await sendWhatsAppWebMessage({ phone, message });
+    const response = await sendWhatsAppWebMessage({ phone, message, ...context });
     return { ...response, needsReconnect: false };
   } catch (err) {
     const error = err.response?.data?.error || err.message || '';
@@ -42,6 +43,9 @@ export async function sendViaExtension(phone, message) {
       
       try {
         const response = await sendWhatsAppVpsMessage({ phone, message });
+        if (context.purpose === 'attendance_confirmation' && context.appointmentId) {
+          await markAttendanceConfirmationSent(context.appointmentId, response?.messageId || response?.id);
+        }
         return { ...response, needsReconnect: true };
       } catch (vpsErr) {
         const vpsError = vpsErr.response?.data?.error || '';
@@ -51,6 +55,9 @@ export async function sendViaExtension(phone, message) {
           
           try {
             const response = await sendWhatsAppMetaText({ phone, text: message });
+            if (context.purpose === 'attendance_confirmation' && context.appointmentId) {
+              await markAttendanceConfirmationSent(context.appointmentId, response?.messageId || response?.id);
+            }
             return { ...response, needsReconnect: true };
           } catch (metaErr) {
             const metaError = metaErr.response?.data?.error || metaErr.message;

@@ -90,6 +90,11 @@ export default function AppointmentTable({
                                     <i className="fas fa-user text-xs"></i> Paciente
                                 </span>
                             </div>
+                            <div className="w-36 shrink-0 hidden md:flex items-center justify-center">
+                                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center justify-center gap-1.5">
+                                    <i className="fas fa-comment-check text-xs"></i> Confirmação
+                                </span>
+                            </div>
                             <div className="w-32 shrink-0 hidden lg:flex items-center">
                                 <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
                                     <i className="fas fa-stethoscope text-xs"></i> Área / Tipo
@@ -102,7 +107,7 @@ export default function AppointmentTable({
                             </div>
                             <div className="w-28 shrink-0 text-center hidden md:flex items-center justify-center">
                                 <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center justify-center gap-1.5">
-                                    <i className="fas fa-flag text-xs"></i> Status
+                                    <i className="fas fa-flag text-xs"></i> Status do atendimento
                                 </span>
                             </div>
                             <div className="w-52 shrink-0 flex items-center justify-end">

@@ -46,8 +46,13 @@ export async function sendBaileysMessage({ phone, message }) {
     return response.data;
 }
 
-export async function sendWhatsAppWebMessage({ phone, message }) {
-    const response = await api.post('/api/whatsapp-web/send', { phone, message });
+export async function sendWhatsAppWebMessage({ phone, message, appointmentId, purpose }) {
+    const response = await api.post('/api/whatsapp-web/send', { phone, message, appointmentId, purpose });
+    return response.data;
+}
+
+export async function markAttendanceConfirmationSent(appointmentId, messageId) {
+    const response = await api.patch(`/api/v2/appointments/${appointmentId}/attendance-confirmation/sent`, { messageId });
     return response.data;
 }
 

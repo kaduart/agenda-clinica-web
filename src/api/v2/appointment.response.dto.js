@@ -6,6 +6,7 @@
  */
 
 import { mapPatientResponseDTO, extractPatientName, extractPatientId } from './patient.response.dto';
+import { resolveAttendanceConfirmation } from '../../utils/attendanceConfirmation';
 
 export const extractDoctorId = (raw) => {
     if (!raw) return '';
@@ -22,6 +23,7 @@ export const extractDoctorName = (raw) => {
 export const mapDoctorResponseDTO = (raw) => {
     const id = extractDoctorId(raw);
     const name = extractDoctorName(raw);
+
     return {
         id,
         name,
@@ -38,6 +40,8 @@ export const mapDoctorResponseDTO = (raw) => {
  */
 export const mapAppointmentResponseDTO = (raw) => {
     if (!raw) return null;
+
+    const attendanceConfirmation = resolveAttendanceConfirmation(raw);
 
     const rawDate = typeof raw.date === 'string' ? raw.date : (raw.date ? new Date(raw.date).toISOString() : '');
     const dateStr = rawDate.substring(0, 10);
@@ -103,6 +107,7 @@ export const mapAppointmentResponseDTO = (raw) => {
         rescheduledAt: raw.rescheduledAt || null,
         canceledAt: raw.canceledAt || null,
         cancelReason: raw.cancelReason || '',
+        attendanceConfirmation,
         raw
     };
 };

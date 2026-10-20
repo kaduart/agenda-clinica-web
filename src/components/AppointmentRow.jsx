@@ -2,6 +2,7 @@ import { useState } from "react";
 import { SPECIALTIES } from "../config/specialties";
 import { resolveSpecialtyKey } from "../utils/specialty";
 import { resolveServiceType, getServiceTypeLabel, getServiceTypeColorClass } from "../utils/serviceType";
+import { ATTENDANCE_CONFIRMATION_UI, resolveAttendanceConfirmation } from "../utils/attendanceConfirmation";
 import {
   sendViaExtension,
   generateConfirmationMessage,
@@ -154,7 +155,9 @@ export default function AppointmentRow({ appointment, onEdit, onReminder, onGene
           fullName: patientName
         });
     
-    const result = await sendViaExtension(patientPhone, message);
+    const result = await sendViaExtension(patientPhone, message, type === 'reminder'
+      ? { appointmentId: appointment.id || appointment._id, purpose: 'attendance_confirmation' }
+      : {});
     
     setSendingWhatsApp(null);
     
@@ -231,6 +234,11 @@ export default function AppointmentRow({ appointment, onEdit, onReminder, onGene
 
   const canConfirmWhatsApp = patientPhone && (isPre || appointment.operationalStatus === 'scheduled');
   const hasOpenMenu = showMenu || showWhatsAppMenu;
+  const attendanceConfirmation = resolveAttendanceConfirmation(appointment);
+  const confirmationUi = attendanceConfirmation ? ATTENDANCE_CONFIRMATION_UI[attendanceConfirmation.status] : null;
+  const confirmationTitle = confirmationUi
+    ? `${confirmationUi.label}${attendanceConfirmation.respondedAt ? ` em ${new Date(attendanceConfirmation.respondedAt).toLocaleString('pt-BR')}` : ''}`
+    : 'Confirmação ainda não enviada';
 
   return (
     <div className={`relative flex flex-wrap sm:flex-nowrap items-stretch gap-x-3 gap-y-2 px-4 py-2.5 transition-colors ${hasOpenMenu ? 'z-30' : 'z-0'} ${rowSurface}`}>
@@ -261,8 +269,17 @@ export default function AppointmentRow({ appointment, onEdit, onReminder, onGene
         <div className="flex items-start gap-2.5">
           <span className="shrink-0 mt-0.5 w-5 text-center text-gray-400">{getSourceIcon(source)}</span>
           <div className="min-w-0">
-            <div className={`font-semibold flex items-center gap-1.5 flex-wrap text-base leading-tight ${isCancelled ? 'line-through text-gray-500' : 'text-gray-900'}`}>
-              <span className="truncate">{patientName || "-"}</span>
+            <div className={`font-semibold flex items-center gap-1.5 flex-wrap text-base leading-tight ${isCancelled ? 'text-gray-500' : 'text-gray-900'}`}>
+              <span className={`truncate ${isCancelled ? 'line-through' : ''}`}>{patientName || "-"}</span>
+
+              {confirmationUi ? (
+                <span className={`md:hidden inline-flex shrink-0 items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-semibold ${confirmationUi.className}`} title={`Confirmação do paciente: ${confirmationTitle}`}>
+                  <i className={`fas ${confirmationUi.icon}`} aria-hidden="true"></i>
+                  {confirmationUi.label}
+                </span>
+              ) : (
+                <span className="md:hidden shrink-0 text-[10px] font-medium text-gray-400" title="Confirmação não aplicável ou sem histórico">—</span>
+              )}
 
               {isPre && getPreStatusBadge(preStatus)}
               {isPre && appointment.attemptCount > 0 && (
@@ -288,6 +305,18 @@ export default function AppointmentRow({ appointment, onEdit, onReminder, onGene
         </div>
       </div>
 
+      {/* Confirmação do paciente */}
+      <div className="w-36 shrink-0 hidden md:flex items-center justify-center">
+        {confirmationUi ? (
+          <span className={`inline-flex max-w-full items-center gap-1 px-2 py-1 rounded-full border text-[10px] font-semibold whitespace-nowrap ${confirmationUi.className}`} title={`Confirmação do paciente: ${confirmationTitle}`}>
+            <i className={`fas ${confirmationUi.icon}`} aria-hidden="true"></i>
+            {confirmationUi.label}
+          </span>
+        ) : (
+          <span className="text-xs font-medium text-gray-400" title="Confirmação não aplicável ou sem histórico">—</span>
+        )}
+      </div>
+
       {/* Área + Tipo agrupados */}
       <div className={`w-32 shrink-0 hidden lg:flex flex-col justify-center min-w-0 ${isCancelled ? 'opacity-60' : ''}`}>
         <div className={`font-semibold text-base ${tone.text || 'text-gray-900'}`}>{SPECIALTIES[specialtyKey]?.name || appointment.specialty || "-"}</div>
@@ -305,7 +334,7 @@ export default function AppointmentRow({ appointment, onEdit, onReminder, onGene
         <div className="text-sm text-gray-600 truncate" title={appointment.observations || ""}>{appointment.observations || "-"}</div>
       </div>
 
-      {/* Status */}
+      {/* Status do atendimento */}
       <div className="w-28 shrink-0 text-center hidden md:flex items-center justify-center">
         <span className={`px-2.5 py-1 inline-flex text-xs font-semibold rounded-full whitespace-nowrap ${getStatusColor(appointment.operationalStatus)}`}>
           {isPre ? 'Pré-agendado' : (appointment.status || appointment.operationalStatus || "-")}
