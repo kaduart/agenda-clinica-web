@@ -155,9 +155,10 @@ export default function AppointmentRow({ appointment, onEdit, onReminder, onGene
           fullName: patientName
         });
     
-    const result = await sendViaExtension(patientPhone, message, type === 'reminder'
-      ? { appointmentId: appointment.id || appointment._id, purpose: 'attendance_confirmation' }
-      : {});
+    const result = await sendViaExtension(patientPhone, message, {
+      appointmentId: appointment.id || appointment._id,
+      purpose: 'attendance_confirmation',
+    });
     
     setSendingWhatsApp(null);
     

@@ -127,10 +127,17 @@ export function generateConfirmationMessage(paciente) {
   const ehSessao = /sess|pacote/i.test(tipoRaw);
   const tipoTexto = ehSessao ? 'atendimento' : 'avaliação inicial';
   const prof = paciente.professional || paciente.doctor?.fullName || '';
-  const profTexto = prof ? ' com *' + prof + '*' : '';
+  const tituloTipo = tipoTexto.charAt(0).toUpperCase() + tipoTexto.slice(1);
 
-  return `${getSaudacao()}${responsavel ? ', ' + responsavel : ''}! O ${tipoTexto} do *${nomePaciente}*${profTexto} está confirmado para *${diaSemana}, ${data}, às ${hora}*, na Clínica Fono Inova (Av. Minas Gerais, 405, Jundiaí).` + '\n\u200B\n' +
-    'Um dia antes, enviamos um lembrete rápido. Se precisar remarcar, é só responder aqui. 💚';
+  return `${getSaudacao()}${responsavel ? `, ${responsavel}` : ''}! 💚\n\n` +
+    `📅 *Confirmação de ${tipoTexto}*\n\n` +
+    `👤 Paciente: *${nomePaciente}*\n` +
+    `🩺 Tipo: *${tituloTipo}*\n` +
+    `📆 Data: *${diaSemana}, ${data}*\n` +
+    `⏰ Horário: *${hora}*\n` +
+    `${prof ? `👩‍⚕️ Profissional: *${prof}*\n` : ''}` +
+    `📍 Clínica Fono Inova\nAv. Minas Gerais, 405 — Jundiaí\n\n` +
+    `Selecione abaixo se poderá comparecer:`;
 }
 
 /**
