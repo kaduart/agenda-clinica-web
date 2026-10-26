@@ -141,6 +141,9 @@ const mapV2Appointment = (a) => {
 
 export const listenAppointmentsForMonth = (year, month, onData, specificDate = null) => {
     let startDate, endDate;
+    let currentList = [];
+    let requestSequence = 0;
+    let disposed = false;
 
     if (specificDate) {
         startDate = specificDate;
@@ -153,11 +156,14 @@ export const listenAppointmentsForMonth = (year, month, onData, specificDate = n
     }
 
     const fetchData = async () => {
+        const requestId = ++requestSequence;
         const startTime = Date.now();
         try {
             console.log(`[appointmentsRepo] Buscando agendamentos: ${startDate} → ${endDate}`);
             const merged = await v2.getCalendarData({ startDate, endDate, limit: 500, page: 1 });
             const list = mapAppointmentListResponseDTO(merged || []);
+            if (disposed || requestId !== requestSequence) return;
+            currentList = list;
             console.log(`[appointmentsRepo] Recebidos ${list.length} agendamentos em ${Date.now() - startTime}ms`, {
                 primeiro: list[0]?.date,
                 ultimo: list[list.length - 1]?.date,
@@ -166,7 +172,7 @@ export const listenAppointmentsForMonth = (year, month, onData, specificDate = n
             onData(list);
         } catch (error) {
             console.error(`[appointmentsRepo] Erro após ${Date.now() - startTime}ms:`, error);
-            onData([]);
+            if (!disposed && requestId === requestSequence) onData([]);
         }
     };
 
@@ -175,6 +181,28 @@ export const listenAppointmentsForMonth = (year, month, onData, specificDate = n
     const s = getSocket();
 
     const handleUpdate = (data) => {
+        const updatedId = String(data?._id || data?.id || '');
+        if (updatedId && data?.attendanceConfirmation) {
+            let found = false;
+            const nextList = currentList.map((appointment) => {
+                const appointmentId = String(appointment.id || appointment._id || '');
+                if (appointmentId !== updatedId) return appointment;
+                found = true;
+                return {
+                    ...appointment,
+                    attendanceConfirmation: {
+                        ...(appointment.attendanceConfirmation || {}),
+                        ...data.attendanceConfirmation,
+                    },
+                };
+            });
+
+            if (found) {
+                currentList = nextList;
+                onData(nextList);
+                return;
+            }
+        }
         fetchData();
     };
 
@@ -187,6 +215,8 @@ export const listenAppointmentsForMonth = (year, month, onData, specificDate = n
     s.on('preagendamento:discarded', handleUpdate);
 
     return () => {
+        disposed = true;
+        requestSequence += 1;
         s.off('appointmentCreated', handleUpdate);
         s.off('appointmentUpdated', handleUpdate);
         s.off('appointmentDeleted', handleUpdate);
