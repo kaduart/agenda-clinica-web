@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { SPECIALTIES } from "../config/specialties";
 import { resolveSpecialtyKey } from "../utils/specialty";
 import { resolveServiceType, getServiceTypeLabel, getServiceTypeColorClass } from "../utils/serviceType";
 import { ATTENDANCE_CONFIRMATION_UI, resolveAttendanceConfirmation } from "../utils/attendanceConfirmation";
+import { updateAttendanceConfirmation } from "../api/v2/agendaV2Client";
 import {
   sendViaExtension,
   generateConfirmationMessage,
@@ -14,6 +15,8 @@ import {
 export default function AppointmentRow({ appointment, onEdit, onReminder, onGenerateCycle, onCancel, onPostAppointment }) {
   
   const [showMenu, setShowMenu] = useState(false);
+  const [showConfirmationMenu, setShowConfirmationMenu] = useState(false);
+  const [updatingConfirmation, setUpdatingConfirmation] = useState(false);
   const [sendingWhatsApp, setSendingWhatsApp] = useState(null); // 'confirm' | 'reminder' | null
 
   const getStatusColor = (status) => {
@@ -233,12 +236,113 @@ export default function AppointmentRow({ appointment, onEdit, onReminder, onGene
   const [showWhatsAppMenu, setShowWhatsAppMenu] = useState(false);
 
   const canConfirmWhatsApp = patientPhone && (isPre || appointment.operationalStatus === 'scheduled');
-  const hasOpenMenu = showMenu || showWhatsAppMenu;
+  const hasOpenMenu = showMenu || showWhatsAppMenu || showConfirmationMenu;
   const attendanceConfirmation = resolveAttendanceConfirmation(appointment);
   const confirmationUi = attendanceConfirmation ? ATTENDANCE_CONFIRMATION_UI[attendanceConfirmation.status] : null;
   const confirmationTitle = confirmationUi
-    ? `${confirmationUi.label}${attendanceConfirmation.respondedAt ? ` em ${new Date(attendanceConfirmation.respondedAt).toLocaleString('pt-BR')}` : ''}`
+    ? `${confirmationUi.label}${attendanceConfirmation.respondedAt ? ` em ${new Date(attendanceConfirmation.respondedAt).toLocaleString('pt-BR')}` : ''}${attendanceConfirmation.channel === 'manual' ? ' · alterado pela equipe' : ''}`
     : 'Confirmação ainda não enviada';
+  const confirmationControlId = String(appointment.id || appointment._id || 'appointment');
+
+  useEffect(() => {
+    if (!showConfirmationMenu) return undefined;
+    const closeOnOutsideClick = (event) => {
+      const control = event.target.closest?.('[data-confirmation-control]');
+      if (control?.dataset.confirmationControl !== confirmationControlId) {
+        setShowConfirmationMenu(false);
+      }
+    };
+    const closeOnEscape = (event) => {
+      if (event.key === 'Escape') setShowConfirmationMenu(false);
+    };
+    document.addEventListener('pointerdown', closeOnOutsideClick);
+    document.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.removeEventListener('pointerdown', closeOnOutsideClick);
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [showConfirmationMenu, confirmationControlId]);
+
+  const confirmationOptions = [
+    { status: 'pending', label: 'Pendente', icon: 'fa-hourglass-half' },
+    { status: 'no_response', label: 'Sem resposta', icon: 'fa-clock' },
+    { status: 'confirmed', label: 'Confirmou', icon: 'fa-check' },
+    { status: 'review_required', label: 'Falar com a recepção', icon: 'fa-comment-dots' },
+    { status: 'change_requested', label: 'Solicitou alteração', icon: 'fa-calendar-alt' },
+  ];
+
+  const handleConfirmationChange = async (status) => {
+    if (status === attendanceConfirmation?.status || updatingConfirmation) {
+      setShowConfirmationMenu(false);
+      return;
+    }
+    setUpdatingConfirmation(true);
+    try {
+      await updateAttendanceConfirmation(appointment.id || appointment._id, status);
+      showToast('Confirmação atualizada pela equipe', 'success');
+      setShowConfirmationMenu(false);
+    } catch (error) {
+      showToast(error?.response?.data?.message || 'Não foi possível atualizar a confirmação', 'error');
+    } finally {
+      setUpdatingConfirmation(false);
+    }
+  };
+
+  const confirmationControl = (compact = false) => (
+    <div className="relative inline-flex" data-confirmation-control={confirmationControlId}>
+      <button
+        type="button"
+        onClick={(event) => {
+          event.stopPropagation();
+          setShowConfirmationMenu((open) => !open);
+        }}
+        disabled={updatingConfirmation}
+        className={`inline-flex max-w-full items-center gap-1 rounded-full border font-semibold whitespace-nowrap transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:opacity-60 ${compact ? 'px-2 py-0.5 text-[10px]' : 'px-2 py-1 text-[10px]'} ${confirmationUi?.className || 'bg-gray-50 text-gray-500 border-gray-200'}`}
+        title={`${confirmationTitle}. Clique para ajustar.`}
+        aria-haspopup="menu"
+        aria-expanded={showConfirmationMenu}
+      >
+        <i className={`fas ${updatingConfirmation ? 'fa-spinner fa-spin' : (confirmationUi?.icon || 'fa-minus')}`} aria-hidden="true"></i>
+        {confirmationUi?.label || '—'}
+        <i className="fas fa-chevron-down ml-0.5 text-[8px] opacity-60" aria-hidden="true"></i>
+      </button>
+
+      {showConfirmationMenu && (
+        <div
+          role="menu"
+          className="absolute left-1/2 top-full z-50 mt-2 w-56 -translate-x-1/2 overflow-hidden rounded-xl border border-gray-200 bg-white py-1.5 text-left shadow-xl"
+          onClick={(event) => event.stopPropagation()}
+        >
+          <div className="px-3 pb-1.5 pt-1 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+            Ajustar confirmação
+          </div>
+          {confirmationOptions.map((option) => {
+            const active = option.status === attendanceConfirmation?.status;
+            return (
+              <button
+                key={option.status}
+                type="button"
+                role="menuitemradio"
+                aria-checked={active}
+                disabled={updatingConfirmation}
+                onClick={() => handleConfirmationChange(option.status)}
+                className={`flex min-h-10 w-full items-center gap-2.5 px-3 py-2 text-sm transition-colors focus:outline-none focus-visible:bg-blue-50 ${active ? 'bg-blue-50 text-blue-800 font-semibold' : 'text-gray-700 hover:bg-gray-50'}`}
+              >
+                <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${active ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'}`}>
+                  <i className={`fas ${option.icon} text-xs`} aria-hidden="true"></i>
+                </span>
+                <span className="flex-1">{option.label}</span>
+                {active && <i className="fas fa-check text-xs text-blue-600" aria-hidden="true"></i>}
+              </button>
+            );
+          })}
+          <div className="mx-3 mt-1 border-t border-gray-100 pt-2 pb-1 text-[11px] leading-snug text-gray-500">
+            A alteração será registrada como feita pela equipe.
+          </div>
+        </div>
+      )}
+    </div>
+  );
 
   return (
     <div className={`relative flex flex-wrap sm:flex-nowrap items-stretch gap-x-3 gap-y-2 px-4 py-2.5 transition-colors ${hasOpenMenu ? 'z-30' : 'z-0'} ${rowSurface}`}>
@@ -272,14 +376,7 @@ export default function AppointmentRow({ appointment, onEdit, onReminder, onGene
             <div className={`font-semibold flex items-center gap-1.5 flex-wrap text-base leading-tight ${isCancelled ? 'text-gray-500' : 'text-gray-900'}`}>
               <span className={`truncate ${isCancelled ? 'line-through' : ''}`}>{patientName || "-"}</span>
 
-              {confirmationUi ? (
-                <span className={`md:hidden inline-flex shrink-0 items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-semibold ${confirmationUi.className}`} title={`Confirmação do paciente: ${confirmationTitle}`}>
-                  <i className={`fas ${confirmationUi.icon}`} aria-hidden="true"></i>
-                  {confirmationUi.label}
-                </span>
-              ) : (
-                <span className="md:hidden shrink-0 text-[10px] font-medium text-gray-400" title="Confirmação não aplicável ou sem histórico">—</span>
-              )}
+              <span className="md:hidden">{confirmationControl(true)}</span>
 
               {isPre && getPreStatusBadge(preStatus)}
               {isPre && appointment.attemptCount > 0 && (
@@ -307,14 +404,7 @@ export default function AppointmentRow({ appointment, onEdit, onReminder, onGene
 
       {/* Confirmação do paciente */}
       <div className="w-36 shrink-0 hidden md:flex items-center justify-center">
-        {confirmationUi ? (
-          <span className={`inline-flex max-w-full items-center gap-1 px-2 py-1 rounded-full border text-[10px] font-semibold whitespace-nowrap ${confirmationUi.className}`} title={`Confirmação do paciente: ${confirmationTitle}`}>
-            <i className={`fas ${confirmationUi.icon}`} aria-hidden="true"></i>
-            {confirmationUi.label}
-          </span>
-        ) : (
-          <span className="text-xs font-medium text-gray-400" title="Confirmação não aplicável ou sem histórico">—</span>
-        )}
+        {confirmationControl()}
       </div>
 
       {/* Área + Tipo agrupados */}

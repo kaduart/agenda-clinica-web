@@ -59,6 +59,11 @@ export async function adminEditAppointment(id, fields, adminReason) {
     return response.data;
 }
 
+export async function updateAttendanceConfirmation(id, status) {
+    const response = await api.patch(`/api/v2/appointments/${id}/attendance-confirmation`, { status });
+    return response.data;
+}
+
 export async function cancelAppointment(id, reason = "Cancelado via Web App", options = {}) {
     const response = await api.patch(`/api/v2/appointments/${id}/cancel`, {
         reason,

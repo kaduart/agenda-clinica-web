@@ -81,6 +81,9 @@ export const resolveAttendanceConfirmation = (appointment = {}) => {
       || appointment.raw?.confirmationRespondedAt
       || null,
     channel: objectValue.channel || 'whatsapp',
+    responseText: objectValue.responseText || null,
+    manualUpdatedAt: objectValue.manualUpdatedAt || null,
+    manualUpdatedBy: objectValue.manualUpdatedBy || null,
   };
 };
 
