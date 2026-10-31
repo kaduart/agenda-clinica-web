@@ -10,6 +10,11 @@ import AppointmentTable from "./components/AppointmentTable";
 import FiltersPanel from "./components/FiltersPanel";
 import Header from "./components/Header";
 import SpecialtyTabs from "./components/SpecialtyTabs";
+import DaySummary from "./components/DaySummary";
+import { applyQuickFilter } from "./utils/daySummary";
+import { InsightsContext } from "./components/InsightsContext";
+import { fetchRecentHistory } from "./services/recentHistory";
+import { buildPatientIndex } from "./utils/insights";
 
 import CalendarView from "./components/CalendarView";
 import WeeklyView from "./components/WeeklyView";
@@ -86,6 +91,10 @@ export default function App() {
   const savedFilters = getSavedDate();
 
   const [activeSpecialty, setActiveSpecialty] = React.useState("todas");
+  // Filtro rápido vindo do resumo do dia (Sem resposta, Pré-agendados, Horários livres...)
+  const [quickFilter, setQuickFilter] = React.useState(null);
+  // Histórico curto para a inteligência comercial (risco de falta, reposição, avulso recorrente)
+  const [recentHistory, setRecentHistory] = React.useState([]);
   const [currentMonth, setCurrentMonth] = React.useState(new Date().getMonth());
   const [currentYear, setCurrentYear] = React.useState(new Date().getFullYear());
 
@@ -834,15 +843,18 @@ export default function App() {
   // `pre_agendado` é apenas um estado dos itens deste mesmo array.
   const calendarAppointments = appointments || [];
 
+  // Uma busca extra (com cache de 10 min) depois da lista do dia; falha aqui nunca bloqueia a agenda
+  useEffect(() => {
+    let cancelled = false;
+    fetchRecentHistory({ force: refreshTrigger > 0 })
+      .then((data) => { if (!cancelled) setRecentHistory(data); })
+      .catch((err) => console.warn("[App] Histórico para inteligência indisponível:", err?.message || err));
+    return () => { cancelled = true; };
+  }, [refreshTrigger]);
+  const patientIndex = React.useMemo(() => buildPatientIndex(recentHistory), [recentHistory]);
+
   // Pipeline para List View
   const filteredAppointments = React.useMemo(() => {
-    console.log('[filteredAppointments] Iniciando filtro:', {
-      totalAppointments: appointments?.length,
-      activeSpecialty,
-      filters,
-      currentYear,
-      currentMonth
-    });
 
     const weeks = getWeeksInMonth(currentYear, currentMonth);
     // 1. Filtrar appointments por data/semana/especialidade
@@ -871,10 +883,6 @@ export default function App() {
       }
       return true;
     });
-    console.log('[filteredAppointments] Após filtro de appointments:', filteredReals.length, {
-      amostra: filteredReals.slice(0, 3).map(a => ({ id: a.id, date: a.date, specialty: a.specialty, status: a.operationalStatus, professional: a.professional, professionalId: a.professionalId, doctor: a.doctor }))
-    });
-    console.log('[filteredAppointments] Profissionais:', filteredReals.map(a => ({ id: a.id, professional: a.professional, professionalId: a.professionalId, doctorId: a.doctor?.id || a.doctor?._id })));
 
     // 2. Filtros secundários (profissional / status)
     const selectedProf = filters.filterProfessional
@@ -929,11 +937,6 @@ export default function App() {
     });
 
     filteredReals = applySecondaryFilters(filteredReals);
-    console.log('[filteredAppointments] Após filtros secundários:', {
-      filteredReals: filteredReals.length,
-      filterProfessional: filters.filterProfessional,
-      selectedProfId: selectedProf?.id || selectedProf?._id || null
-    });
 
     let base = filteredReals;
 
@@ -972,9 +975,6 @@ export default function App() {
     });
 
     base = sortAppointmentsByDateTimeAsc(base);
-    console.log('[filteredAppointments] Resultado final:', base.length, {
-      amostra: base.slice(0, 3).map(a => ({ id: a.id, date: a.date, patientName: a.patientName, professional: a.professional, professionalId: a.professionalId }))
-    });
     return base;
   }, [appointments, activeSpecialty, filters, currentYear, currentMonth, availableSlots]);
 
@@ -1106,7 +1106,7 @@ export default function App() {
 
   // ========== RENDER ==========
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-gray-100 to-blue-50">
+    <div className="min-h-screen bg-fi-bg text-fi-ink">
       <div className="relative z-50 pointer-events-auto">
         <Header
           view={view}
@@ -1117,8 +1117,8 @@ export default function App() {
       </div>
       <ToastContainer position="top-center" newestOnTop closeOnClick={false} draggable={false} />
 
-      <main className="max-w-screen-2xl mx-auto px-2 sm:px-4 lg:px-6 py-6 space-y-6">
-        <div className="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden">
+      <main className="max-w-screen-2xl mx-auto px-2 sm:px-4 lg:px-6 py-4 space-y-3">
+        <div>
           <FiltersPanel
             professionals={professionals}
             currentYear={currentYear}
@@ -1132,18 +1132,31 @@ export default function App() {
         </div>
 
         {view === "list" && (
-          <div className="space-y-4 animate-fadeIn">
-            <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-2">
-              <SpecialtyTabs
-                activeTab={activeSpecialty}
-                onTabChange={setActiveSpecialty}
-                counts={specialtyCounts}
-              />
-            </div>
+          <InsightsContext.Provider value={{ index: patientIndex, history: recentHistory, dayList: appointments }}>
+          <div className="space-y-3 animate-fadeIn">
+            <DaySummary
+              appointments={filteredAppointments}
+              quickFilter={quickFilter}
+              onQuickFilter={setQuickFilter}
+              hasProfessionalFilter={!!filters.filterProfessional && filters.filterProfessional !== "livre"}
+              isSingleDay={!!filters.filterDate}
+              onPostAppointmentSent={(ids) => {
+                const now = new Date().toISOString();
+                setAppointments(prev => prev.map(a => (ids.includes(a.id) ? { ...a, postAppointmentSentAt: now } : a)));
+              }}
+            />
+
+            <SpecialtyTabs
+              activeTab={activeSpecialty}
+              onTabChange={setActiveSpecialty}
+              counts={specialtyCounts}
+            />
 
             <AppointmentTable
               activeSpecialty={activeSpecialty}
-              appointments={filteredAppointments}
+              appointments={quickFilter ? applyQuickFilter(filteredAppointments, quickFilter) : filteredAppointments}
+              quickFilterLabel={quickFilter}
+              onClearQuickFilter={() => setQuickFilter(null)}
               isLoading={isLoadingAppointments}
               onEdit={openEditModal}
               onDelete={onDelete}
@@ -1167,6 +1180,7 @@ export default function App() {
               }}
             />
           </div>
+          </InsightsContext.Provider>
         )}
 
         {view === "calendar" && (
@@ -1186,7 +1200,7 @@ export default function App() {
         )}
 
         {view === "weekly" && (
-          <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-4 sm:p-6 animate-fadeIn">
+          <div className="bg-white rounded-xl border border-fi-line p-4 sm:p-6 animate-fadeIn">
             <WeeklyView
               appointments={calendarAppointments}
               professionals={professionals}

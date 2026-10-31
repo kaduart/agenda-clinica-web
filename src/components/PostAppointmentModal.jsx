@@ -18,7 +18,7 @@ const DEFAULT_MESSAGE_2 =
 
 const DEFAULT_GOOGLE_LINK = "https://g.page/r/CR6aUdS_hstDEBM/review";
 
-function loadSavedMessages() {
+export function loadSavedMessages() {
     try {
         const raw = localStorage.getItem(STORAGE_KEY_MESSAGES);
         if (raw) {
@@ -42,7 +42,7 @@ function saveMessages(message1, message2) {
     }
 }
 
-function loadGoogleLink() {
+export function loadGoogleLink() {
     try {
         return localStorage.getItem(STORAGE_KEY_GOOGLE_LINK) || DEFAULT_GOOGLE_LINK;
     } catch {
@@ -84,7 +84,7 @@ function resolveResponsibleGreeting(appointment) {
     return responsible ? `, ${responsible}` : "";
 }
 
-function applyVariables(text, appointment, googleLink) {
+export function applyVariables(text, appointment, googleLink) {
     const firstName = resolveFirstName(appointment);
     const responsible = resolveResponsibleFirstName(appointment);
     const responsibleGreeting = resolveResponsibleGreeting(appointment);

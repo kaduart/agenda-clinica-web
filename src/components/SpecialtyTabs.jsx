@@ -23,12 +23,12 @@ export default function SpecialtyTabs({ activeTab, onTabChange, counts }) {
   }, []);
 
   return (
-    <div className="relative bg-white border border-gray-200 rounded-xl p-2 shadow-sm">
+    <div className="relative">
       {canScrollLeft && (
-        <div className="pointer-events-none absolute left-2 top-2 bottom-3 w-8 bg-gradient-to-r from-white to-transparent z-10 rounded-l-xl" />
+        <div className="pointer-events-none absolute left-0 top-0 bottom-1 w-8 bg-gradient-to-r from-fi-bg to-transparent z-10" />
       )}
       {canScrollRight && (
-        <div className="pointer-events-none absolute right-2 top-2 bottom-3 w-8 bg-gradient-to-l from-white to-transparent z-10 rounded-r-xl" />
+        <div className="pointer-events-none absolute right-0 top-0 bottom-1 w-8 bg-gradient-to-l from-fi-bg to-transparent z-10" />
       )}
 
       <div
@@ -47,30 +47,15 @@ export default function SpecialtyTabs({ activeTab, onTabChange, counts }) {
               role="tab"
               aria-selected={isActive}
               onClick={() => onTabChange(key)}
-              className={`
-                flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium text-sm transition-all duration-200 shrink-0 min-w-[100px]
-                ${
-                  isActive
-                    ? `${specialty.bgColor} text-white shadow-sm` // fundo escuro, texto branco
-                    : 'bg-gray-50 text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                }
-              `}
+              className={`h-8 shrink-0 inline-flex items-center gap-2 px-3 rounded-full border text-sm font-medium whitespace-nowrap transition-colors ${
+                isActive
+                  ? "border-fi-accent bg-fi-soft text-fi-deep"
+                  : "border-fi-line bg-white text-fi-ink hover:bg-fi-bg"
+              }`}
             >
-              <i
-                className={`fas ${specialty.icon} ${
-                  isActive ? 'text-white' : specialty.textColor // ícone colorido quando inativo
-                }`}
-              ></i>
+              {key !== "todas" && <span className={`h-2 w-2 rounded-sm ${specialty.bgColor}`} aria-hidden="true"></span>}
               <span>{specialty.name}</span>
-              {!!count && (
-                <span
-                  className={`px-1.5 py-0.5 rounded-full text-xs font-semibold leading-none ${
-                    isActive ? 'bg-white/25 text-white' : 'bg-white text-gray-600 border border-gray-200'
-                  }`}
-                >
-                  {count}
-                </span>
-              )}
+              <span className="text-xs font-semibold tabular-nums opacity-70">{count || 0}</span>
             </button>
           );
         })}

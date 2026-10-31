@@ -4,6 +4,7 @@ import { resolveSpecialtyKey } from "../utils/specialty";
 import { resolveServiceType, getServiceTypeLabel, getServiceTypeColorClass } from "../utils/serviceType";
 import { ATTENDANCE_CONFIRMATION_UI, resolveAttendanceConfirmation } from "../utils/attendanceConfirmation";
 import { updateAttendanceConfirmation } from "../api/v2/agendaV2Client";
+import { RowInsightChips, RefillButton } from "./RowInsights";
 import {
   sendViaExtension,
   generateConfirmationMessage,
@@ -112,7 +113,7 @@ export default function AppointmentRow({ appointment, onEdit, onReminder, onGene
 
   const getPreStatusBadge = (status) => {
     switch (status) {
-      case 'novo': return <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-indigo-600 text-white animate-pulse">NOVO</span>;
+      case 'novo': return <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-indigo-600 text-white">NOVO</span>;
       case 'em_analise': return <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-amber-500 text-white">EM ANÁLISE</span>;
       case 'contatado': return <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-blue-500 text-white">CONTATADO</span>;
       case 'confirmado': return <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-500 text-white">INTERESSE</span>;
@@ -124,13 +125,17 @@ export default function AppointmentRow({ appointment, onEdit, onReminder, onGene
   };
 
   const tone = rowToneBySpecialty(specialtyKey);
+  const isFreeSlot = !!appointment.__isVirtual;
+  // Cores de fundo por status/especialidade mantidas (o comercial usa para ler a agenda de relance)
   const rowSurface = isCancelled
     ? "bg-gray-100 hover:ring-1 hover:ring-inset hover:ring-gray-300"
-    : isLivre
-      ? "bg-emerald-100 hover:ring-1 hover:ring-inset hover:ring-emerald-200"
-      : isPre
-        ? "bg-violet-100 hover:ring-1 hover:ring-inset hover:ring-violet-200"
-        : `${tone.bg} hover:ring-1 hover:ring-inset hover:ring-black/5`;
+    : isFreeSlot
+      ? "bg-[repeating-linear-gradient(135deg,#d1fae5_0_8px,#ecfdf5_8px_16px)] hover:ring-1 hover:ring-inset hover:ring-emerald-200"
+      : isLivre
+        ? "bg-emerald-100 hover:ring-1 hover:ring-inset hover:ring-emerald-200"
+        : isPre
+          ? "bg-violet-100 hover:ring-1 hover:ring-inset hover:ring-violet-200"
+          : `${tone.bg} hover:ring-1 hover:ring-inset hover:ring-black/5`;
 
   const rowMarker = isCancelled
     ? "bg-gray-400"
@@ -347,14 +352,14 @@ export default function AppointmentRow({ appointment, onEdit, onReminder, onGene
   return (
     <div className={`relative flex flex-wrap sm:flex-nowrap items-stretch gap-x-3 gap-y-2 px-4 py-2.5 transition-colors ${hasOpenMenu ? 'z-30' : 'z-0'} ${rowSurface}`}>
 
-      <span className={`absolute left-0 top-3 bottom-3 w-px rounded-full ${rowMarker}`} aria-hidden="true"></span>
+      <span className={`absolute left-0 top-2 bottom-2 w-1 rounded-r-full ${isFreeSlot ? 'bg-fi-accent/40' : rowMarker}`} aria-hidden="true"></span>
 
       {/* Data/Hora + Profissional agrupados */}
       <div className={`w-[4.75rem] sm:w-36 shrink-0 flex flex-col justify-center ${isCancelled ? 'text-gray-400' : ''}`}>
-        <div className="text-gray-950 font-semibold text-base leading-tight tracking-tight tabular-nums flex flex-col sm:flex-row sm:items-center sm:gap-1.5">
+        <div className="font-head text-fi-ink font-bold text-base leading-tight tracking-tight tabular-nums flex flex-col sm:flex-row sm:items-center sm:gap-1.5">
           <span>{appointment.time || "-"}</span>
-          <span className="hidden sm:inline text-gray-300">|</span>
-          <span className="text-xs text-gray-500 font-medium">
+          <span className="hidden sm:inline text-fi-line">|</span>
+          <span className="font-sans text-xs text-fi-muted font-medium">
             {(() => {
               const [y, m, d] = (appointment.date || "").split("-");
               if (!y || !m || !d) return "";
@@ -363,7 +368,7 @@ export default function AppointmentRow({ appointment, onEdit, onReminder, onGene
             })()}
           </span>
         </div>
-        <div className="text-gray-500 text-[11px] sm:text-xs truncate mt-1" title={appointment.doctor?.fullName || appointment.professional?.fullName || appointment.professional?.name || ""}>
+        <div className="text-fi-muted text-[11px] sm:text-xs truncate mt-1" title={appointment.doctor?.fullName || appointment.professional?.fullName || appointment.professional?.name || ""}>
           {appointment.doctor?.fullName || appointment.professional?.fullName || appointment.professional?.name || (typeof appointment.professional === 'string' ? appointment.professional : null) || "-"}
         </div>
       </div>
@@ -371,19 +376,19 @@ export default function AppointmentRow({ appointment, onEdit, onReminder, onGene
       {/* Paciente */}
       <div className={`flex-[1.2] min-w-0 flex items-center ${isCancelled ? 'opacity-60' : ''}`}>
         <div className="flex items-start gap-2.5">
-          <span className="shrink-0 mt-0.5 w-5 text-center text-gray-400">{getSourceIcon(source)}</span>
+          <span className="shrink-0 mt-0.5 w-5 text-center text-fi-muted">{isFreeSlot ? <i className="far fa-calendar-plus text-fi-accent" title="Horário livre"></i> : getSourceIcon(source)}</span>
           <div className="min-w-0">
-            <div className={`font-semibold flex items-center gap-1.5 flex-wrap text-base leading-tight ${isCancelled ? 'text-gray-500' : 'text-gray-900'}`}>
-              <span className={`truncate ${isCancelled ? 'line-through' : ''}`}>{patientName || "-"}</span>
+            <div className={`font-semibold flex items-center gap-1.5 flex-wrap text-[15px] leading-tight ${isCancelled ? 'text-fi-muted' : 'text-fi-ink'}`}>
+              <span className={`truncate ${isCancelled ? 'line-through' : ''} ${isFreeSlot ? 'text-fi-deep' : ''}`}>{isFreeSlot ? "Horário livre" : (patientName || "-")}</span>
 
-              <span className="md:hidden">{confirmationControl(true)}</span>
+              {!isFreeSlot && <span className="md:hidden">{confirmationControl(true)}</span>}
 
               {isPre && getPreStatusBadge(preStatus)}
               {isPre && appointment.attemptCount > 0 && (
                 <span className="text-[10px] text-gray-500 shrink-0"><i className="fas fa-phone-alt"></i> {appointment.attemptCount}</span>
               )}
             </div>
-            <div className="flex items-center gap-1 mt-1 text-xs text-gray-500">
+            {!isFreeSlot && <div className="flex items-center gap-1 mt-1 text-xs text-fi-muted">
               <span className="truncate">resp. {appointment.responsible || "-"}</span>
               {patientPhone && (
                 <span className="text-gray-300 shrink-0">|</span>
@@ -391,25 +396,47 @@ export default function AppointmentRow({ appointment, onEdit, onReminder, onGene
               {patientPhone && (
                 <a
                   href={`tel:${patientPhone}`}
-                  className="text-blue-500 hover:text-blue-700 hover:underline truncate shrink-0"
+                  className="text-fi-deep hover:underline truncate shrink-0 tabular-nums"
                   onClick={e => e.stopPropagation()}
                 >
                   {patientPhone.replace(/(\d{2})(\d{4,5})(\d{4})/, '($1) $2-$3')}
                 </a>
               )}
-            </div>
+            </div>}
+            {/* Telas menores: área/tipo, status e anotações descem para baixo do nome (nada some) */}
+            {!isFreeSlot && (
+              <div className="lg:hidden flex flex-wrap items-center gap-1.5 mt-1.5">
+                <span className={`text-xs font-semibold ${tone.text || 'text-fi-ink'}`}>{SPECIALTIES[specialtyKey]?.name || appointment.specialty || "-"}</span>
+                {(() => {
+                  const st = resolveServiceType(appointment);
+                  const label = st ? getServiceTypeLabel(st) : null;
+                  return label ? <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium ${getServiceTypeColorClass(st)}`}>{label}</span> : null;
+                })()}
+                <span className={`md:hidden px-2 py-0.5 inline-flex text-[11px] font-semibold rounded-full whitespace-nowrap ${getStatusColor(appointment.operationalStatus)}`}>
+                  {isPre ? 'Pré-agendado' : (appointment.status || appointment.operationalStatus || "-")}
+                </span>
+              </div>
+            )}
+            {appointment.observations && !isFreeSlot && (
+              <div className="xl:hidden mt-1 text-xs text-fi-muted flex items-baseline gap-1 min-w-0" title={appointment.observations}>
+                <i className="fas fa-comment-dots text-[10px]"></i>
+                <span className="truncate">{appointment.observations}</span>
+              </div>
+            )}
+            {/* Inteligência comercial: risco de falta, pacote acabando, pré parado, avulso recorrente */}
+            {!isFreeSlot && <RowInsightChips appointment={appointment} />}
           </div>
         </div>
       </div>
 
       {/* Confirmação do paciente */}
       <div className="w-36 shrink-0 hidden md:flex items-center justify-center">
-        {confirmationControl()}
+        {!isFreeSlot && confirmationControl()}
       </div>
 
       {/* Área + Tipo agrupados */}
       <div className={`w-32 shrink-0 hidden lg:flex flex-col justify-center min-w-0 ${isCancelled ? 'opacity-60' : ''}`}>
-        <div className={`font-semibold text-base ${tone.text || 'text-gray-900'}`}>{SPECIALTIES[specialtyKey]?.name || appointment.specialty || "-"}</div>
+        <div className={`font-semibold text-sm ${tone.text || 'text-fi-ink'}`}>{SPECIALTIES[specialtyKey]?.name || appointment.specialty || "-"}</div>
         {(() => {
           const st = resolveServiceType(appointment);
           if (!st) return null;
@@ -421,18 +448,18 @@ export default function AppointmentRow({ appointment, onEdit, onReminder, onGene
 
       {/* Anotações */}
       <div className={`w-32 shrink-0 hidden xl:flex items-center ${isCancelled ? 'opacity-60' : ''}`}>
-        <div className="text-sm text-gray-600 truncate" title={appointment.observations || ""}>{appointment.observations || "-"}</div>
+        <div className="text-sm text-fi-muted truncate" title={appointment.observations || ""}>{appointment.observations || "-"}</div>
       </div>
 
       {/* Status do atendimento */}
       <div className="w-28 shrink-0 text-center hidden md:flex items-center justify-center">
         <span className={`px-2.5 py-1 inline-flex text-xs font-semibold rounded-full whitespace-nowrap ${getStatusColor(appointment.operationalStatus)}`}>
-          {isPre ? 'Pré-agendado' : (appointment.status || appointment.operationalStatus || "-")}
+          {isFreeSlot ? 'Livre' : isPre ? 'Pré-agendado' : (appointment.status || appointment.operationalStatus || "-")}
         </span>
       </div>
 
       {/* Ações contextuais */}
-      <div className="w-full sm:w-52 shrink-0 flex items-center justify-end border-t border-gray-100 pt-2 sm:border-0 sm:pt-0">
+      <div className="w-full sm:w-64 shrink-0 flex items-center justify-end border-t border-fi-line pt-2 sm:border-0 sm:pt-0">
         <div className="flex items-center gap-1">
           {/* Confirmado/Concluído: Avaliação Google / pós-atendimento em destaque */}
           {canSendPostAppointment && (() => {
@@ -604,8 +631,23 @@ export default function AppointmentRow({ appointment, onEdit, onReminder, onGene
             </button>
           )}
 
+          {/* Horário vago (cancelado ou livre): sugerir quem encaixar */}
+          {(isFreeSlot || (isCancelled && !appointment.__isVirtual)) && <RefillButton slot={appointment} />}
+
+          {/* Horário livre: encaixar paciente direto */}
+          {isFreeSlot && (
+            <button
+              type="button"
+              className="h-9 px-3 inline-flex items-center gap-1.5 rounded-lg border border-fi-accent text-fi-deep bg-white hover:bg-fi-soft text-sm font-semibold transition-colors"
+              onClick={() => onEdit(appointment)}
+              aria-label="Encaixar paciente neste horário"
+            >
+              <i className="fas fa-plus text-xs"></i> Encaixar
+            </button>
+          )}
+
           {/* Editar */}
-          <button
+          {!isFreeSlot && <button
             type="button"
             className="w-10 h-10 inline-flex items-center justify-center text-blue-600 hover:text-blue-800 hover:bg-blue-100 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
             onClick={() => onEdit(appointment)}
@@ -613,7 +655,7 @@ export default function AppointmentRow({ appointment, onEdit, onReminder, onGene
             aria-label={appointment.__isVirtual ? "Agendar horário" : "Editar agendamento"}
           >
             <i className={`fas ${appointment.__isVirtual ? 'fa-calendar-plus' : 'fa-edit'} text-sm`}></i>
-          </button>
+          </button>}
 
           {/* Menu de ações avançadas */}
           {!appointment.__isVirtual && (

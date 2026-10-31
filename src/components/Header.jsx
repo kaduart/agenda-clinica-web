@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react';
 import WhatsAppConnectModal from './WhatsAppConnectModal';
+import WhatsNewModal, { shouldAutoOpenWhatsNew } from './WhatsNewModal';
 import { getWhatsAppWebStatus } from '../api/v2/whatsappClient.js';
 
 export default function Header({ view, setView, remindersPendingCount = 0, onOpenReminders }) {
     const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false);
+    // Guia de novidades: abre sozinho uma vez e depois pelo botão "?"
+    const [isWhatsNewOpen, setIsWhatsNewOpen] = useState(() => shouldAutoOpenWhatsNew());
     const [whatsAppStatus, setWhatsAppStatus] = useState({ ready: false, status: 'unknown' });
 
     useEffect(() => {
@@ -39,102 +42,82 @@ export default function Header({ view, setView, remindersPendingCount = 0, onOpe
     }, []);
 
     const isConnected = whatsAppStatus.ready;
-    const statusColor = isConnected ? 'bg-emerald-400' : 'bg-red-400';
+    const statusColor = isConnected ? 'bg-emerald-300' : 'bg-red-400';
 
     return (
-        <header className="bg-teal-600 border-b border-gray-200 py-4 px-6">
-            <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div className="flex items-center gap-3">
+        <header className="bg-[#0d9387] border-b border-[#0b7d73] px-3 sm:px-6 py-2.5">
+            <div className="max-w-screen-2xl mx-auto flex flex-wrap items-center gap-2 sm:gap-3">
+                <div className="flex items-center gap-2.5 mr-auto min-w-0">
                     <img
-                        className="w-14 h-14 object-contain"
+                        className="w-9 h-9 object-contain shrink-0"
                         src="/images/cabeca-logo-verde-clara.png"
                         alt="Logo Clínica Fono Inova"
                     />
-
-                    <div>
-                        <h1 className="text-2xl sm:text-3xl font-bold leading-tight text-white">
-                            Agenda Clínica Fono Inova
-                        </h1>
-
-                        <p className="text-sm text-white/80">
-                            Controle de agendamentos
-                        </p>
+                    <div className="min-w-0">
+                        <h1 className="font-head text-base font-bold leading-tight text-white">Agenda externa</h1>
+                        <p className="text-xs text-white/75 leading-tight">Clínica Fono Inova</p>
                     </div>
                 </div>
 
-                <div className="flex items-center gap-4">
-                    {/* Botão de Lembretes no Header */}
+                {/* Lista / Semanal */}
+                <div className="inline-flex rounded-xl bg-black/15 p-0.5" role="group" aria-label="Visualização">
                     <button
-                        onClick={onOpenReminders}
-                        className="relative group p-2 bg-white/10 hover:bg-white/20 rounded-full transition-all duration-300"
-                        title="Ver lembretes"
+                        type="button"
+                        aria-pressed={view === "list"}
+                        className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${view === "list" ? "bg-white text-fi-deep shadow-sm" : "text-white/80 hover:text-white"}`}
+                        onClick={() => setView("list")}
                     >
-                        <i className="fas fa-bell text-white text-xl"></i>
-                        {remindersPendingCount > 0 && (
-                            <>
-                                <span className="absolute -top-1 -right-1 flex h-5 w-5">
-                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                                    <span className="relative inline-flex rounded-full h-5 w-5 bg-red-500 border-2 border-teal-600 text-[10px] font-bold text-white items-center justify-center">
-                                        {remindersPendingCount}
-                                    </span>
-                                </span>
-                            </>
-                        )}
+                        <i className="fas fa-list mr-1.5 text-xs"></i>Lista
                     </button>
-
-                    {/* Botão WhatsApp Connect */}
+                    {/* TODO: reativar quando CalendarView for implementado como calendário mensal real.
+                         Atualmente CalendarView é uma cópia de WeeklyView, então o botão fica oculto para evitar confusão. */}
                     <button
-                        onClick={() => setIsWhatsAppModalOpen(true)}
-                        className="relative group p-2 bg-white/10 hover:bg-white/20 rounded-full transition-all duration-300"
-                        title={isConnected ? 'WhatsApp conectado' : 'Conectar WhatsApp'}
+                        type="button"
+                        aria-pressed={view === "weekly"}
+                        className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${view === "weekly" ? "bg-white text-fi-deep shadow-sm" : "text-white/80 hover:text-white"}`}
+                        onClick={() => setView("weekly")}
                     >
-                        <i className={`fab fa-whatsapp text-xl ${isConnected ? 'text-emerald-300' : 'text-white'}`}></i>
-                        <span className="absolute -top-1 -right-1 flex h-3 w-3">
-                            <span className={`relative inline-flex rounded-full h-3 w-3 ${statusColor}`}></span>
+                        <i className="fas fa-table-cells-large mr-1.5 text-xs"></i>Semanal
+                    </button>
+                </div>
+
+                {/* WhatsApp: status em texto + bolinha */}
+                <button
+                    onClick={() => setIsWhatsAppModalOpen(true)}
+                    className="h-9 px-3 inline-flex items-center gap-2 rounded-xl bg-white/10 text-sm font-semibold text-white hover:bg-white/20 transition-colors"
+                    title={isConnected ? 'WhatsApp conectado' : 'Conectar WhatsApp'}
+                >
+                    <span className={`h-2 w-2 rounded-full ${statusColor}`} aria-hidden="true"></span>
+                    <i className="fab fa-whatsapp text-white"></i>
+                    <span className="hidden sm:inline">{isConnected ? 'Conectado' : 'Conectar'}</span>
+                </button>
+
+                {/* Novidades / como usar */}
+                <button
+                    onClick={() => setIsWhatsNewOpen(true)}
+                    className="h-9 w-9 inline-flex items-center justify-center rounded-xl bg-white/10 text-white hover:bg-white/20 transition-colors font-head font-bold"
+                    title="Novidades da agenda"
+                    aria-label="Novidades da agenda"
+                >
+                    ?
+                </button>
+
+                {/* Lembretes */}
+                <button
+                    onClick={onOpenReminders}
+                    className="relative h-9 w-9 inline-flex items-center justify-center rounded-xl bg-white/10 text-white hover:bg-white/20 transition-colors"
+                    title="Ver lembretes"
+                    aria-label={remindersPendingCount > 0 ? `Lembretes, ${remindersPendingCount} pendentes` : 'Lembretes'}
+                >
+                    <i className="fas fa-bell"></i>
+                    {remindersPendingCount > 0 && (
+                        <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 border-2 border-[#0d9387] text-[10px] font-bold text-white inline-flex items-center justify-center">
+                            {remindersPendingCount}
                         </span>
-                    </button>
-
-                    <div className="h-8 w-px bg-white/20 mx-1"></div>
-
-                    <div className="flex gap-2">
-                        <button
-                            type="button"
-                            className={`px-4 py-2 rounded-lg font-medium transition-all ${view === "list"
-                                ? "bg-white text-teal-700 shadow"
-                                : "bg-teal-700/50 text-white hover:bg-teal-700/70"
-                                }`}
-                            onClick={() => setView("list")}
-                        >
-                            <i className="fas fa-list mr-2"></i> Lista
-                        </button>
-
-                        {/* TODO: reativar quando CalendarView for implementado como calendário mensal real.
-                             Atualmente CalendarView é uma cópia de WeeklyView, então o botão fica oculto para evitar confusão. */}
-                        {/* <button
-                            type="button"
-                            className={`px-4 py-2 rounded-lg font-medium transition-all ${view === "calendar"
-                                ? "bg-white text-teal-700 shadow"
-                                : "bg-teal-700/50 text-white hover:bg-teal-700/70"
-                                }`}
-                            onClick={() => setView("calendar")}
-                        >
-                            <i className="far fa-calendar-alt mr-2"></i> Calendário
-                        </button> */}
-
-                        <button
-                            type="button"
-                            className={`px-4 py-2 rounded-lg font-medium transition-all ${view === "weekly"
-                                ? "bg-white text-teal-700 shadow"
-                                : "bg-teal-700/50 text-white hover:bg-teal-700/70"
-                                }`}
-                            onClick={() => setView("weekly")}
-                        >
-                            <i className="fas fa-table-cells-large mr-2"></i> Semanal
-                        </button>
-                    </div>
-                </div>
+                    )}
+                </button>
             </div>
-
+            <WhatsNewModal open={isWhatsNewOpen} onClose={() => setIsWhatsNewOpen(false)} />
             <WhatsAppConnectModal
                 isOpen={isWhatsAppModalOpen}
                 onClose={() => setIsWhatsAppModalOpen(false)}

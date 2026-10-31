@@ -2,11 +2,12 @@ import { useState } from "react";
 import { SPECIALTIES } from "../config/specialties";
 import AppointmentRow from "./AppointmentRow";
 import CycleWizardModal from "./CycleWizardModal";
+import { QUICK_FILTERS } from "../utils/daySummary";
 
 export default function AppointmentTable({
     activeSpecialty, appointments, isLoading,
     onEdit, onDelete, onReminder, onCancel,
-    onConfirmCycle, onPostAppointment }) {
+    onConfirmCycle, onPostAppointment, quickFilterLabel, onClearQuickFilter }) {
 
     const [cycleWizardOpen, setCycleWizardOpen] = useState(false);
     const [baseAppointment, setBaseAppointment] = useState(null);
@@ -19,36 +20,28 @@ export default function AppointmentTable({
     const specialty = SPECIALTIES[activeSpecialty] || SPECIALTIES.todas;
 
     return (
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-visible">
+        <div className="bg-white rounded-xl border border-fi-line overflow-visible">
             {/* Cabeçalho */}
-            <div className="bg-white border-b border-gray-100 px-5 py-3.5 rounded-t-xl">
-                <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-                    <div className="flex items-center gap-3">
-                        <div className={`p-2 rounded-lg bg-gray-50 border border-gray-200`}>
-                            <i className={`fas ${specialty.icon} text-gray-600 text-xl`}></i>
-                        </div>
-                        <div>
-                            <h3 className="text-base font-semibold text-gray-900 flex items-center gap-2">
-                                {specialty.name}
-                                <span className="text-xs font-medium bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
-                                    {appointments.length} registro{appointments.length !== 1 ? 's' : ''}
-                                </span>
-                            </h3>
-                            <p className="text-sm text-gray-500">
-                                Lista completa de agendamentos e consultas
-                            </p>
-                        </div>
-                    </div>
-                </div>
+            <div className="flex flex-wrap items-center gap-2 px-4 py-2.5 border-b border-fi-line">
+                <h3 className="font-head text-sm font-bold text-fi-ink">{specialty.name}</h3>
+                <span className="text-xs font-semibold tabular-nums text-fi-muted">
+                    {appointments.length} registro{appointments.length !== 1 ? 's' : ''}
+                </span>
+                {quickFilterLabel && QUICK_FILTERS[quickFilterLabel] && (
+                    <span className="h-6 pl-2.5 pr-1 rounded-full bg-fi-soft text-fi-deep text-xs font-semibold inline-flex items-center gap-1">
+                        Só: {QUICK_FILTERS[quickFilterLabel].label}
+                        <button type="button" onClick={onClearQuickFilter} className="w-5 h-5 rounded-full hover:bg-white/70" aria-label="Mostrar todos">×</button>
+                    </span>
+                )}
             </div>
 
             {/* Lista */}
-            <div className="p-2">
+            <div>
                 {isLoading ? (
                     <div className="px-6 py-16 text-center">
                         <div className="max-w-sm mx-auto">
-                            <div className="w-16 h-16 mx-auto bg-blue-50 rounded-full flex items-center justify-center mb-4 animate-pulse">
-                                <i className="fas fa-spinner fa-spin text-2xl text-blue-500"></i>
+                            <div className="w-12 h-12 mx-auto bg-fi-soft rounded-full flex items-center justify-center mb-3">
+                                <i className="fas fa-spinner fa-spin text-xl text-fi-accent"></i>
                             </div>
                             <h4 className="text-base font-semibold text-gray-900 mb-1">
                                 Carregando agendamentos...
@@ -70,55 +63,55 @@ export default function AppointmentTable({
                             <p className="text-sm text-gray-500 mb-4">
                                 Não há registros para esta especialidade ou filtros aplicados.
                             </p>
-                            <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 rounded-lg border border-blue-200">
-                                <i className="fas fa-lightbulb text-xs text-blue-600"></i>
-                                <span className="text-xs text-blue-700">Tente ajustar os filtros ou criar um novo agendamento</span>
+                            <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-fi-bg rounded-lg border border-fi-line">
+                                <i className="fas fa-lightbulb text-xs text-fi-muted"></i>
+                                <span className="text-xs text-fi-muted">Tente ajustar os filtros ou criar um novo agendamento</span>
                             </div>
                         </div>
                     </div>
                 ) : (
                     <>
                         {/* Header row — espelha as colunas do AppointmentRow */}
-                        <div className="hidden sm:flex items-center gap-3 px-4 py-2 mb-1 border-b border-gray-200">
+                        <div className="hidden sm:flex items-center gap-3 px-4 py-2 border-b border-fi-line bg-fi-bg">
                             <div className="w-36 shrink-0 flex items-center">
-                                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+                                <span className="text-[10.5px] font-semibold text-fi-muted uppercase tracking-wide flex items-center gap-1.5">
                                     <i className="fas fa-clock text-xs"></i> Horário / Profissional
                                 </span>
                             </div>
                             <div className="flex-[1.2] min-w-0 flex items-center">
-                                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+                                <span className="text-[10.5px] font-semibold text-fi-muted uppercase tracking-wide flex items-center gap-1.5">
                                     <i className="fas fa-user text-xs"></i> Paciente
                                 </span>
                             </div>
                             <div className="w-36 shrink-0 hidden md:flex items-center justify-center">
-                                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center justify-center gap-1.5">
+                                <span className="text-[10.5px] font-semibold text-fi-muted uppercase tracking-wide flex items-center justify-center gap-1.5">
                                     <i className="fas fa-comment-check text-xs"></i> Confirmação
                                 </span>
                             </div>
                             <div className="w-32 shrink-0 hidden lg:flex items-center">
-                                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+                                <span className="text-[10.5px] font-semibold text-fi-muted uppercase tracking-wide flex items-center gap-1.5">
                                     <i className="fas fa-stethoscope text-xs"></i> Área / Tipo
                                 </span>
                             </div>
                             <div className="w-32 shrink-0 hidden xl:flex items-center">
-                                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+                                <span className="text-[10.5px] font-semibold text-fi-muted uppercase tracking-wide flex items-center gap-1.5">
                                     <i className="fas fa-comment-dots text-xs"></i> Anotações
                                 </span>
                             </div>
                             <div className="w-28 shrink-0 text-center hidden md:flex items-center justify-center">
-                                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center justify-center gap-1.5">
+                                <span className="text-[10.5px] font-semibold text-fi-muted uppercase tracking-wide flex items-center justify-center gap-1.5">
                                     <i className="fas fa-flag text-xs"></i> Status do atendimento
                                 </span>
                             </div>
-                            <div className="w-52 shrink-0 flex items-center justify-end">
-                                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center justify-center gap-1.5">
+                            <div className="w-64 shrink-0 flex items-center justify-end">
+                                <span className="text-[10.5px] font-semibold text-fi-muted uppercase tracking-wide flex items-center justify-center gap-1.5">
                                     <i className="fas fa-cogs text-xs"></i> Ações
                                 </span>
                             </div>
                         </div>
 
                         {/* Rows */}
-                        <div className="divide-y divide-gray-100">
+                        <div className="divide-y divide-fi-line">
                             {appointments.map((appointment, index) => (
                                 <AppointmentRow
                                     key={appointment.id}

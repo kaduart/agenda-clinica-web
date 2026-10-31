@@ -3,8 +3,9 @@ import { formatDateLocal, extractDateForInput } from "../utils/date";
 import { resolveSpecialtyKey } from "../utils/specialty";
 import { SERVICE_TYPE_LABELS, mapBackendServiceType } from "../utils/serviceType";
 import { searchPatients } from "../services/patientsRepo";
-import { cancelAppointment, getAppointmentById, getAppointmentsByPatient } from "../services/appointmentsRepo";
+import { cancelAppointment, getAppointmentById, getAppointmentsByPatient, fetchAvailableSlots } from "../services/appointmentsRepo";
 import { confirmToast } from "../utils/confirmToast";
+import { toast } from "react-toastify";
 import { formatPhoneBR, onlyDigits, validatePhoneBR } from "../utils/phone";
 import InputCurrency from "./InputCurrency";
 import { getConvenioOptions } from "../api/v2/agendaV2Client";
@@ -453,6 +454,11 @@ export default function AppointmentModal({ appointment, professionals, patients,
     const [showSuggestions, setShowSuggestions] = React.useState(false);
     const [filteredPatients, setFilteredPatients] = React.useState([]);
     const [isSearching, setIsSearching] = React.useState(false);
+    // Últimos atendimentos do paciente selecionado (cartão do paciente + sugestão de pacote)
+    const [patientHistory, setPatientHistory] = React.useState([]);
+    // Horários livres do profissional na data escolhida (botões de horário)
+    const [freeSlots, setFreeSlots] = React.useState([]);
+    const [isLoadingSlots, setIsLoadingSlots] = React.useState(false);
 
     // Estado para controlar se é paciente novo ou existente
     const [isNewPatient, setIsNewPatient] = React.useState(() => {
@@ -504,8 +510,59 @@ export default function AppointmentModal({ appointment, professionals, patients,
         return () => clearTimeout(timeoutId);
     }, [formData.patient, formData.patientId, isNewPatient]);
 
+    // Horários livres do profissional na data escolhida (mesma rota do filtro "Horários livres" da lista)
+    React.useEffect(() => {
+        const doctorId = formData.professionalId;
+        const date = String(formData.date || "").split("T")[0];
+        if (!doctorId || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+            setFreeSlots([]);
+            return undefined;
+        }
+        let cancelled = false;
+        setIsLoadingSlots(true);
+        fetchAvailableSlots(doctorId, date)
+            .then((res) => {
+                if (cancelled) return;
+                const list = Array.isArray(res) ? res : (res?.data || res?.slots || []);
+                setFreeSlots(Array.isArray(list) ? list : []);
+            })
+            .catch((err) => {
+                console.error("[AppointmentModal] Erro ao buscar horários livres:", err);
+                if (!cancelled) setFreeSlots([]);
+            })
+            .finally(() => { if (!cancelled) setIsLoadingSlots(false); });
+        return () => { cancelled = true; };
+    }, [formData.professionalId, formData.date]);
+
+    // Sugestão comercial: paciente vem pagando avulso com frequência → oferecer pacote 1x/semana
+    const packageSuggestion = React.useMemo(() => {
+        if (formData.billingType !== "particular" || formData.crm?.serviceType !== "individual_session") return null;
+        const limit = new Date();
+        limit.setDate(limit.getDate() - 35);
+        const recentAvulsas = (patientHistory || []).filter((a) => {
+            const d = new Date(a.date);
+            const isParticular = (a.billingType || a.paymentType || "particular") === "particular";
+            const st = String(a.serviceType || a.sessionType || "");
+            const isPackage = !!a.package || /package|pacote/i.test(st);
+            return d >= limit && isParticular && !isPackage && a.operationalStatus !== "canceled";
+        });
+        return recentAvulsas.length >= 3 ? { count: recentAvulsas.length } : null;
+    }, [patientHistory, formData.billingType, formData.crm?.serviceType]);
+
+    const copyPackageMessage = async () => {
+        const nome = (formData.responsible || "").split(" ")[0];
+        const msg = `Oi${nome ? `, ${nome}` : ""}! Como o acompanhamento já está acontecendo toda semana, o pacote mensal garante o mesmo horário fixo e a continuidade do tratamento, que é o que mais faz diferença na evolução. No pacote 1x/semana a sessão sai por R$ 180 (cerca de R$ 720/mês). Quer que eu já deixe reservado? 💚`;
+        try {
+            await navigator.clipboard.writeText(msg);
+            toast.success("Mensagem copiada. É só colar no WhatsApp.");
+        } catch {
+            window.prompt("Copie a mensagem:", msg);
+        }
+    };
+
     const handlePatientChange = (value) => {
         hasInteracted.current = true;
+        setPatientHistory([]);
         setFormData(prev => ({
             ...prev,
             patient: value,
@@ -535,6 +592,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
             const res = await getAppointmentsByPatient(p._id, { limit: 4 });
             const appts = res?.data?.appointments || [];
             const sorted = [...appts].sort((a, b) => new Date(b.date) - new Date(a.date));
+            setPatientHistory(sorted);
             const responsible = sorted.find(a => a.responsible?.trim())?.responsible?.trim()
                 || sorted.find(a => a.patientInfo?.responsible?.trim())?.patientInfo?.responsible?.trim()
                 || '';
@@ -1000,7 +1058,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
 
     return (
         <div role="dialog" aria-modal="true" aria-labelledby="appointment-modal-title" className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/40 backdrop-blur-sm">
-            <div className={`bg-white rounded-xl sm:rounded-2xl shadow-2xl w-full ${activeStep === 2 ? "max-w-4xl" : activeStep === 1 ? "max-w-2xl" : "max-w-xl"} max-h-[94vh] overflow-hidden flex flex-col relative transition-[max-width] duration-200 motion-reduce:transition-none ${isLoading ? "opacity-80 pointer-events-none" : ""}`}>
+            <div className={`bg-white rounded-xl sm:rounded-2xl shadow-2xl w-full max-w-3xl max-h-[94vh] overflow-hidden flex flex-col relative transition-[max-width] duration-200 motion-reduce:transition-none ${isLoading ? "opacity-80 pointer-events-none" : ""}`}>
                 {/* Header */}
                 <div className="sticky top-0 bg-white border-b border-gray-200 px-5 py-2.5 z-10 flex justify-between items-center">
                     <div>
@@ -1050,13 +1108,13 @@ export default function AppointmentModal({ appointment, professionals, patients,
 
                 <div className="shrink-0 border-b border-slate-200 px-4 py-2.5 sm:px-5">
                     <nav aria-label="Etapas do agendamento" className="relative mx-auto max-w-xl">
-                        <div aria-hidden="true" className="absolute left-[16.666%] right-[16.666%] top-4 h-1 rounded-full bg-slate-200"><div className="h-full rounded-full bg-teal-500 transition-all" style={{ width: `${activeStep / 2 * 100}%` }} /></div>
+                        <div aria-hidden="true" className="absolute left-[16.666%] right-[16.666%] top-4 h-1 rounded-full bg-slate-200"><div className="h-full rounded-full bg-fi-accent transition-all" style={{ width: `${activeStep / 2 * 100}%` }} /></div>
                         <ol className="relative grid grid-cols-3">
                             {['Paciente', 'Atendimento', 'Financeiro'].map((label, index) => <li key={label} className="flex justify-center">
-                                <button type="button" disabled={isLoading || isLoadingDetails} onClick={() => goToStep(index)} aria-current={activeStep === index ? 'step' : undefined} className="flex flex-col items-center gap-2 rounded-lg px-2 text-xs sm:text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-teal-600 disabled:opacity-50">
-                                    <span className={`flex h-9 w-9 items-center justify-center rounded-full border-2 font-semibold ${activeStep > index ? 'border-teal-600 bg-teal-600 text-white' : activeStep === index ? 'border-teal-600 bg-white text-teal-700' : 'border-slate-200 bg-white text-slate-500'}`}>
-                                        {activeStep > index ? <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="m5 12 4 4L19 6" /></svg> : activeStep === index ? <span className="h-3 w-3 rounded-full bg-teal-600" aria-hidden="true" /> : index + 1}
-                                    </span><span className={activeStep === index ? 'font-semibold text-teal-900' : 'text-slate-600'}>{label}</span>
+                                <button type="button" disabled={isLoading || isLoadingDetails} onClick={() => goToStep(index)} aria-current={activeStep === index ? 'step' : undefined} className="flex flex-col items-center gap-2 rounded-lg px-2 text-xs sm:text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-fi-accent disabled:opacity-50">
+                                    <span className={`flex h-9 w-9 items-center justify-center rounded-full border-2 font-semibold ${activeStep > index ? 'border-fi-accent bg-fi-accent text-white' : activeStep === index ? 'border-fi-accent bg-white text-fi-deep' : 'border-slate-200 bg-white text-slate-500'}`}>
+                                        {activeStep > index ? <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="m5 12 4 4L19 6" /></svg> : activeStep === index ? <span className="h-3 w-3 rounded-full bg-fi-accent" aria-hidden="true" /> : index + 1}
+                                    </span><span className={activeStep === index ? 'font-semibold text-fi-deep' : 'text-slate-600'}>{label}</span>
                                 </button>
                             </li>)}
                         </ol>
@@ -1078,8 +1136,8 @@ export default function AppointmentModal({ appointment, professionals, patients,
 <section data-appointment-step="0" aria-label="Paciente" style={{ display: activeStep === 0 ? undefined : "none" }} className="space-y-3">
                     {/* Bloco: Dados do Paciente */}
                     <div className="bg-white rounded-lg p-3 border border-slate-200">
-                        <h4 className="text-sm font-semibold text-blue-800 mb-2 flex items-center gap-2">
-                            <i className="fas fa-user text-blue-600"></i> Identificação do Paciente
+                        <h4 className="text-[11px] font-semibold uppercase tracking-wide text-fi-muted mb-2 flex items-center gap-2">
+                            <i className="fas fa-user text-fi-muted"></i> Identificação do Paciente
                         </h4>
                         <div className="space-y-4">
                             {isEdit ? (
@@ -1143,11 +1201,11 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                             value={formData.patient || ""}
                                             onChange={(e) => handlePatientChange(e.target.value)}
                                             onBlur={(e) => handlePatientBlur(e.target.value)}
-                                            className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 pr-10"
+                                            className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-fi-accent focus:border-fi-accent pr-10"
                                             required
                                         />
                                         {isSearching ? (
-                                            <svg className="animate-spin h-4 w-4 text-teal-500 absolute right-3 top-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <svg className="animate-spin h-4 w-4 text-fi-accent absolute right-3 top-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                             </svg>
@@ -1166,7 +1224,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                                 filteredPatients.map((p) => (
                                                     <div
                                                         key={p._id}
-                                                        className={`p-3 cursor-pointer border-b border-gray-100 last:border-0 hover:bg-teal-50 ${formData.patientId === p._id ? 'bg-teal-50 border-l-4 border-l-teal-500' : ''}`}
+                                                        className={`p-3 cursor-pointer border-b border-gray-100 last:border-0 hover:bg-fi-soft ${formData.patientId === p._id ? 'bg-fi-soft border-l-4 border-l-fi-accent' : ''}`}
                                                         onClick={() => selectPatient(p)}
                                                     >
                                                         <div className="font-semibold text-gray-800">{p.fullName}</div>
@@ -1197,15 +1255,34 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                     )}
                                     {/* Resumo do paciente selecionado */}
                                     {formData.patientId && (
-                                        <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded-lg">
-                                            <p className="text-sm font-medium text-green-800">
+                                        <div className="mt-2 p-3 bg-fi-soft border border-fi-accent/40 rounded-xl">
+                                            <p className="text-sm font-semibold text-fi-deep">
                                                 <i className="fas fa-user-check mr-2"></i>
                                                 {formData.patient}
                                             </p>
-                                            <p className="text-xs text-green-600 mt-1">
+                                            <p className="text-xs text-fi-deep/80 mt-1 tabular-nums">
                                                 Telefone: {formatPhoneBR(formData.phone) || "-"} |
                                                 Nasc: {formData.birthDate ? new Date(formData.birthDate).toLocaleDateString() : "-"}
+                                                {formData.responsible ? ` | Resp.: ${formData.responsible}` : ""}
                                             </p>
+                                            {patientHistory.length > 0 && (
+                                                <div className="mt-2 pt-2 border-t border-fi-accent/20">
+                                                    <p className="text-[11px] font-semibold uppercase tracking-wide text-fi-deep/70 mb-1">Últimos atendimentos</p>
+                                                    <ul className="flex flex-wrap gap-1.5">
+                                                        {patientHistory.slice(0, 4).map((a, i) => {
+                                                            const d = String(a.date || "").split("T")[0].split("-").reverse().join("/");
+                                                            const st = mapBackendServiceType(a.serviceType, !!a.package);
+                                                            const label = SERVICE_TYPE_LABELS[st] || a.serviceType || "";
+                                                            const canceled = a.operationalStatus === "canceled";
+                                                            return (
+                                                                <li key={a._id || a.id || i} className={`px-2 py-0.5 rounded-md bg-white text-xs text-fi-ink tabular-nums ${canceled ? "line-through text-fi-muted" : ""}`}>
+                                                                    {d}{a.time ? ` ${a.time}` : ""}{label ? ` · ${label}` : ""}
+                                                                </li>
+                                                            );
+                                                        })}
+                                                    </ul>
+                                                </div>
+                                            )}
                                         </div>
                                     )}
                                 </div>
@@ -1215,8 +1292,8 @@ export default function AppointmentModal({ appointment, professionals, patients,
 
                     {/* Seção: Contato e Responsável */}
                     <div className="bg-white rounded-lg p-3 border border-slate-200">
-                        <h4 className="text-sm font-semibold text-purple-800 mb-2 flex items-center gap-2">
-                            <i className="fas fa-phone-alt text-purple-600"></i> Contato
+                        <h4 className="text-[11px] font-semibold uppercase tracking-wide text-fi-muted mb-2 flex items-center gap-2">
+                            <i className="fas fa-phone-alt text-fi-muted"></i> Contato
                         </h4>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             <div>
@@ -1232,7 +1309,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                     className={`w-full p-2.5 border rounded-lg focus:ring-2 ${
                                         phoneError
                                             ? "border-red-400 focus:ring-red-400 focus:border-red-400"
-                                            : "border-gray-300 focus:ring-teal-500 focus:border-teal-500"
+                                            : "border-gray-300 focus:ring-fi-accent focus:border-fi-accent"
                                     }`}
                                     required
                                 />
@@ -1249,7 +1326,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                     name="birthDate"
                                     value={formData.birthDate}
                                     onChange={handleChange}
-                                    className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                    className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-fi-accent focus:border-fi-accent"
                                     required
                                 />
                             </div>
@@ -1262,7 +1339,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                     name="email"
                                     value={formData.email}
                                     onChange={handleChange}
-                                    className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                    className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-fi-accent focus:border-fi-accent"
                                 />
                             </div>
                             <div>
@@ -1272,7 +1349,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                     name="responsible"
                                     value={formData.responsible}
                                     onChange={handleChange}
-                                    className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                    className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-fi-accent focus:border-fi-accent"
                                 />
                             </div>
                         </div>
@@ -1283,8 +1360,8 @@ export default function AppointmentModal({ appointment, professionals, patients,
 <section data-appointment-step="1" aria-label="Atendimento" style={{ display: activeStep === 1 ? undefined : "none" }} className="space-y-2">
                     {/* Seção: Profissional e Especialidade */}
                     <div className="bg-white rounded-lg p-2.5 border border-slate-200">
-                        <h4 className="text-sm font-semibold text-emerald-800 mb-2 flex items-center gap-2">
-                            <i className="fas fa-user-md text-emerald-600"></i> Profissional
+                        <h4 className="text-[11px] font-semibold uppercase tracking-wide text-fi-muted mb-2 flex items-center gap-2">
+                            <i className="fas fa-user-md text-fi-muted"></i> Profissional
                         </h4>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-2 [&>div:first-child]:sm:col-span-2">
                             <div>
@@ -1293,7 +1370,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                     name="professional"
                                     value={formData.professionalId}
                                     onChange={handleChange}
-                                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-fi-accent focus:border-fi-accent"
                                     required
                                 >
                                     <option value="">Selecione um profissional</option>
@@ -1313,7 +1390,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                     name="specialty"
                                     value={formData.specialty}
                                     onChange={handleChange}
-                                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-fi-accent focus:border-fi-accent"
                                 >
                                     <option value="fonoaudiologia">Fonoaudiologia</option>
                                     <option value="psicologia">Psicologia</option>
@@ -1334,10 +1411,10 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                     name="operationalStatus"
                                     value={formData.operationalStatus}
                                     onChange={handleChange}
-                                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-fi-accent focus:border-fi-accent"
                                 >
                                     <option value="scheduled">Agendado</option>
-                                    <option value="pre_agendado">⭐ Pré-Agendado</option>
+                                    <option value="pre_agendado">Pré-agendado</option>
                                     <option value="completed">Concluído</option>
                                     <option value="canceled">Cancelado</option>
                                     <option value="missed">Faltou</option>
@@ -1349,8 +1426,8 @@ export default function AppointmentModal({ appointment, professionals, patients,
 
                     {/* Seção: Dados do Agendamento */}
                     <div className="bg-white rounded-lg p-2.5 border border-slate-200">
-                        <h4 className="text-sm font-semibold text-amber-800 mb-2 flex items-center gap-2">
-                            <i className="fas fa-calendar-alt text-amber-600"></i> Data e Hora
+                        <h4 className="text-[11px] font-semibold uppercase tracking-wide text-fi-muted mb-2 flex items-center gap-2">
+                            <i className="fas fa-calendar-alt text-fi-muted"></i> Data e Hora
                         </h4>
                         
                         {/* 🆕 Alerta de feriado */}
@@ -1382,7 +1459,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                     name="date"
                                     value={formData.date}
                                     onChange={handleChange}
-                                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-fi-accent focus:border-fi-accent"
                                     required
                                 />
                             </div>
@@ -1393,12 +1470,42 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                     name="time"
                                     value={formData.time}
                                     onChange={handleChange}
-                                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-fi-accent focus:border-fi-accent"
                                     required
                                 />
-                                <p className="text-xs text-gray-500 mt-1">
-                                    Dica: use horários múltiplos de 40min (08:00, 08:40, 09:20… 18:40)
-                                </p>
+                                {formData.professionalId && formData.date ? (
+                                    <div className="mt-2">
+                                        <p className="text-[11px] font-semibold uppercase tracking-wide text-fi-muted mb-1.5">
+                                            {isLoadingSlots ? "Buscando horários livres…" : freeSlots.length ? "Horários do profissional neste dia" : "Sem horários livres retornados para este dia"}
+                                        </p>
+                                        {!isLoadingSlots && freeSlots.length > 0 && (
+                                            <div className="flex flex-wrap gap-1.5">
+                                                {freeSlots.map((slot) => {
+                                                    const time = typeof slot === "string" ? slot : slot.time;
+                                                    const available = typeof slot === "string" ? true : slot.available !== false;
+                                                    const selected = formData.time === time;
+                                                    return (
+                                                        <button
+                                                            key={time}
+                                                            type="button"
+                                                            disabled={!available && !selected}
+                                                            onClick={() => { hasInteracted.current = true; setFormData((prev) => ({ ...prev, time })); }}
+                                                            className={`h-8 px-2.5 rounded-lg border text-sm font-semibold tabular-nums transition-colors ${selected ? "bg-fi-accent border-fi-accent text-white" : available ? "bg-white border-fi-line text-fi-ink hover:bg-fi-soft" : "bg-gray-50 border-gray-200 text-gray-400 line-through cursor-not-allowed"}`}
+                                                            aria-pressed={selected}
+                                                        >
+                                                            {time}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                        <p className="text-xs text-gray-500 mt-1.5">Ou digite outro horário no campo acima (múltiplos de 40min: 08:00, 08:40, 09:20… 18:40).</p>
+                                    </div>
+                                ) : (
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        Escolha profissional e data para ver os horários livres. Dica: múltiplos de 40min (08:00, 08:40, 09:20… 18:40)
+                                    </p>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -1412,7 +1519,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                             value={formData.observations}
                             onChange={handleChange}
                             rows="1"
-                            className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                            className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-fi-accent focus:border-fi-accent"
                         />
                     </div>
 
@@ -1424,8 +1531,8 @@ export default function AppointmentModal({ appointment, professionals, patients,
                     {/* Seção: Faturamento */}
                     <div className="xl:col-span-12 bg-white rounded-lg p-3 border border-slate-200">
                         <div className="flex justify-between items-center mb-2">
-                            <h4 className="text-sm font-semibold text-indigo-800 flex items-center gap-2">
-                                <i className="fas fa-dollar-sign text-indigo-600"></i> Faturamento
+                            <h4 className="text-[11px] font-semibold uppercase tracking-wide text-fi-muted flex items-center gap-2">
+                                <i className="fas fa-dollar-sign text-fi-muted"></i> Faturamento
                             </h4>
                             {isEdit && appointment?.operationalStatus !== 'pre_agendado' && (
                                 <button
@@ -1480,6 +1587,18 @@ export default function AppointmentModal({ appointment, professionals, patients,
                             )}
                         </div>
 
+                        {packageSuggestion && (
+                            <div className="mb-3 p-3 rounded-xl bg-amber-50 border border-amber-200 text-sm text-amber-900 flex flex-wrap items-start gap-2">
+                                <i className="fas fa-lightbulb mt-0.5 text-amber-600"></i>
+                                <span className="flex-1 min-w-[200px]">
+                                    Este paciente teve {packageSuggestion.count} sessões avulsas nas últimas 5 semanas. No pacote 1x/semana a sessão fica R$ 180 (avulsa R$ 220).
+                                </span>
+                                <button type="button" onClick={copyPackageMessage} className="h-8 px-3 rounded-lg bg-white border border-amber-300 font-semibold hover:bg-amber-100">
+                                    Copiar mensagem
+                                </button>
+                            </div>
+                        )}
+
                         {formData.crm.serviceType !== 'return' && (
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
                             <div>
@@ -1488,7 +1607,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                     name="billingType"
                                     value={formData.billingType}
                                     onChange={handleChange}
-                                    className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                    className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-fi-accent focus:border-fi-accent"
                                     required
                                 >
                                     <option value="particular">Particular</option>
@@ -1501,7 +1620,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                     name="paymentStatus"
                                     value={formData.paymentStatus}
                                     onChange={handleChange}
-                                    className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                    className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-fi-accent focus:border-fi-accent"
                                     required
                                 >
                                     <option value="pending">Pendente</option>
@@ -1529,7 +1648,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                             }
                                         }));
                                     }}
-                                    className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                    className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-fi-accent focus:border-fi-accent"
                                 >
                                     {Object.entries(SERVICE_TYPE_LABELS).map(([key, label]) => (
                                         <option key={key} value={key}>{label}</option>
@@ -1547,7 +1666,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                         name="insuranceProvider"
                                         value={formData.insuranceProvider}
                                         onChange={handleConvenioChange}
-                                        className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                        className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-fi-accent focus:border-fi-accent"
                                     >
                                         <option value="">{convenioLoadError ? 'Não foi possível carregar os convênios' : 'Selecione o convênio'}</option>
                                         {formData.insuranceProvider && !convenioOptions.some(c => c.code === formData.insuranceProvider) && (
@@ -1591,7 +1710,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                         name="insuranceValue"
                                         value={formData.insuranceValue}
                                         onChange={handleChange}
-                                        className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                        className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-fi-accent focus:border-fi-accent"
                                     />
                                 </div>
                                 <div>
@@ -1601,7 +1720,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                         name="authorizationCode"
                                         value={formData.authorizationCode}
                                         onChange={handleChange}
-                                        className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                        className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-fi-accent focus:border-fi-accent"
                                         placeholder="Código da autorização"
                                     />
                                 </div>
@@ -1642,7 +1761,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                     name="crm.paymentMethod"
                                     value={formData.crm.paymentMethod}
                                     onChange={handleChange}
-                                    className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                    className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-fi-accent focus:border-fi-accent"
                                 >
                                     <option value="pix">Pix</option>
                                     <option value="dinheiro">Dinheiro</option>
@@ -1652,7 +1771,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                     <option value="outro">Outro</option>
                                 </select>
                                 {splitMethods.length === 0 ? (
-                                    <button type="button" onClick={() => setSplitMethods([{ method: formData.crm.paymentMethod || 'pix', amount: '' }, { method: 'dinheiro', amount: '' }])} className="mt-1 text-xs text-teal-600 underline">+ Dividir pagamento</button>
+                                    <button type="button" onClick={() => setSplitMethods([{ method: formData.crm.paymentMethod || 'pix', amount: '' }, { method: 'dinheiro', amount: '' }])} className="mt-1 text-xs text-fi-accent underline">+ Dividir pagamento</button>
                                 ) : (
                                     <div className="mt-2 space-y-1">
                                         {splitMethods.map((s, i) => (
@@ -1698,7 +1817,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                     value={formData.crm.paymentAmount}
                                     onChange={handleChange}
                                     disabled={formData.paymentStatus === 'paid' || !!formData.package}
-                                    className={`w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 ${
+                                    className={`w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-fi-accent focus:border-fi-accent ${
                                         formData.paymentStatus === 'paid' || !!formData.package
                                             ? 'bg-gray-100 text-gray-500 cursor-not-allowed border-gray-300'
                                             : 'border-gray-300'
@@ -1737,14 +1856,14 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                         <p className="text-xs text-green-700 mt-2">O sinal já entrou no caixa e não pode ser sobrescrito nesta edição.</p>
                                     </div>
                                 ) : showDepositField ? (
-                                    <div className="md:col-span-3 border border-teal-200 bg-teal-50/40 rounded-lg p-3 mt-1">
+                                    <div className="md:col-span-3 border border-teal-200 bg-fi-soft/40 rounded-lg p-3 mt-1">
                                         <div className="flex items-center justify-between mb-2">
-                                            <label className="text-sm font-semibold text-teal-800 flex items-center gap-2">
-                                                <i className="fas fa-hand-holding-usd text-teal-600"></i> Sinal recebido
+                                            <label className="text-sm font-semibold text-fi-deep flex items-center gap-2">
+                                                <i className="fas fa-hand-holding-usd text-fi-accent"></i> Sinal recebido
                                             </label>
                                             <div className="flex items-center gap-2">
                                                 {Number(formData.depositAmount) > 0 && (
-                                                    <span className="text-xs font-normal text-teal-700 bg-teal-100 px-2 py-0.5 rounded-full">
+                                                    <span className="text-xs font-normal text-fi-deep bg-teal-100 px-2 py-0.5 rounded-full">
                                                         Saldo no dia: {formatCurrency(Math.max(Number(formData.crm.paymentAmount || 0) - Number(formData.depositAmount || 0), 0))}
                                                     </span>
                                                 )}
@@ -1767,7 +1886,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                                     name="depositAmount"
                                                     value={formData.depositAmount || 0}
                                                     onChange={(e) => setFormData(prev => ({ ...prev, depositAmount: Number(e.target.value || 0) }))}
-                                                    className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                                    className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-fi-accent focus:border-fi-accent"
                                                     autoFocus
                                                 />
                                             </div>
@@ -1776,7 +1895,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                                 <select
                                                     value={formData.depositPaymentMethod || ''}
                                                     onChange={(e) => setFormData(prev => ({ ...prev, depositPaymentMethod: e.target.value }))}
-                                                    className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                                    className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-fi-accent focus:border-fi-accent"
                                                 >
                                                     <option value="">Selecione</option>
                                                     <option value="pix">Pix</option>
@@ -1793,7 +1912,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                                 O sinal não pode ser maior que o valor da consulta.
                                             </p>
                                         )}
-                                        <p className="text-xs text-teal-700 mt-2">
+                                        <p className="text-xs text-fi-deep mt-2">
                                             O saldo é calculado pelo sistema — esta tela só registra o valor recebido agora.
                                         </p>
                                     </div>
@@ -1802,15 +1921,15 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                         <button
                                             type="button"
                                             onClick={() => setShowDepositField(true)}
-                                            className="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-lg border-2 border-dashed border-teal-300 bg-teal-50/60 hover:bg-teal-100/70 hover:border-teal-400 transition-colors text-left"
+                                            className="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-lg border-2 border-dashed border-teal-300 bg-fi-soft/60 hover:bg-teal-100/70 hover:border-teal-400 transition-colors text-left"
                                         >
-                                            <span className="flex items-center gap-2.5 text-sm font-semibold text-teal-800">
-                                                <span className="flex items-center justify-center w-8 h-8 rounded-full bg-teal-100 text-teal-600">
+                                            <span className="flex items-center gap-2.5 text-sm font-semibold text-fi-deep">
+                                                <span className="flex items-center justify-center w-8 h-8 rounded-full bg-teal-100 text-fi-accent">
                                                     <i className="fas fa-hand-holding-usd"></i>
                                                 </span>
                                                 Registrar sinal recebido
                                             </span>
-                                            <span className="text-xs text-teal-600 hidden sm:inline">
+                                            <span className="text-xs text-fi-accent hidden sm:inline">
                                                 Só se o paciente já pagou uma entrada agora
                                             </span>
                                         </button>
@@ -1825,7 +1944,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                         name="crm.usePackage"
                                         checked={!!formData.crm.usePackage}
                                         onChange={handleChange}
-                                        className="w-4 h-4 text-teal-600 rounded focus:ring-teal-500"
+                                        className="w-4 h-4 text-fi-accent rounded focus:ring-fi-accent"
                                     />
                                     <label htmlFor="usePackage" className="text-sm text-gray-700 font-medium cursor-pointer">
                                         Usar pacote (se houver)
@@ -1850,7 +1969,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                         </button>
                         
                         {activeStep > 0 && <button type="button" disabled={isLoading || isLoadingDetails} onClick={() => goToStep(activeStep - 1)} className="mr-auto rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-white">Voltar</button>}
-                        {activeStep < 2 ? <button type="button" onClick={(event) => { event.preventDefault(); goToStep(activeStep + 1); }} disabled={isLoading || isLoadingDetails} className="rounded-lg bg-teal-700 px-5 py-2 font-semibold text-white hover:bg-teal-800 disabled:opacity-50">Continuar</button> : isPreExisting ? (
+                        {activeStep < 2 ? <button type="button" onClick={(event) => { event.preventDefault(); goToStep(activeStep + 1); }} disabled={isLoading || isLoadingDetails} className="rounded-lg bg-fi-deep px-5 py-2 font-semibold text-white hover:bg-fi-deep disabled:opacity-50">Continuar</button> : isPreExisting ? (
                             // Pré-agendamento EXISTENTE: botão que confirma/converte
                             <button
                                 type="button"
@@ -1858,7 +1977,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                 disabled={isLoading}
                                 className={`px-5 py-2 rounded-lg font-semibold flex items-center justify-center gap-2 ${isLoading
                                         ? "bg-gray-400 cursor-not-allowed text-white"
-                                        : "bg-teal-600 hover:bg-teal-700 text-white shadow-sm"
+                                        : "bg-fi-accent hover:bg-fi-deep text-white shadow-sm"
                                     }`}
                             >
                                 {isLoading ? (
@@ -1878,7 +1997,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                 disabled={isLoading || isPackagePreAgendado}
                                 className={`px-5 py-2 rounded-lg font-semibold flex items-center justify-center gap-2 ${isLoading || isPackagePreAgendado
                                         ? "bg-gray-400 cursor-not-allowed text-white"
-                                        : "bg-teal-600 hover:bg-teal-700 text-white shadow-sm"
+                                        : "bg-fi-accent hover:bg-fi-deep text-white shadow-sm"
                                     }`}
                             >
                                 {isLoading && (
