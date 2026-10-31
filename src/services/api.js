@@ -1,5 +1,6 @@
 
 import axios from 'axios';
+import { getToken, clearSession } from '../auth/session';
 
 const api = axios.create({
     baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000',
@@ -12,10 +13,12 @@ const api = axios.create({
 // Interceptor para adicionar o token de autenticação
 api.interceptors.request.use(
     (config) => {
-        const token = import.meta.env.VITE_API_TOKEN;
+        // Token de quem entrou na agenda (conta do ERP). O token fixo saiu do código.
+        const token = getToken();
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
         }
+        config.headers['X-Client'] = 'agenda-externa';
         console.log(`[API Request] ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`, { params: config.params });
         return config;
     },
@@ -41,11 +44,11 @@ api.interceptors.response.use(
     }
 );
 
-// Interceptor para tratamento de erros
+// Sessão expirada ou inválida: volta para a tela de login.
 api.interceptors.response.use(
     (response) => response,
     (error) => {
-        console.error('API Error:', error.response || error.message);
+        if (error?.response?.status === 401) clearSession('expired');
         return Promise.reject(error);
     }
 );

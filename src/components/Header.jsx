@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import WhatsAppConnectModal from './WhatsAppConnectModal';
 import WhatsNewModal, { shouldAutoOpenWhatsNew } from './WhatsNewModal';
 import { getWhatsAppWebStatus } from '../api/v2/whatsappClient.js';
+import { getSession, clearSession } from '../auth/session';
 
 export default function Header({ view, setView, remindersPendingCount = 0, onOpenReminders }) {
     const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false);
@@ -115,6 +116,16 @@ export default function Header({ view, setView, remindersPendingCount = 0, onOpe
                             {remindersPendingCount}
                         </span>
                     )}
+                </button>
+
+                {/* Quem está logado + sair */}
+                <button
+                    onClick={() => { if (window.confirm('Sair da agenda?')) clearSession('logout'); }}
+                    className="h-9 px-3 inline-flex items-center gap-2 rounded-xl bg-white/10 text-sm font-semibold text-white hover:bg-white/20 transition-colors"
+                    title="Sair da agenda"
+                >
+                    <i className="fas fa-right-from-bracket"></i>
+                    <span className="hidden md:inline max-w-[10rem] truncate">{getSession()?.user?.name || getSession()?.user?.fullName || 'Sair'}</span>
                 </button>
             </div>
             <WhatsNewModal open={isWhatsNewOpen} onClose={() => setIsWhatsNewOpen(false)} />

@@ -17,7 +17,7 @@ export const fetchPatients = async () => {
         
         // Se for erro de autenticação, propaga o erro para o frontend
         if (error.response?.status === 401 || error.response?.data?.code === 'INVALID_TOKEN') {
-            console.error('❌ [fetchPatients] Token inválido! Verifique o VITE_API_TOKEN no .env');
+            console.error('❌ [fetchPatients] Sessão inválida, entre de novo na agenda');
             throw new Error('INVALID_TOKEN');
         }
         
