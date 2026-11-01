@@ -5,7 +5,7 @@ import { SERVICE_TYPE_LABELS, mapBackendServiceType } from "../utils/serviceType
 import { searchPatients } from "../services/patientsRepo";
 import { cancelAppointment, getAppointmentById, getAppointmentsByPatient, fetchAvailableSlots } from "../services/appointmentsRepo";
 import { confirmToast } from "../utils/confirmToast";
-import { toast } from "react-toastify";
+import { toast } from "../utils/toast";
 import { formatPhoneBR, onlyDigits, validatePhoneBR } from "../utils/phone";
 import InputCurrency from "./InputCurrency";
 import { getConvenioOptions } from "../api/v2/agendaV2Client";
@@ -1136,7 +1136,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
 <section data-appointment-step="0" aria-label="Paciente" style={{ display: activeStep === 0 ? undefined : "none" }} className="space-y-3">
                     {/* Bloco: Dados do Paciente */}
                     <div className="bg-white rounded-lg p-3 border border-slate-200">
-                        <h4 className="text-[11px] font-semibold uppercase tracking-wide text-fi-muted mb-2 flex items-center gap-2">
+                        <h4 className="text-[12px] font-semibold text-fi-muted mb-2 flex items-center gap-2">
                             <i className="fas fa-user text-fi-muted"></i> Identificação do Paciente
                         </h4>
                         <div className="space-y-4">
@@ -1267,7 +1267,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                             </p>
                                             {patientHistory.length > 0 && (
                                                 <div className="mt-2 pt-2 border-t border-fi-accent/20">
-                                                    <p className="text-[11px] font-semibold uppercase tracking-wide text-fi-deep/70 mb-1">Últimos atendimentos</p>
+                                                    <p className="text-[12px] font-semibold text-fi-deep/70 mb-1">Últimos atendimentos</p>
                                                     <ul className="flex flex-wrap gap-1.5">
                                                         {patientHistory.slice(0, 4).map((a, i) => {
                                                             const d = String(a.date || "").split("T")[0].split("-").reverse().join("/");
@@ -1292,7 +1292,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
 
                     {/* Seção: Contato e Responsável */}
                     <div className="bg-white rounded-lg p-3 border border-slate-200">
-                        <h4 className="text-[11px] font-semibold uppercase tracking-wide text-fi-muted mb-2 flex items-center gap-2">
+                        <h4 className="text-[12px] font-semibold text-fi-muted mb-2 flex items-center gap-2">
                             <i className="fas fa-phone-alt text-fi-muted"></i> Contato
                         </h4>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -1360,7 +1360,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
 <section data-appointment-step="1" aria-label="Atendimento" style={{ display: activeStep === 1 ? undefined : "none" }} className="space-y-2">
                     {/* Seção: Profissional e Especialidade */}
                     <div className="bg-white rounded-lg p-2.5 border border-slate-200">
-                        <h4 className="text-[11px] font-semibold uppercase tracking-wide text-fi-muted mb-2 flex items-center gap-2">
+                        <h4 className="text-[12px] font-semibold text-fi-muted mb-2 flex items-center gap-2">
                             <i className="fas fa-user-md text-fi-muted"></i> Profissional
                         </h4>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-2 [&>div:first-child]:sm:col-span-2">
@@ -1426,7 +1426,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
 
                     {/* Seção: Dados do Agendamento */}
                     <div className="bg-white rounded-lg p-2.5 border border-slate-200">
-                        <h4 className="text-[11px] font-semibold uppercase tracking-wide text-fi-muted mb-2 flex items-center gap-2">
+                        <h4 className="text-[12px] font-semibold text-fi-muted mb-2 flex items-center gap-2">
                             <i className="fas fa-calendar-alt text-fi-muted"></i> Data e Hora
                         </h4>
                         
@@ -1475,7 +1475,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                 />
                                 {formData.professionalId && formData.date ? (
                                     <div className="mt-2">
-                                        <p className="text-[11px] font-semibold uppercase tracking-wide text-fi-muted mb-1.5">
+                                        <p className="text-[12px] font-semibold text-fi-muted mb-1.5">
                                             {isLoadingSlots ? "Buscando horários livres…" : freeSlots.length ? "Horários do profissional neste dia" : "Sem horários livres retornados para este dia"}
                                         </p>
                                         {!isLoadingSlots && freeSlots.length > 0 && (
@@ -1531,7 +1531,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                     {/* Seção: Faturamento */}
                     <div className="xl:col-span-12 bg-white rounded-lg p-3 border border-slate-200">
                         <div className="flex justify-between items-center mb-2">
-                            <h4 className="text-[11px] font-semibold uppercase tracking-wide text-fi-muted flex items-center gap-2">
+                            <h4 className="text-[12px] font-semibold text-fi-muted flex items-center gap-2">
                                 <i className="fas fa-dollar-sign text-fi-muted"></i> Faturamento
                             </h4>
                             {isEdit && appointment?.operationalStatus !== 'pre_agendado' && (

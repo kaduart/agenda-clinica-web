@@ -1,8 +1,9 @@
 
 // src/App.jsx
 import React, { useEffect, useMemo } from "react";
-import { ToastContainer, toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
+import { toast } from './utils/toast';
+import { Toaster } from 'sonner';
+import ConfirmHost from './ui/ConfirmHost';
 
 // Firebase removido - Agora usamos API + Socket.io
 
@@ -1107,7 +1108,7 @@ export default function App() {
   // ========== RENDER ==========
   return (
     <div className="min-h-screen bg-fi-bg text-fi-ink">
-      <div className="relative z-50 pointer-events-auto">
+      <div className="sticky top-0 z-50 pointer-events-auto">
         <Header
           view={view}
           setView={setView}
@@ -1115,7 +1116,9 @@ export default function App() {
           onOpenReminders={() => setIsRemindersListOpen(true)}
         />
       </div>
-      <ToastContainer position="top-center" newestOnTop closeOnClick={false} draggable={false} />
+      <Toaster position="top-center" richColors closeButton duration={4000}
+        toastOptions={{ style: { fontFamily: 'Figtree, system-ui, sans-serif' } }} />
+      <ConfirmHost />
 
       <main className="max-w-screen-2xl mx-auto px-2 sm:px-4 lg:px-6 py-4 space-y-3">
         <div>

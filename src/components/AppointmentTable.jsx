@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
+import { useAutoAnimate } from "@formkit/auto-animate/react";
+import { useWindowVirtualizer } from "@tanstack/react-virtual";
 import { SPECIALTIES } from "../config/specialties";
 import AppointmentRow from "./AppointmentRow";
 import CycleWizardModal from "./CycleWizardModal";
@@ -74,58 +76,47 @@ export default function AppointmentTable({
                         {/* Header row — espelha as colunas do AppointmentRow */}
                         <div className="hidden sm:flex items-center gap-3 px-4 py-2 border-b border-fi-line bg-fi-bg">
                             <div className="w-36 shrink-0 flex items-center">
-                                <span className="text-[10.5px] font-semibold text-fi-muted uppercase tracking-wide flex items-center gap-1.5">
+                                <span className="text-[12px] font-semibold text-fi-muted flex items-center gap-1.5">
                                     <i className="fas fa-clock text-xs"></i> Horário / Profissional
                                 </span>
                             </div>
                             <div className="flex-[1.2] min-w-0 flex items-center">
-                                <span className="text-[10.5px] font-semibold text-fi-muted uppercase tracking-wide flex items-center gap-1.5">
+                                <span className="text-[12px] font-semibold text-fi-muted flex items-center gap-1.5">
                                     <i className="fas fa-user text-xs"></i> Paciente
                                 </span>
                             </div>
                             <div className="w-36 shrink-0 hidden md:flex items-center justify-center">
-                                <span className="text-[10.5px] font-semibold text-fi-muted uppercase tracking-wide flex items-center justify-center gap-1.5">
+                                <span className="text-[12px] font-semibold text-fi-muted flex items-center justify-center gap-1.5">
                                     <i className="fas fa-comment-check text-xs"></i> Confirmação
                                 </span>
                             </div>
                             <div className="w-32 shrink-0 hidden lg:flex items-center">
-                                <span className="text-[10.5px] font-semibold text-fi-muted uppercase tracking-wide flex items-center gap-1.5">
+                                <span className="text-[12px] font-semibold text-fi-muted flex items-center gap-1.5">
                                     <i className="fas fa-stethoscope text-xs"></i> Área / Tipo
                                 </span>
                             </div>
                             <div className="w-32 shrink-0 hidden xl:flex items-center">
-                                <span className="text-[10.5px] font-semibold text-fi-muted uppercase tracking-wide flex items-center gap-1.5">
+                                <span className="text-[12px] font-semibold text-fi-muted flex items-center gap-1.5">
                                     <i className="fas fa-comment-dots text-xs"></i> Anotações
                                 </span>
                             </div>
                             <div className="w-28 shrink-0 text-center hidden md:flex items-center justify-center">
-                                <span className="text-[10.5px] font-semibold text-fi-muted uppercase tracking-wide flex items-center justify-center gap-1.5">
+                                <span className="text-[12px] font-semibold text-fi-muted flex items-center justify-center gap-1.5">
                                     <i className="fas fa-flag text-xs"></i> Status do atendimento
                                 </span>
                             </div>
                             <div className="w-64 shrink-0 flex items-center justify-end">
-                                <span className="text-[10.5px] font-semibold text-fi-muted uppercase tracking-wide flex items-center justify-center gap-1.5">
+                                <span className="text-[12px] font-semibold text-fi-muted flex items-center justify-center gap-1.5">
                                     <i className="fas fa-cogs text-xs"></i> Ações
                                 </span>
                             </div>
                         </div>
 
-                        {/* Rows */}
-                        <div className="divide-y divide-fi-line">
-                            {appointments.map((appointment, index) => (
-                                <AppointmentRow
-                                    key={appointment.id}
-                                    appointment={appointment}
-                                    index={index}
-                                    onEdit={onEdit}
-                                    onDelete={onDelete}
-                                    onCancel={onCancel}
-                                    onReminder={onReminder}
-                                    onGenerateCycle={handleGenerateCycle}
-                                    onPostAppointment={onPostAppointment}
-                                />
-                            ))}
-                        </div>
+                        {/* Rows: lista curta anima entradas/saídas; lista longa (mês inteiro) é virtualizada */}
+                        <RowList
+                            appointments={appointments}
+                            rowProps={{ onEdit, onDelete, onCancel, onReminder, onGenerateCycle: handleGenerateCycle, onPostAppointment }}
+                        />
                     </>
                 )}
             </div>
@@ -140,6 +131,67 @@ export default function AppointmentTable({
                     setCycleWizardOpen(false);
                 }}
             />
+        </div>
+    );
+}
+
+// Acima disso a lista é virtualizada (só desenha as linhas visíveis na tela).
+const VIRTUALIZE_FROM = 60;
+
+function RowList({ appointments, rowProps }) {
+    if (appointments.length >= VIRTUALIZE_FROM) {
+        return <VirtualRows appointments={appointments} rowProps={rowProps} />;
+    }
+    return <AnimatedRows appointments={appointments} rowProps={rowProps} />;
+}
+
+function AnimatedRows({ appointments, rowProps }) {
+    const [ref] = useAutoAnimate({ duration: 180 });
+    return (
+        <div ref={ref} className="divide-y divide-fi-line">
+            {appointments.map((appointment, index) => (
+                <AppointmentRow key={appointment.id} appointment={appointment} index={index} {...rowProps} />
+            ))}
+        </div>
+    );
+}
+
+function VirtualRows({ appointments, rowProps }) {
+    const listRef = useRef(null);
+    // distância da lista até o topo da página (a rolagem é a da janela)
+    const [scrollMargin, setScrollMargin] = useState(0);
+    useLayoutEffect(() => {
+        const el = listRef.current;
+        if (!el) return;
+        const measure = () => setScrollMargin(el.getBoundingClientRect().top + window.scrollY);
+        measure();
+        const ro = new ResizeObserver(measure);
+        ro.observe(document.body);
+        return () => ro.disconnect();
+    }, []);
+    const virtualizer = useWindowVirtualizer({
+        count: appointments.length,
+        estimateSize: () => 76,
+        overscan: 8,
+        scrollMargin,
+        getItemKey: (i) => appointments[i]?.id ?? i,
+    });
+    const items = virtualizer.getVirtualItems();
+    return (
+        <div ref={listRef} style={{ height: virtualizer.getTotalSize(), position: "relative" }}>
+            {items.map((item) => (
+                <div
+                    key={item.key}
+                    data-index={item.index}
+                    ref={virtualizer.measureElement}
+                    // "top" em vez de transform: transform quebraria o fundo "fixed" que fecha os menus da linha.
+                    // focus-within/hover sobem a linha para o menu de ações não ficar por baixo da próxima.
+                    className="absolute left-0 right-0 border-b border-fi-line hover:z-20 focus-within:z-20"
+                    style={{ top: item.start - scrollMargin }}
+                >
+                    <AppointmentRow appointment={appointments[item.index]} index={item.index} {...rowProps} />
+                </div>
+            ))}
         </div>
     );
 }

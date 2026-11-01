@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { getReminders, updateReminder } from '../services/remindersRepo';
-import { toast } from 'react-toastify';
+import { toast } from "../utils/toast";
 
 export default function ReminderList() {
   const [lembretes, setLembretes] = useState([]);

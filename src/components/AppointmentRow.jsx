@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { toast as sonnerToast } from "../utils/toast";
 import { SPECIALTIES } from "../config/specialties";
 import { resolveSpecialtyKey } from "../utils/specialty";
 import { resolveServiceType, getServiceTypeLabel, getServiceTypeColorClass } from "../utils/serviceType";
@@ -226,16 +227,7 @@ export default function AppointmentRow({ appointment, onEdit, onReminder, onGene
   };
 
   function showToast(msg, variant = 'success') {
-    const toast = document.createElement('div');
-    const colors = {
-      success: 'bg-emerald-500',
-      error: 'bg-red-500',
-      warning: 'bg-amber-500'
-    };
-    toast.className = `fixed bottom-4 right-4 ${colors[variant] || colors.success} text-white px-4 py-2 rounded-lg text-sm z-50 shadow-lg`;
-    toast.innerHTML = `<i class="fab fa-whatsapp mr-2"></i> ${msg}`;
-    document.body.appendChild(toast);
-    setTimeout(() => toast.remove(), 4000);
+    (sonnerToast[variant] || sonnerToast.success)(msg);
   }
 
   const [showWhatsAppMenu, setShowWhatsAppMenu] = useState(false);
@@ -318,7 +310,7 @@ export default function AppointmentRow({ appointment, onEdit, onReminder, onGene
           className="absolute left-1/2 top-full z-50 mt-2 w-56 -translate-x-1/2 overflow-hidden rounded-xl border border-gray-200 bg-white py-1.5 text-left shadow-xl"
           onClick={(event) => event.stopPropagation()}
         >
-          <div className="px-3 pb-1.5 pt-1 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+          <div className="px-3 pb-1.5 pt-1 text-[12px] font-semibold text-gray-400">
             Ajustar confirmação
           </div>
           {confirmationOptions.map((option) => {
@@ -530,7 +522,7 @@ export default function AppointmentRow({ appointment, onEdit, onReminder, onGene
                     </div>
                     {/* PACIENTE */}
                     {(patientPhone) && (
-                      <div className="px-2 pt-2 pb-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                      <div className="px-2 pt-2 pb-1 text-[12px] font-bold text-slate-400">
                         Paciente
                       </div>
                     )}
@@ -569,7 +561,7 @@ export default function AppointmentRow({ appointment, onEdit, onReminder, onGene
                       <div className="border-t border-slate-100 my-1"></div>
                     )}
                     {professionalPhone && (
-                      <div className="px-2 pt-2 pb-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                      <div className="px-2 pt-2 pb-1 text-[12px] font-bold text-slate-400">
                         Profissional
                       </div>
                     )}

@@ -1,5 +1,5 @@
 import React from "react";
-import { toast } from "react-toastify";
+import { toast } from "../utils/toast";
 import { SPECIALTIES } from "../config/specialties";
 
 // Apenas especialidades válidas no backend

@@ -203,7 +203,7 @@ export default function WhatsAppConnectModal({ isOpen, onClose }) {
 
         {/* Painel de diagnóstico */}
         <div className="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
-          <p className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">Diagnóstico</p>
+          <p className="text-[12px] font-semibold text-gray-600 mb-2">Diagnóstico</p>
           <div className="grid grid-cols-2 gap-2 text-xs">
             <div className="text-gray-600">Status:</div>
             <div className="font-mono text-gray-800">{status.ready ? 'ready' : status.status}</div>

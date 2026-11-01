@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { confirmToast } from "../utils/confirmToast";
 import WhatsAppConnectModal from './WhatsAppConnectModal';
 import WhatsNewModal, { shouldAutoOpenWhatsNew } from './WhatsNewModal';
 import { getWhatsAppWebStatus } from '../api/v2/whatsappClient.js';
@@ -120,7 +121,7 @@ export default function Header({ view, setView, remindersPendingCount = 0, onOpe
 
                 {/* Quem está logado + sair */}
                 <button
-                    onClick={() => { if (window.confirm('Sair da agenda?')) clearSession('logout'); }}
+                    onClick={async () => { if (await confirmToast('Você vai precisar entrar de novo com sua conta do ERP.', { title: 'Sair da agenda?', confirmText: 'Sair', confirmColor: 'blue' })) clearSession('logout'); }}
                     className="h-9 px-3 inline-flex items-center gap-2 rounded-xl bg-white/10 text-sm font-semibold text-white hover:bg-white/20 transition-colors"
                     title="Sair da agenda"
                 >

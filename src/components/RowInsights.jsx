@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import { toast } from "react-toastify";
+import { toast } from "../utils/toast";
+import { confirmToast } from "../utils/confirmToast";
 import { useInsights } from "./InsightsContext";
 import { getRowInsights, findRefillCandidates } from "../utils/insights";
 import { getPatientName, getPatientPhone } from "../utils/daySummary";
@@ -13,7 +14,8 @@ async function sendCommercial(phone, message, label) {
     toast.error("Paciente sem telefone cadastrado");
     return false;
   }
-  if (!window.confirm(`${label}\n\n${message}\n\nEnviar pelo WhatsApp?`)) return false;
+  const ok = await confirmToast(message, { title: label, confirmText: "Enviar pelo WhatsApp", confirmColor: "whatsapp" });
+  if (!ok) return false;
   const result = await sendViaExtension(phone, message);
   if (result?.success) {
     toast.success("Mensagem enviada!");

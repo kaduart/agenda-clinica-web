@@ -1,7 +1,7 @@
 import React from "react";
 import { formatDateLocal } from "../utils/date";
 import { addReminder } from "../services/remindersRepo";
-import { toast } from "react-toastify";
+import { toast } from "../utils/toast";
 
 export default function ReminderModal({ appointment, onSave, onClose }) {
     const today = formatDateLocal(new Date());

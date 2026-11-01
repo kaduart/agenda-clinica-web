@@ -1,5 +1,6 @@
 import React from "react";
-import { toast } from "react-toastify";
+import { useAutoAnimate } from "@formkit/auto-animate/react";
+import { toast } from "../utils/toast";
 import { sendViaExtension } from "../services/whatsappExtension";
 import { generateReminderMessage, generateProfessionalReminderMessage } from "../services/whatsappExtension";
 
@@ -15,6 +16,7 @@ export default function RemindersListModal({
     const [q, setQ] = React.useState("");
     const [status, setStatus] = React.useState("pending");
     const [sending, setSending] = React.useState(false);
+    const [listRef] = useAutoAnimate({ duration: 180 });
 
     if (!open) return null;
 
@@ -231,7 +233,7 @@ export default function RemindersListModal({
                             </p>
                         </div>
                     ) : (
-                        <div className="space-y-3 p-3">
+                        <div ref={listRef} className="space-y-3 p-3">
                             {filtered.map((r) => (
                                 <div
                                     key={r.id}

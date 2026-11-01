@@ -1,5 +1,8 @@
 import { useMemo, useState } from "react";
-import { toast } from "react-toastify";
+import NumberFlow from "@number-flow/react";
+import { useAutoAnimate } from "@formkit/auto-animate/react";
+import { confirmToast } from "../utils/confirmToast";
+import { toast } from "../utils/toast";
 import { QUICK_FILTERS, summarizeDay, getPatientName, getPatientPhone } from "../utils/daySummary";
 import { sendViaExtension, generateReminderMessage } from "../services/whatsappExtension";
 import { sendWhatsAppMessage } from "../services/baileysApi";
@@ -13,13 +16,13 @@ const BULK_SEND_INTERVAL_MS = 2500;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const TILES = [
-  { key: "agendados", tone: "text-fi-ink" },
-  { key: "confirmaram", tone: "text-fi-accent" },
-  { key: "semResposta", tone: "text-amber-700" },
-  { key: "contato", tone: "text-red-700" },
-  { key: "pre", tone: "text-violet-700" },
-  { key: "livres", tone: "text-blue-700" },
-  { key: "avaliacao", tone: "text-fi-ink" },
+  { key: "agendados", tone: "text-fi-ink", dot: "bg-fi-muted" },
+  { key: "confirmaram", tone: "text-fi-accent", dot: "bg-fi-accent" },
+  { key: "semResposta", tone: "text-amber-700", dot: "bg-amber-500" },
+  { key: "contato", tone: "text-red-700", dot: "bg-red-500" },
+  { key: "pre", tone: "text-violet-700", dot: "bg-violet-500" },
+  { key: "livres", tone: "text-blue-700", dot: "bg-blue-500" },
+  { key: "avaliacao", tone: "text-fi-ink", dot: "bg-yellow-400" },
 ];
 
 export default function DaySummary({ appointments, quickFilter, onQuickFilter, hasProfessionalFilter, isSingleDay, onPostAppointmentSent }) {
@@ -34,9 +37,8 @@ export default function DaySummary({ appointments, quickFilter, onQuickFilter, h
   );
   const occupancy = useMemo(() => (isSingleDay ? occupancyByProfessional(appointments) : []), [appointments, isSingleDay]);
   const [postProgress, setPostProgress] = useState(null);
-  const [confirmingPost, setConfirmingPost] = useState(false);
   const { counts, newPre, professionalsCount } = useMemo(() => summarizeDay(appointments), [appointments]);
-  const [confirmingBulk, setConfirmingBulk] = useState(false);
+  const [animRef] = useAutoAnimate({ duration: 180 });
   const [bulkProgress, setBulkProgress] = useState(null); // { done, total }
 
   // Lote só para atendimentos de hoje em diante (nunca reenvia para datas passadas)
@@ -73,7 +75,6 @@ export default function DaySummary({ appointments, quickFilter, onQuickFilter, h
   }, [appointments]);
 
   const runBulkPost = async () => {
-    setConfirmingPost(false);
     const { message1 } = loadSavedMessages();
     const link = loadGoogleLink();
     const sentIds = [];
@@ -102,7 +103,6 @@ export default function DaySummary({ appointments, quickFilter, onQuickFilter, h
   };
 
   const runBulkSend = async () => {
-    setConfirmingBulk(false);
     const list = pendingWithPhone;
     let ok = 0;
     setBulkProgress({ done: 0, total: list.length });
@@ -129,10 +129,26 @@ export default function DaySummary({ appointments, quickFilter, onQuickFilter, h
     else toast.warning(`${ok} de ${list.length} confirmações enviadas. Veja as linhas que ficaram sem resposta.`);
   };
 
+  const askBulkSend = async () => {
+    const ok = await confirmToast(
+      `Vamos mandar o lembrete de confirmação para ${pendingWithPhone.length} paciente${pendingWithPhone.length > 1 ? "s" : ""}, um a cada ${(BULK_SEND_INTERVAL_MS / 1000).toLocaleString("pt-BR")} s. Só entram atendimentos de hoje em diante.`,
+      { title: "Enviar confirmações pelo WhatsApp?", confirmText: `Enviar para ${pendingWithPhone.length}`, confirmColor: "whatsapp" }
+    );
+    if (ok) runBulkSend();
+  };
+
+  const askBulkPost = async () => {
+    const ok = await confirmToast(
+      `A mensagem "Como foi?" vai para ${postPending.length} família${postPending.length > 1 ? "s" : ""} atendida${postPending.length > 1 ? "s" : ""} hoje. É o primeiro passo do pedido de avaliação no Google.`,
+      { title: "Enviar \"Como foi?\" agora?", confirmText: `Enviar para ${postPending.length}`, confirmColor: "whatsapp" }
+    );
+    if (ok) runBulkPost();
+  };
+
   return (
-    <div className="space-y-2">
-      <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-7 bg-white border border-fi-line rounded-xl overflow-hidden" aria-label="Resumo">
-        {TILES.map(({ key, tone }) => {
+    <div ref={animRef} className="space-y-2">
+      <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-7 gap-px bg-fi-line border border-fi-line rounded-xl overflow-hidden" aria-label="Resumo do dia">
+        {TILES.map(({ key, tone, dot }) => {
           const active = quickFilter === key;
           return (
             <button
@@ -140,90 +156,101 @@ export default function DaySummary({ appointments, quickFilter, onQuickFilter, h
               type="button"
               aria-pressed={active}
               onClick={() => onQuickFilter(active ? null : key)}
-              className={`text-left px-3 py-2 border-r border-b border-fi-line min-w-0 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-fi-accent ${active ? "bg-fi-soft" : "hover:bg-fi-bg"}`}
+              className={`relative text-left px-3.5 pt-2.5 pb-2 min-w-0 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-fi-accent ${active ? "bg-fi-soft" : "bg-white hover:bg-fi-bg"}`}
               title={active ? "Clique para mostrar todos" : `Mostrar só: ${QUICK_FILTERS[key].label}`}
             >
-              <span className="block text-[10.5px] font-semibold uppercase tracking-wide text-fi-muted truncate">{QUICK_FILTERS[key].label}</span>
-              <span className={`block font-head text-xl font-extrabold tabular-nums leading-tight ${tone}`}>{counts[key]}</span>
+              <span className="flex items-center gap-1.5 text-[12px] font-medium text-fi-muted truncate">
+                <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${dot}`} aria-hidden="true"></span>
+                {QUICK_FILTERS[key].label}
+              </span>
+              <span className={`block font-head text-[26px] font-bold tabular-nums leading-tight tracking-tight ${tone}`}>
+                <NumberFlow value={counts[key] || 0} locales="pt-BR" />
+              </span>
               <span className="block text-[11.5px] text-fi-muted truncate">{subtitle[key]}</span>
+              {active && <span className="absolute inset-x-0 bottom-0 h-0.5 bg-fi-accent" aria-hidden="true"></span>}
             </button>
           );
         })}
       </div>
 
       {(pendingWithPhone.length > 0 || bulkProgress) && (
-        <div className="flex flex-wrap items-center gap-2 rounded-xl bg-amber-50 border border-amber-200 px-3 py-2 text-sm text-amber-900" role="status">
-          <i className="fas fa-hourglass-half text-amber-600"></i>
-          {bulkProgress ? (
-            <span className="font-medium">Enviando confirmações… {bulkProgress.done} de {bulkProgress.total}</span>
-          ) : (
-            <span className="font-medium">
-              {pendingWithPhone.length} paciente{pendingWithPhone.length > 1 ? "s" : ""} ainda não respondeu{pendingWithPhone.length > 1 ? "ram" : ""} a confirmação.
-            </span>
-          )}
-          {!bulkProgress && !confirmingBulk && (
-            <button
-              type="button"
-              onClick={() => setConfirmingBulk(true)}
-              className="ml-auto h-8 px-3 rounded-lg bg-white border border-amber-300 font-semibold text-amber-900 hover:bg-amber-100"
-            >
-              <i className="fab fa-whatsapp mr-1.5"></i>Enviar confirmação para {pendingWithPhone.length}
-            </button>
-          )}
-          {!bulkProgress && confirmingBulk && (
-            <span className="ml-auto inline-flex items-center gap-2">
-              <span>Enviar agora pelo WhatsApp?</span>
-              <button type="button" onClick={runBulkSend} className="h-8 px-3 rounded-lg bg-fi-accent text-white font-semibold hover:bg-fi-deep">Sim, enviar</button>
-              <button type="button" onClick={() => setConfirmingBulk(false)} className="h-8 px-3 rounded-lg font-semibold hover:bg-amber-100">Cancelar</button>
-            </span>
-          )}
-        </div>
+        <ActionStrip
+          tone="amber"
+          icon="fas fa-hourglass-half"
+          progress={bulkProgress}
+          progressLabel="Enviando confirmações"
+          text={`${pendingWithPhone.length} paciente${pendingWithPhone.length > 1 ? "s" : ""} ainda não respondeu${pendingWithPhone.length > 1 ? "ram" : ""} a confirmação.`}
+          actionLabel={`Enviar confirmação para ${pendingWithPhone.length}`}
+          onAction={askBulkSend}
+        />
       )}
 
       {(postPending.length > 0 || postProgress) && (
-        <div className="flex flex-wrap items-center gap-2 rounded-xl bg-fi-soft border border-fi-accent/30 px-3 py-2 text-sm text-fi-deep" role="status">
-          <i className="fas fa-star text-fi-accent"></i>
-          {postProgress ? (
-            <span className="font-medium">Enviando "Como foi?"… {postProgress.done} de {postProgress.total}</span>
-          ) : (
-            <span className="font-medium">{postPending.length} atendido{postPending.length > 1 ? "s" : ""} hoje ainda sem a mensagem "Como foi?" (primeiro passo da avaliação no Google).</span>
-          )}
-          {!postProgress && !confirmingPost && (
-            <button type="button" onClick={() => setConfirmingPost(true)} className="ml-auto h-8 px-3 rounded-lg bg-white border border-fi-accent/40 font-semibold hover:bg-fi-bg">
-              <i className="fab fa-whatsapp mr-1.5"></i>Enviar para {postPending.length}
-            </button>
-          )}
-          {!postProgress && confirmingPost && (
-            <span className="ml-auto inline-flex items-center gap-2">
-              <span>Enviar agora?</span>
-              <button type="button" onClick={runBulkPost} className="h-8 px-3 rounded-lg bg-fi-accent text-white font-semibold hover:bg-fi-deep">Sim, enviar</button>
-              <button type="button" onClick={() => setConfirmingPost(false)} className="h-8 px-3 rounded-lg font-semibold hover:bg-white">Cancelar</button>
-            </span>
-          )}
-        </div>
+        <ActionStrip
+          tone="teal"
+          icon="fas fa-star"
+          progress={postProgress}
+          progressLabel={'Enviando "Como foi?"'}
+          text={`${postPending.length} atendido${postPending.length > 1 ? "s" : ""} hoje ainda sem a mensagem "Como foi?" (primeiro passo da avaliação no Google).`}
+          actionLabel={`Enviar para ${postPending.length}`}
+          onAction={askBulkPost}
+        />
       )}
 
       {/* 5. Ocupação do dia por profissional (capacidade padrão de 17 atendimentos de 40 min) */}
       {occupancy.length > 0 && (
-        <div className="bg-white border border-fi-line rounded-xl px-3 py-2">
-          <div className="flex items-baseline justify-between gap-2 mb-1.5">
-            <span className="text-[10.5px] font-semibold uppercase tracking-wide text-fi-muted">Ocupação do dia</span>
-            <span className="text-[11px] text-fi-muted">mais vazios primeiro · base {DEFAULT_DAILY_CAPACITY} horários</span>
+        <div className="bg-white border border-fi-line rounded-xl px-3.5 py-2.5">
+          <div className="flex items-baseline justify-between gap-2 mb-2">
+            <span className="text-[12px] font-semibold text-fi-ink">Ocupação do dia</span>
+            <span className="text-[11px] text-fi-muted">Mais vazios primeiro, base de {DEFAULT_DAILY_CAPACITY} horários</span>
           </div>
-          <div className="flex gap-x-4 gap-y-2 overflow-x-auto pb-0.5">
+          <div className="flex gap-x-5 gap-y-2 overflow-x-auto pb-0.5">
             {occupancy.map((o) => (
-              <div key={o.name} className="min-w-[150px] shrink-0">
+              <div key={o.name} className="min-w-[160px] shrink-0">
                 <div className="flex justify-between text-xs gap-2">
                   <span className="font-medium text-fi-ink truncate">{o.name}</span>
                   <span className="tabular-nums text-fi-muted">{o.count}/{DEFAULT_DAILY_CAPACITY}</span>
                 </div>
-                <div className="h-1.5 rounded-full bg-fi-bg mt-1 overflow-hidden">
-                  <div className={`h-full rounded-full ${o.pct < 50 ? "bg-amber-500" : "bg-fi-accent"}`} style={{ width: `${o.pct}%` }}></div>
+                <div className="flex gap-[2px] mt-1.5" aria-label={`${o.count} de ${DEFAULT_DAILY_CAPACITY} horários ocupados`}>
+                  {Array.from({ length: DEFAULT_DAILY_CAPACITY }).map((_, i) => (
+                    <span key={i} className={`h-2 flex-1 rounded-[2px] ${i < o.count ? (o.pct < 50 ? "bg-amber-400" : "bg-fi-accent") : "bg-fi-bg"}`}></span>
+                  ))}
                 </div>
               </div>
             ))}
           </div>
         </div>
+      )}
+    </div>
+  );
+}
+
+const STRIP_TONES = {
+  amber: { box: "bg-amber-50 border-amber-200 text-amber-900", icon: "text-amber-600", btn: "border-amber-300 hover:bg-amber-100 text-amber-900", bar: "bg-amber-500", track: "bg-amber-100" },
+  teal: { box: "bg-fi-soft border-fi-accent/30 text-fi-deep", icon: "text-fi-accent", btn: "border-fi-accent/40 hover:bg-fi-bg text-fi-deep", bar: "bg-fi-accent", track: "bg-white" },
+};
+
+function ActionStrip({ tone, icon, progress, progressLabel, text, actionLabel, onAction }) {
+  const t = STRIP_TONES[tone];
+  return (
+    <div className={`flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border px-3.5 py-2 text-sm ${t.box}`} role="status">
+      <i className={`${icon} ${t.icon}`} aria-hidden="true"></i>
+      {progress ? (
+        <div className="flex-1 min-w-[200px]">
+          <span className="font-medium">
+            {progressLabel}… <NumberFlow value={progress.done} /> de {progress.total}
+          </span>
+          <div className={`mt-1 h-1.5 rounded-full overflow-hidden ${t.track}`}>
+            <div className={`h-full rounded-full transition-[width] duration-500 ${t.bar}`} style={{ width: `${progress.total ? (progress.done / progress.total) * 100 : 0}%` }}></div>
+          </div>
+        </div>
+      ) : (
+        <span className="font-medium flex-1 min-w-[200px]">{text}</span>
+      )}
+      {!progress && (
+        <button type="button" onClick={onAction} className={`h-9 px-3.5 rounded-lg bg-white border font-semibold ${t.btn}`}>
+          <i className="fab fa-whatsapp mr-1.5" aria-hidden="true"></i>{actionLabel}
+        </button>
       )}
     </div>
   );

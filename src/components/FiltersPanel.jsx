@@ -1,5 +1,6 @@
 import { getWeeksInMonth } from "../utils/date";
 import { useRef, useState, useEffect } from "react";
+import { useAutoAnimate } from "@formkit/auto-animate/react";
 
 export default function FiltersPanel({
     professionals,
@@ -13,6 +14,22 @@ export default function FiltersPanel({
 }) {
     const weeksInMonth = getWeeksInMonth(currentYear, currentMonth);
     const dateInputRef = useRef(null);
+    const searchRef = useRef(null);
+    const [animRef] = useAutoAnimate({ duration: 160 });
+
+    // Atalho "/" foca a busca de paciente (igual Gmail/GitHub), sem atrapalhar quem está digitando
+    useEffect(() => {
+        const onKey = (e) => {
+            if (e.key !== "/" || e.ctrlKey || e.metaKey || e.altKey) return;
+            const tag = (e.target?.tagName || "").toLowerCase();
+            if (tag === "input" || tag === "textarea" || tag === "select" || e.target?.isContentEditable) return;
+            e.preventDefault();
+            searchRef.current?.focus();
+            searchRef.current?.select();
+        };
+        window.addEventListener("keydown", onKey);
+        return () => window.removeEventListener("keydown", onKey);
+    }, []);
 
     const formatDateToBR = (isoDate) => {
         if (!isoDate) return '';
@@ -63,12 +80,12 @@ export default function FiltersPanel({
         : "Sem data";
 
     const fieldCls = "w-full h-9 px-3 border border-fi-line rounded-lg bg-white text-sm text-fi-ink focus:outline-none focus:border-fi-accent focus:ring-2 focus:ring-fi-accent/20 transition-colors";
-    const labelCls = "block text-[11px] font-semibold uppercase tracking-wide text-fi-muted mb-1";
+    const labelCls = "block text-[12.5px] font-semibold text-fi-ink/80 mb-1";
     const chipCls = "h-7 pl-2.5 pr-1 bg-fi-soft text-fi-deep rounded-full text-xs font-semibold inline-flex items-center gap-1.5";
     const chipX = "w-5 h-5 inline-flex items-center justify-center rounded-full hover:bg-white/70 transition-colors";
 
     return (
-        <div className="relative z-10 pointer-events-auto bg-white rounded-xl border border-fi-line p-3 sm:p-4 space-y-3">
+        <div ref={animRef} className="relative z-10 pointer-events-auto bg-white rounded-xl border border-fi-line p-3 sm:p-4 space-y-3">
             {/* Linha 1: dia + ações */}
             <div className="flex flex-wrap items-center gap-2">
                 <div className="inline-flex items-center rounded-xl border border-fi-line bg-fi-bg p-0.5" aria-label="Navegar por dia">
@@ -120,8 +137,10 @@ export default function FiltersPanel({
                     <div className="relative">
                         <input
                             id="filtro-paciente"
-                            type="text"
-                            placeholder="Digite o nome do paciente..."
+                            ref={searchRef}
+                            type="search"
+                            autoComplete="off"
+                            placeholder="Nome do paciente"
                             className={`${fieldCls} pl-9`}
                             value={filters.filterPatientName || ""}
                             onChange={(e) => {
@@ -129,6 +148,9 @@ export default function FiltersPanel({
                             }}
                         />
                         <i className="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-xs text-fi-muted"></i>
+                        {!filters.filterPatientName && (
+                            <kbd className="hidden lg:flex absolute right-2 top-1/2 -translate-y-1/2 h-5 min-w-5 px-1.5 items-center justify-center rounded border border-fi-line bg-fi-bg text-[11px] font-semibold text-fi-muted" title="Aperte / para buscar">/</kbd>
+                        )}
                         {filters.filterPatientName && (
                             <button
                                 type="button"
@@ -268,7 +290,7 @@ export default function FiltersPanel({
                         <label className={labelCls} htmlFor="filtro-dia">
                             Dia da semana
                             {filters.filterDate && (
-                                <span className="normal-case font-normal tracking-normal ml-1">(desativado com data específica)</span>
+                                <span className="font-normal text-fi-muted ml-1">(desativado com data específica)</span>
                             )}
                         </label>
                         <select
@@ -326,7 +348,7 @@ export default function FiltersPanel({
                     {filters.filterDay && (
                         <span className={chipCls}>
                             <i className="fas fa-calendar-week text-[10px]"></i>
-                            {["", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"][Number(filters.filterDay)] || filters.filterDay}
+                            {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"][Number(filters.filterDay)] || filters.filterDay}
                             <button onClick={() => setFilters((p) => ({ ...p, filterDay: "" }))} className={chipX} aria-label="Remover filtro de dia da semana">×</button>
                         </span>
                     )}

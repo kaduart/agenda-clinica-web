@@ -17,8 +17,8 @@ export default {
                 },
             },
             fontFamily: {
-                head: ["Manrope", "system-ui", "sans-serif"],
-                sans: ["IBM Plex Sans", "system-ui", "-apple-system", "Segoe UI", "Roboto", "sans-serif"],
+                head: ["Figtree", "system-ui", "sans-serif"],
+                sans: ["Figtree", "system-ui", "-apple-system", "Segoe UI", "Roboto", "sans-serif"],
             },
         },
     },

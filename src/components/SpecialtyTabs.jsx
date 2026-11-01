@@ -50,7 +50,9 @@ export default function SpecialtyTabs({ activeTab, onTabChange, counts }) {
               className={`h-8 shrink-0 inline-flex items-center gap-2 px-3 rounded-full border text-sm font-medium whitespace-nowrap transition-colors ${
                 isActive
                   ? "border-fi-accent bg-fi-soft text-fi-deep"
-                  : "border-fi-line bg-white text-fi-ink hover:bg-fi-bg"
+                  : count
+                    ? "border-fi-line bg-white text-fi-ink hover:bg-fi-bg"
+                    : "border-transparent bg-transparent text-fi-muted hover:bg-white"
               }`}
             >
               {key !== "todas" && <span className={`h-2 w-2 rounded-sm ${specialty.bgColor}`} aria-hidden="true"></span>}

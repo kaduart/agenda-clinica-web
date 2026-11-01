@@ -1,4 +1,6 @@
 import React from "react";
+import { toast as sonnerToast } from "../utils/toast";
+import { confirmToast } from "../utils/confirmToast";
 import { sendWhatsAppMessage, sendWhatsAppMediaMessage } from "../services/baileysApi";
 import { trackPostAppointmentStep } from "../services/appointmentsRepo";
 
@@ -132,7 +134,8 @@ export default function PostAppointmentModal({ appointment, onClose, onSent }) {
         const alreadySent = type === "msg1" ? msg1SentAt : msg2SentAt;
         if (alreadySent) {
             const data = new Date(alreadySent).toLocaleString("pt-BR");
-            if (!window.confirm(`Essa mensagem já foi enviada em ${data}.\nDeseja enviar novamente?`)) return;
+            const again = await confirmToast(`Essa mensagem já foi enviada em ${data}.`, { title: "Enviar de novo?", confirmText: "Enviar de novo", confirmColor: "whatsapp" });
+            if (!again) return;
         }
 
         setSending(type);
@@ -182,18 +185,9 @@ export default function PostAppointmentModal({ appointment, onClose, onSent }) {
         }
     };
 
-    function showToast(msg, variant = "success") {
-        const toast = document.createElement("div");
-        const colors = {
-            success: "bg-emerald-500",
-            error: "bg-red-500",
-            warning: "bg-amber-500",
-        };
-        toast.className = `fixed bottom-4 right-4 ${colors[variant] || colors.success} text-white px-4 py-2 rounded-lg text-sm z-50 shadow-lg`;
-        toast.innerHTML = `<i class="fab fa-whatsapp mr-2"></i> ${msg}`;
-        document.body.appendChild(toast);
-        setTimeout(() => toast.remove(), 4000);
-    }
+    function showToast(msg, variant = 'success') {
+    (sonnerToast[variant] || sonnerToast.success)(msg);
+  }
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
@@ -281,7 +275,7 @@ export default function PostAppointmentModal({ appointment, onClose, onSent }) {
                             className="w-full p-3 border border-emerald-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm mb-3"
                         />
                         <div className="bg-white border border-emerald-100 rounded-lg p-3">
-                            <p className="text-[11px] font-semibold text-emerald-700 uppercase tracking-wider mb-1">Preview</p>
+                            <p className="text-[12px] font-semibold text-emerald-700 mb-1">Preview</p>
                             <p className="text-sm text-gray-700 whitespace-pre-line">{preview1}</p>
                         </div>
                     </div>
@@ -361,7 +355,7 @@ export default function PostAppointmentModal({ appointment, onClose, onSent }) {
                         </div>
 
                         <div className="bg-white border border-blue-100 rounded-lg p-3">
-                            <p className="text-[11px] font-semibold text-blue-700 uppercase tracking-wider mb-1">Preview</p>
+                            <p className="text-[12px] font-semibold text-blue-700 mb-1">Preview</p>
                             <p className="text-sm text-gray-700 whitespace-pre-line">{preview2}</p>
                         </div>
                     </div>
