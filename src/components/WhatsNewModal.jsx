@@ -11,6 +11,12 @@ const ITEMS = [
     how: "Aperte /, digite o nome e a lista filtra na hora. Em mês inteiro a lista só desenha o que está na tela, por isso use essa busca no lugar do Ctrl+F.",
   },
   {
+    icon: "fa-paper-plane", tone: "bg-emerald-100 text-emerald-800",
+    title: "Salvar e enviar confirmação",
+    what: "Na última etapa do agendamento tem a opção \"Enviar confirmação ao salvar\". A agenda lembra a sua escolha.",
+    how: "Marque, salve, confira o texto que aparece e toque em Enviar pelo WhatsApp. Se escolher \"Agora não\", o agendamento fica salvo do mesmo jeito.",
+  },
+  {
     icon: "fa-circle-check", tone: "bg-emerald-100 text-emerald-800",
     title: "Confirmações mais claras",
     what: "Antes de qualquer envio pelo WhatsApp aparece uma caixa com o texto e o botão de enviar. No celular ela sobe de baixo.",

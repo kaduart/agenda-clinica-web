@@ -451,6 +451,15 @@ export default function AppointmentModal({ appointment, professionals, patients,
     }, [appointment?.id, appointment?.operationalStatus]);
 
     const [isLoading, setIsLoading] = React.useState(false);
+    // "Salvar e enviar confirmação": a recepção marca e, depois de salvar, a agenda mostra
+    // o texto da confirmação para ela aprovar antes de sair pelo WhatsApp.
+    const [sendConfirmationAfterSave, setSendConfirmationAfterSave] = React.useState(() => {
+        try { return localStorage.getItem("agendaEnviarConfirmacaoAoSalvar") === "1"; } catch { return false; }
+    });
+    const toggleSendConfirmation = (checked) => {
+        setSendConfirmationAfterSave(checked);
+        try { localStorage.setItem("agendaEnviarConfirmacaoAoSalvar", checked ? "1" : "0"); } catch { /* sem storage */ }
+    };
     const [showSuggestions, setShowSuggestions] = React.useState(false);
     const [filteredPatients, setFilteredPatients] = React.useState([]);
     const [isSearching, setIsSearching] = React.useState(false);
@@ -913,7 +922,8 @@ export default function AppointmentModal({ appointment, professionals, patients,
                 ...(appointment?.id ? { id: appointment.id } : {})
             };
 
-            await onSave(dataToSave);
+            const canOfferConfirmation = !isPreExisting && appointment?.operationalStatus !== "completed" && !!onlyDigits(formData.phone || "");
+            await onSave(dataToSave, { sendConfirmation: canOfferConfirmation && sendConfirmationAfterSave });
             // Só fecha o modal se deu sucesso (não throwou erro)
             onClose();
         } catch (error) {
@@ -1961,6 +1971,20 @@ export default function AppointmentModal({ appointment, professionals, patients,
                 </div>
                     {/* Botões de ação */}
                     <div className="px-4 sm:px-5 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:pb-3 border-t border-gray-200 flex flex-wrap justify-end gap-2 bg-gray-50 shrink-0">
+                        {activeStep === 2 && !isPreExisting && appointment?.operationalStatus !== "completed" && (
+                            <label className={`w-full sm:w-auto sm:mr-auto inline-flex items-center gap-2 text-sm select-none ${onlyDigits(formData.phone || "") ? "text-gray-700 cursor-pointer" : "text-gray-400 cursor-not-allowed"}`}
+                                title={onlyDigits(formData.phone || "") ? "Depois de salvar, mostra a mensagem para você aprovar e envia pelo WhatsApp" : "Paciente sem telefone"}>
+                                <input
+                                    type="checkbox"
+                                    className="h-4 w-4 rounded border-gray-300 text-fi-accent focus:ring-fi-accent"
+                                    checked={sendConfirmationAfterSave && !!onlyDigits(formData.phone || "")}
+                                    disabled={!onlyDigits(formData.phone || "") || isLoading}
+                                    onChange={(e) => toggleSendConfirmation(e.target.checked)}
+                                />
+                                <i className="fab fa-whatsapp text-emerald-600" aria-hidden="true"></i>
+                                Enviar confirmação ao salvar
+                            </label>
+                        )}
                         <button
                             type="button"
                             onClick={onClose}

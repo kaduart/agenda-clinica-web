@@ -45,6 +45,7 @@ import {
 import { fetchPatients, updatePatient } from "./services/patientsRepo";
 
 import { confirmToast } from "./utils/confirmToast";
+import { sendViaExtension, generateReminderMessage } from "./services/whatsappExtension";
 import { formatDateLocal, getWeeksInMonth, extractDateForInput } from "./utils/date";
 import { sortAppointmentsByDateTimeAsc } from "./utils/sort";
 import { resolveSpecialtyKey } from "./utils/specialty";
@@ -506,7 +507,36 @@ export default function App() {
     return 'Erro ao salvar: ' + apiErrorText(err);
   };
 
-  const saveAppointment = async (appointmentData) => {
+  // Depois de salvar: mostra a confirmação para a recepção aprovar e envia pelo mesmo canal
+  // do botão "Enviar lembrete" da linha (com rastreio da resposta). Não trava o salvar.
+  const sendConfirmationAfterSave = async (appointmentId, data) => {
+    const phone = String(data?.phone || "").replace(/\D/g, "");
+    if (!phone) return;
+    const patientName = data.patientName || (typeof data.patient === "string" ? data.patient : data.patient?.fullName) || "";
+    const message = generateReminderMessage({ ...data, fullName: patientName });
+    const ok = await confirmToast(message, {
+      title: `Enviar confirmação para ${patientName || "o paciente"}?`,
+      confirmText: "Enviar pelo WhatsApp",
+      cancelText: "Agora não",
+      confirmColor: "whatsapp",
+    });
+    if (!ok) return;
+    const result = await sendViaExtension(
+      phone,
+      message,
+      appointmentId ? { appointmentId, purpose: "attendance_confirmation" } : {}
+    );
+    if (result?.success) {
+      toast.success("Confirmação enviada!");
+    } else if (result?.needsReconnect || /conectado|QR|desconectado/.test(result?.error || "")) {
+      window.dispatchEvent(new CustomEvent("open-whatsapp-connect"));
+      toast.error("WhatsApp desconectado. O agendamento foi salvo; envie a confirmação pela linha depois de conectar.");
+    } else {
+      toast.error(`Agendamento salvo, mas a confirmação não foi enviada: ${result?.error || "erro ao enviar"}`);
+    }
+  };
+
+  const saveAppointment = async (appointmentData, options = {}) => {
     
     const appointmentId = editingAppointment?.id || editingAppointment?._id || editingAppointment?.preAgendamentoId || editingAppointment?.appointmentId;
     // 🎯 FONTE ÚNICA DA VERDADE: operationalStatus define se é pré-agendamento
@@ -690,6 +720,12 @@ export default function App() {
       setEditingAppointment(null);
 
       forceRefreshAppointments();
+
+      if (options.sendConfirmation) {
+        sendConfirmationAfterSave(result?.id || appointmentId, candidate).catch((e) =>
+          console.error("[saveAppointment] Falha ao enviar confirmação:", e)
+        );
+      }
 
     } catch (err) {
       // Fallback: completed no banco mas estado local desatualizado

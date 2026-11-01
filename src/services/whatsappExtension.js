@@ -157,12 +157,15 @@ export function generateReminderMessage(paciente) {
   const hora = paciente.time || '';
   const profissional = paciente.professional || paciente.doctor?.fullName || '';
   // Verifica se é hoje, amanhã ou outro dia
+  // Data local (não UTC): depois das 21h em Brasília o toISOString já virava o dia seguinte
+  // e a mensagem de amanhã saía como "hoje".
+  const ymdLocal = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   const hoje = new Date();
-  const hojeStr = hoje.toISOString().split('T')[0];
+  const hojeStr = ymdLocal(hoje);
   
   const amanha = new Date(hoje);
   amanha.setDate(amanha.getDate() + 1);
-  const amanhaStr = amanha.toISOString().split('T')[0];
+  const amanhaStr = ymdLocal(amanha);
   
   const ehHoje = dateStr === hojeStr;
   const ehAmanha = dateStr === amanhaStr;
