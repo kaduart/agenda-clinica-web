@@ -1,20 +1,40 @@
 import { useEffect } from "react";
 
 // Guia "Novidades" para o comercial: abre sozinho uma vez por versão e depois pelo botão "?" do topo.
-const SEEN_KEY = "agendaNovidadesVistas_v2";
+const SEEN_KEY = "agendaNovidadesVistas_v3";
+
+// Atalhos de teclado: funcionam na tela da agenda, fora de campos de texto e com nenhuma janela aberta.
+const SHORTCUTS = [
+  { keys: ["/"], what: "Ir para a busca de paciente", when: "A família liga e você precisa achar o paciente rápido. Aperte /, digite o nome e a lista filtra na hora." },
+  { keys: ["N"], what: "Abrir um novo agendamento", when: "Fechou horário no telefone ou no WhatsApp: N já abre o formulário." },
+  { keys: ["←", "→"], what: "Dia anterior / próximo dia", when: "Para olhar ontem, amanhã ou os próximos dias sem mexer no calendário." },
+  { keys: ["H"], what: "Voltar para hoje", when: "Depois de navegar pelos dias, H volta direto para a agenda de hoje." },
+];
 
 const ITEMS = [
   {
     icon: "fa-magnifying-glass", tone: "bg-fi-soft text-fi-deep",
-    title: "Atalhos de teclado",
-    what: "/ vai para a busca de paciente, N abre um novo agendamento, as setas ← e → trocam de dia e H volta para hoje.",
-    how: "Aperte /, digite o nome e a lista filtra na hora. Em mês inteiro a lista só desenha o que está na tela, por isso use essa busca no lugar do Ctrl+F.",
+    title: "Use a busca no lugar do Ctrl+F",
+    what: "Com o mês inteiro aberto, a lista só desenha as linhas que estão na tela, para não travar. Por isso o Ctrl+F do navegador não acha quem está mais abaixo.",
+    how: "Aperte / (ou clique em Buscar paciente) e digite o nome.",
   },
   {
     icon: "fa-paper-plane", tone: "bg-emerald-100 text-emerald-800",
     title: "Salvar e enviar confirmação",
     what: "Na última etapa do agendamento tem a opção \"Enviar confirmação ao salvar\". A agenda lembra a sua escolha.",
     how: "Marque, salve, confira o texto que aparece e toque em Enviar pelo WhatsApp. Se escolher \"Agora não\", o agendamento fica salvo do mesmo jeito.",
+  },
+  {
+    icon: "fa-table-cells-large", tone: "bg-fi-soft text-fi-deep",
+    title: "Semanal: vagas da semana",
+    what: "Cada profissional mostra as vagas de segunda a sexta, com o dia de hoje destacado e uma barrinha de ocupação (verde vago, amarelo ocupado, rosa interesse).",
+    how: "Clique numa vaga para agendar. Clique no +N para ver todas as vagas daquele dia.",
+  },
+  {
+    icon: "fa-mobile-screen", tone: "bg-fi-soft text-fi-deep",
+    title: "Agendar pelo celular",
+    what: "No celular, o agendamento abre de baixo para cima e ocupa a tela toda, com os botões sempre à vista.",
+    how: "Toque em Novo agendamento e siga as 3 etapas normalmente.",
   },
   {
     icon: "fa-circle-check", tone: "bg-emerald-100 text-emerald-800",
@@ -109,12 +129,33 @@ export default function WhatsNewModal({ open, onClose }) {
         <div className="bg-[#0d9387] text-white px-5 py-4 flex items-start gap-3">
           <div className="flex-1">
             <h2 id="novidades-titulo" className="font-head text-lg font-bold">Novidades da agenda</h2>
-            <p className="text-sm text-white/85">A agenda agora avisa onde tem oportunidade e risco. Veja em 1 minuto o que mudou.</p>
+            <p className="text-sm text-white/85">Atalhos para ganhar tempo e o que mudou na agenda. Leva 1 minuto.</p>
           </div>
           <button type="button" onClick={close} className="w-8 h-8 rounded-lg hover:bg-white/15" aria-label="Fechar"><i className="fas fa-times"></i></button>
         </div>
 
         <div className="overflow-y-auto px-5 py-4">
+          <section aria-labelledby="atalhos-titulo" className="mb-4 rounded-xl border border-fi-accent/30 bg-fi-soft/60 p-3">
+            <h3 id="atalhos-titulo" className="font-head text-sm font-bold text-fi-ink flex items-center gap-2">
+              <i className="fas fa-keyboard text-fi-accent" aria-hidden="true"></i> Atalhos de teclado (computador)
+            </h3>
+            <p className="text-xs text-fi-muted mt-0.5">Funcionam na tela da agenda, quando você não está digitando em um campo.</p>
+            <ul className="mt-2.5 space-y-2">
+              {SHORTCUTS.map((sc) => (
+                <li key={sc.what} className="flex gap-3 items-start">
+                  <span className="flex gap-1 shrink-0 w-[72px]">
+                    {sc.keys.map((k) => (
+                      <kbd key={k} className="min-w-[28px] h-7 px-1.5 inline-flex items-center justify-center rounded-md border border-fi-line border-b-2 bg-white text-sm font-bold text-fi-ink">{k}</kbd>
+                    ))}
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-sm font-semibold text-fi-ink">{sc.what}</span>
+                    <span className="block text-xs text-fi-muted">{sc.when}</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </section>
           <ol className="space-y-3">
             {ITEMS.map((it) => (
               <li key={it.title} className="flex gap-3 rounded-xl border border-fi-line p-3">
