@@ -6,8 +6,8 @@ const SEEN_KEY = "agendaNovidadesVistas_v2";
 const ITEMS = [
   {
     icon: "fa-magnifying-glass", tone: "bg-fi-soft text-fi-deep",
-    title: "Buscar paciente com /",
-    what: "Em qualquer lugar da agenda, aperte a tecla / para ir direto na busca de paciente.",
+    title: "Atalhos de teclado",
+    what: "/ vai para a busca de paciente, N abre um novo agendamento, as setas ← e → trocam de dia e H volta para hoje.",
     how: "Aperte /, digite o nome e a lista filtra na hora. Em mês inteiro a lista só desenha o que está na tela, por isso use essa busca no lugar do Ctrl+F.",
   },
   {

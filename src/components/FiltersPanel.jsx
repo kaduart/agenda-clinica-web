@@ -17,15 +17,34 @@ export default function FiltersPanel({
     const searchRef = useRef(null);
     const [animRef] = useAutoAnimate({ duration: 160 });
 
-    // Atalho "/" foca a busca de paciente (igual Gmail/GitHub), sem atrapalhar quem está digitando
+    // Atalhos de teclado da recepção (não disparam enquanto alguém digita ou com janela aberta):
+    //   /  busca de paciente · N  novo agendamento · ← →  dia anterior/próximo · H  hoje
+    const shortcutsRef = useRef({});
     useEffect(() => {
         const onKey = (e) => {
-            if (e.key !== "/" || e.ctrlKey || e.metaKey || e.altKey) return;
+            if (e.ctrlKey || e.metaKey || e.altKey) return;
             const tag = (e.target?.tagName || "").toLowerCase();
             if (tag === "input" || tag === "textarea" || tag === "select" || e.target?.isContentEditable) return;
-            e.preventDefault();
-            searchRef.current?.focus();
-            searchRef.current?.select();
+            if (document.querySelector('[aria-modal="true"], [role="dialog"], .fixed.inset-0')) return;
+            const k = e.key;
+            const act = shortcutsRef.current;
+            if (k === "/") {
+                e.preventDefault();
+                searchRef.current?.focus();
+                searchRef.current?.select();
+            } else if (k === "n" || k === "N") {
+                e.preventDefault();
+                act.onNewAppointment?.();
+            } else if (k === "ArrowLeft") {
+                e.preventDefault();
+                act.shiftDay?.(-1);
+            } else if (k === "ArrowRight") {
+                e.preventDefault();
+                act.shiftDay?.(1);
+            } else if (k === "h" || k === "H") {
+                e.preventDefault();
+                act.goToday?.();
+            }
         };
         window.addEventListener("keydown", onKey);
         return () => window.removeEventListener("keydown", onKey);
@@ -75,6 +94,9 @@ export default function FiltersPanel({
         setFilters((prev) => ({ ...prev, filterDate: toISO(base), filterDay: "", filterWeek: null }));
     };
     const goToday = () => setFilters((prev) => ({ ...prev, filterDate: todayISO, filterDay: "", filterWeek: null }));
+    useEffect(() => {
+        shortcutsRef.current = { onNewAppointment, shiftDay, goToday };
+    });
     const dayLabel = filters.filterDate
         ? new Date(`${filters.filterDate}T12:00:00`).toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit" }).replace(".", "")
         : "Sem data";
@@ -89,18 +111,19 @@ export default function FiltersPanel({
             {/* Linha 1: dia + ações */}
             <div className="flex flex-wrap items-center gap-2">
                 <div className="inline-flex items-center rounded-xl border border-fi-line bg-fi-bg p-0.5" aria-label="Navegar por dia">
-                    <button type="button" onClick={() => shiftDay(-1)} className="h-8 w-8 rounded-lg text-fi-ink hover:bg-white" aria-label="Dia anterior">
+                    <button type="button" onClick={() => shiftDay(-1)} className="h-8 w-8 rounded-lg text-fi-ink hover:bg-white" aria-label="Dia anterior" title="Dia anterior (←)">
                         <i className="fas fa-chevron-left text-xs"></i>
                     </button>
                     <button
                         type="button"
                         onClick={goToday}
+                        title="Hoje (H)"
                         className={`h-8 px-3 rounded-lg text-sm font-semibold ${filters.filterDate === todayISO ? "bg-white text-fi-deep shadow-sm" : "text-fi-ink hover:bg-white"}`}
                     >
                         Hoje
                     </button>
                     <span className="px-2 font-head text-sm font-bold text-fi-ink tabular-nums capitalize whitespace-nowrap">{dayLabel}</span>
-                    <button type="button" onClick={() => shiftDay(1)} className="h-8 w-8 rounded-lg text-fi-ink hover:bg-white" aria-label="Próximo dia">
+                    <button type="button" onClick={() => shiftDay(1)} className="h-8 w-8 rounded-lg text-fi-ink hover:bg-white" aria-label="Próximo dia" title="Próximo dia (→)">
                         <i className="fas fa-chevron-right text-xs"></i>
                     </button>
                 </div>
@@ -122,6 +145,7 @@ export default function FiltersPanel({
                     </button>
                     <button
                         onClick={onNewAppointment}
+                        title="Novo agendamento (N)"
                         className="h-9 px-4 rounded-lg bg-fi-accent hover:bg-fi-deep text-white text-sm font-semibold inline-flex items-center gap-1.5 transition-colors"
                     >
                         <i className="fas fa-plus text-xs"></i> Novo agendamento

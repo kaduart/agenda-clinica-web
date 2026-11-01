@@ -40,18 +40,26 @@ export default function AppointmentTable({
             {/* Lista */}
             <div>
                 {isLoading ? (
-                    <div className="px-6 py-16 text-center">
-                        <div className="max-w-sm mx-auto">
-                            <div className="w-12 h-12 mx-auto bg-fi-soft rounded-full flex items-center justify-center mb-3">
-                                <i className="fas fa-spinner fa-spin text-xl text-fi-accent"></i>
+                    <div aria-busy="true" aria-label="Carregando agendamentos" className="divide-y divide-fi-line">
+                        {Array.from({ length: 6 }).map((_, i) => (
+                            <div key={i} className="flex items-center gap-3 px-4 py-4 border-l-4 border-fi-line animate-pulse">
+                                <div className="w-36 shrink-0 space-y-2">
+                                    <div className="h-4 w-16 rounded bg-fi-line"></div>
+                                    <div className="h-3 w-24 rounded bg-fi-bg"></div>
+                                </div>
+                                <div className="flex-[1.2] min-w-0 space-y-2">
+                                    <div className="h-4 rounded bg-fi-line" style={{ width: `${45 + ((i * 17) % 30)}%` }}></div>
+                                    <div className="h-3 w-32 rounded bg-fi-bg"></div>
+                                </div>
+                                <div className="w-36 shrink-0 hidden md:block"><div className="h-6 w-24 mx-auto rounded-full bg-fi-bg"></div></div>
+                                <div className="w-32 shrink-0 hidden lg:block space-y-2"><div className="h-4 w-20 rounded bg-fi-line"></div><div className="h-4 w-16 rounded bg-fi-bg"></div></div>
+                                <div className="w-28 shrink-0 hidden md:block"><div className="h-6 w-20 mx-auto rounded-full bg-fi-bg"></div></div>
+                                <div className="w-64 shrink-0 hidden sm:flex justify-end gap-3">
+                                    {[0, 1, 2, 3].map((j) => <div key={j} className="h-5 w-5 rounded bg-fi-bg"></div>)}
+                                </div>
                             </div>
-                            <h4 className="text-base font-semibold text-gray-900 mb-1">
-                                Carregando agendamentos...
-                            </h4>
-                            <p className="text-sm text-gray-500">
-                                Buscando dados do servidor.
-                            </p>
-                        </div>
+                        ))}
+                        <span className="sr-only">Carregando agendamentos…</span>
                     </div>
                 ) : appointments.length === 0 ? (
                     <div className="px-6 py-16 text-center">
