@@ -1057,10 +1057,12 @@ export default function AppointmentModal({ appointment, professionals, patients,
         : null;
 
     return (
-        <div role="dialog" aria-modal="true" aria-labelledby="appointment-modal-title" className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/40 backdrop-blur-sm">
-            <div className={`bg-white rounded-xl sm:rounded-2xl shadow-2xl w-full max-w-3xl max-h-[94vh] overflow-hidden flex flex-col relative transition-[max-width] duration-200 motion-reduce:transition-none ${isLoading ? "opacity-80 pointer-events-none" : ""}`}>
+        <div role="dialog" aria-modal="true" aria-labelledby="appointment-modal-title" className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/40 backdrop-blur-sm">
+            {/* No celular vira uma folha que sobe de baixo e ocupa quase a tela toda */}
+            <div className={`bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full max-w-3xl max-h-[96dvh] sm:max-h-[94vh] overflow-hidden flex flex-col relative animate-sheetUp sm:animate-none transition-[max-width] duration-200 motion-reduce:transition-none ${isLoading ? "opacity-80 pointer-events-none" : ""}`}>
                 {/* Header */}
-                <div className="sticky top-0 bg-white border-b border-gray-200 px-5 py-2.5 z-10 flex justify-between items-center">
+                <div className="sticky top-0 bg-white border-b border-gray-200 px-5 pt-2 sm:pt-2.5 pb-2.5 z-10 flex justify-between items-center">
+                    <span className="sm:hidden absolute left-1/2 top-1.5 -translate-x-1/2 h-1 w-10 rounded-full bg-gray-200" aria-hidden="true"></span>
                     <div>
                         <h3 id="appointment-modal-title" className="text-lg font-semibold text-gray-900">
                             {isPreExisting ? "Confirmar Pré-Agendamento" : isPreNew ? "Novo Pré-Agendamento" : isEdit ? "Editar Agendamento" : "Novo Agendamento"}
@@ -1958,7 +1960,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
 </section>
                 </div>
                     {/* Botões de ação */}
-                    <div className="px-4 sm:px-5 py-3 border-t border-gray-200 flex flex-wrap justify-end gap-2 bg-gray-50 shrink-0">
+                    <div className="px-4 sm:px-5 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:pb-3 border-t border-gray-200 flex flex-wrap justify-end gap-2 bg-gray-50 shrink-0">
                         <button
                             type="button"
                             onClick={onClose}
