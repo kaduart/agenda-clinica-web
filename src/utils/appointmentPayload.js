@@ -49,6 +49,8 @@ export function buildAppointmentPayload(raw, options = {}) {
         birthDate: raw.birthDate || raw.patientInfo?.birthDate || null,
         email: raw.email || raw.patientInfo?.email || null,
     });
+    // "Conferi: é outra pessoa" no aviso de possível duplicado (03/11/2026)
+    if (raw.confirmNotDuplicate === true) patientInfo.confirmNotDuplicate = true;
 
     // --- Profissional ---
     const professionalName = raw.professionalName || raw.professional || "";

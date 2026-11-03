@@ -8,7 +8,7 @@ import { confirmToast } from "../utils/confirmToast";
 import { toast } from "../utils/toast";
 import { formatPhoneBR, onlyDigits, validatePhoneBR } from "../utils/phone";
 import InputCurrency from "./InputCurrency";
-import { getConvenioOptions } from "../api/v2/agendaV2Client";
+import { getConvenioOptions, checkPatientDuplicate } from "../api/v2/agendaV2Client";
 
 import { getHolidays, holidaysToMap, isTimeBlockedByHoliday as checkHolidayBlock } from "../services/calendarService";
 
@@ -488,6 +488,37 @@ export default function AppointmentModal({ appointment, professionals, patients,
         return false;
     });
 
+    // Aviso de possível paciente duplicado (03/11/2026). Caso real: "BENJAMIN MARCAL BALDEZ"
+    // criado sem telefone e "Benjamin Marçal Baldez" com telefone — mesma criança. Nome
+    // digitado sem escolher da lista vira paciente novo, então conferimos antes de salvar.
+    const [dupCandidates, setDupCandidates] = React.useState([]);
+    const [dupConfirmed, setDupConfirmed] = React.useState(false);
+    const dupCheckEnabled = !appointment?.id && !appointment?._id && !formData.patientId;
+    React.useEffect(() => {
+        const name = (formData.patient || "").trim();
+        if (!dupCheckEnabled || name.replace(/\s/g, "").length < 3) {
+            setDupCandidates([]);
+            return;
+        }
+        const ctrl = new AbortController();
+        const t = setTimeout(async () => {
+            try {
+                const phone = String(formData.phone || "").replace(/\D/g, "");
+                const birth = String(formData.birthDate || "").split("T")[0];
+                const list = await checkPatientDuplicate({
+                    fullName: name,
+                    phone: phone.length >= 8 ? phone : null,
+                    dateOfBirth: /^\d{4}-\d{2}-\d{2}$/.test(birth) ? birth : null,
+                }, ctrl.signal);
+                setDupCandidates(Array.isArray(list) ? list : []);
+            } catch {
+                // sem permissão ou cancelado: o back ainda reaproveita/marca no salvar
+            }
+        }, 450);
+        return () => { clearTimeout(t); ctrl.abort(); };
+    }, [dupCheckEnabled, formData.patient, formData.phone, formData.birthDate]);
+    React.useEffect(() => { setDupConfirmed(false); }, [formData.patient]);
+
     // Sincroniza isNewPatient quando formData.patientId muda (ex: ao carregar pré-agendamento)
     React.useEffect(() => {
         if (formData.patientId && isNewPatient) {
@@ -759,6 +790,12 @@ export default function AppointmentModal({ appointment, professionals, patients,
 
         if (isLoading || submitLockRef.current) return;
 
+        if (dupCheckEnabled && dupCandidates.length > 0 && !dupConfirmed) {
+            toast.error("Já existe cadastro parecido com este paciente. Use o cadastro existente ou marque \"é outra pessoa\".");
+            document.getElementById("agenda-dup-notice")?.scrollIntoView({ behavior: "smooth", block: "center" });
+            return;
+        }
+
         // Convênio Base: ABA ou convencional precisa ser escolhido (valor muda 50% — evita erro no caixa)
         if (formData.billingType === 'convenio' && selectedConvenio?.supportsAba && formData.isAba == null) {
             alert('Convênio Base: escolha Convencional ou ABA antes de criar o agendamento.');
@@ -870,6 +907,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
                 patientName: formData.patient,
                 patientId: effectiveIsNewPatient ? null : formData.patientId,  // Só envia ID se for existente
                 isNewPatient: effectiveIsNewPatient,  // Flag para o backend saber
+                confirmNotDuplicate: effectiveIsNewPatient && dupCandidates.length > 0 && dupConfirmed,
                 phone: phoneDigits,
                 birthDate: formData.birthDate,
                 email: formData.email,
@@ -1297,6 +1335,42 @@ export default function AppointmentModal({ appointment, professionals, patients,
                                             )}
                                         </div>
                                     )}
+                                </div>
+                            )}
+                            {dupCheckEnabled && dupCandidates.length > 0 && (
+                                <div id="agenda-dup-notice" role="alert" className="p-3 rounded-lg border border-amber-300 bg-amber-50">
+                                    <p className="text-sm font-semibold text-amber-900 flex items-center gap-2">
+                                        <i className="fas fa-exclamation-triangle"></i>
+                                        {dupCandidates.some(c => c.level === "forte")
+                                            ? "Este paciente provavelmente já tem cadastro"
+                                            : "Já existe paciente com nome parecido"}
+                                    </p>
+                                    <p className="text-xs text-amber-800 mt-0.5">Cadastro em dobro divide histórico, agenda e financeiro.</p>
+                                    <ul className="mt-2 space-y-1.5">
+                                        {dupCandidates.map(c => (
+                                            <li key={c._id} className="flex flex-wrap items-center gap-x-2 gap-y-1 bg-white border border-amber-200 rounded-md px-2.5 py-1.5">
+                                                <span className="font-medium text-gray-900 text-sm">{c.fullName}</span>
+                                                <span className="text-xs text-gray-500">
+                                                    {[c.dateOfBirth && `nasc. ${c.dateOfBirth.split("-").reverse().join("/")}`, formatPhoneBR(c.phone) || "sem telefone", c.healthPlan].filter(Boolean).join(" · ")}
+                                                </span>
+                                                <span className="text-[11px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">{(c.reasons || []).join(" + ")}</span>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setIsNewPatient(false);
+                                                        selectPatient({ _id: c._id, fullName: c.fullName, phone: c.phone || "", dateOfBirth: c.dateOfBirth || "" });
+                                                    }}
+                                                    className="ml-auto text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-md px-2.5 py-1"
+                                                >
+                                                    Usar este cadastro
+                                                </button>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                    <label className="mt-2 flex items-center gap-2 text-sm text-gray-800 cursor-pointer">
+                                        <input type="checkbox" checked={dupConfirmed} onChange={e => setDupConfirmed(e.target.checked)} className="h-4 w-4" />
+                                        Conferi: é outra pessoa, pode criar o cadastro novo
+                                    </label>
                                 </div>
                             )}
                         </div>
