@@ -187,6 +187,13 @@ export async function searchPatients(term, options = {}) {
     return payload?.data?.patients || [];
 }
 
+// Possível paciente duplicado (03/11/2026) — back: GET /api/patients/check-duplicate
+export async function checkPatientDuplicate(params = {}, signal) {
+    const clean = Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== ""));
+    const response = await api.get("/api/patients/check-duplicate", { params: clean, signal });
+    return response.data?.possiveisDuplicados || [];
+}
+
 export async function updatePatient(id, data) {
     const response = await api.put(`/api/v2/patients/${id}`, data);
     return response.data;
