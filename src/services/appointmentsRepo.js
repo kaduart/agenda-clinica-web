@@ -1,5 +1,6 @@
 
 import io from 'socket.io-client';
+import { socketAuth } from './socketAuth';
 import { formatDateLocal } from "../utils/date";
 import * as v2 from "../api/v2/agendaV2Client";
 import { mapAppointmentResponseDTO, mapAppointmentListResponseDTO } from "../api/v2/appointment.response.dto";
@@ -13,6 +14,7 @@ const getSocket = () => {
         socket = io(import.meta.env.VITE_API_URL || 'http://localhost:5000', {
             transports: ['websocket'],
             autoConnect: true,
+            auth: socketAuth,
         });
 
         socket.on('connect', () => {
