@@ -1,5 +1,6 @@
 import * as v2 from "../api/v2/agendaV2Client";
 import io from 'socket.io-client';
+import { socketAuth } from './socketAuth';
 
 // Gerenciamento de Socket para Lembretes
 let socket;
@@ -8,6 +9,7 @@ const getSocket = () => {
         socket = io(import.meta.env.VITE_API_URL || 'http://localhost:5000', {
             transports: ['websocket'],
             autoConnect: true,
+            auth: socketAuth,
         });
     }
     return socket;
