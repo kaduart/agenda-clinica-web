@@ -589,6 +589,23 @@ export default function AppointmentModal({ appointment, professionals, patients,
         return recentAvulsas.length >= 3 ? { count: recentAvulsas.length } : null;
     }, [patientHistory, formData.billingType, formData.crm?.serviceType]);
 
+    // Pacote ativo na mesma especialidade (visto no histórico recente/futuro do paciente)
+    const activePackageSameSpecialty = React.useMemo(() => {
+        if (formData.billingType !== "particular" || formData.crm?.serviceType !== "individual_session") return null;
+        const spec = formData.specialtyKey || resolveSpecialtyKey(formData.specialty);
+        const limit = new Date();
+        limit.setDate(limit.getDate() - 35);
+        const hit = (patientHistory || []).find((a) => {
+            const st = String(a.serviceType || a.sessionType || "");
+            const isPackage = !!a.package || /package|pacote/i.test(st);
+            return isPackage
+                && new Date(a.date) >= limit
+                && a.operationalStatus !== "canceled"
+                && (!spec || resolveSpecialtyKey(a) === spec);
+        });
+        return hit ? { appointment: hit } : null;
+    }, [patientHistory, formData.billingType, formData.crm?.serviceType, formData.specialtyKey, formData.specialty]);
+
     const copyPackageMessage = async () => {
         const nome = (formData.responsible || "").split(" ")[0];
         const msg = `Oi${nome ? `, ${nome}` : ""}! Como o acompanhamento já está acontecendo toda semana, o pacote mensal garante o mesmo horário fixo e a continuidade do tratamento, que é o que mais faz diferença na evolução. No pacote 1x/semana a sessão sai por R$ 180 (cerca de R$ 720/mês). Quer que eu já deixe reservado? 💚`;
@@ -629,7 +646,7 @@ export default function AppointmentModal({ appointment, professionals, patients,
             email: p.email || prev.email,
         }));
         try {
-            const res = await getAppointmentsByPatient(p._id, { limit: 4 });
+            const res = await getAppointmentsByPatient(p._id, { limit: 30 }); // 30 para detectar recorrência/pacote ativo; a lista mostra só 4
             const appts = res?.data?.appointments || [];
             const sorted = [...appts].sort((a, b) => new Date(b.date) - new Date(a.date));
             setPatientHistory(sorted);
@@ -873,6 +890,31 @@ export default function AppointmentModal({ appointment, professionals, patients,
                     : "Você está agendando sem definir o valor da sessão (R$ 0).\n\nO sistema não conseguirá registrar a receita deste atendimento.\n\nDeseja continuar mesmo assim?";
                 const confirmar = await confirmToast(msg, { title: "Atenção", confirmText: "Continuar", confirmColor: "teal", cancelText: "Cancelar" });
                 if (!confirmar) {
+                    setIsLoading(false);
+                    return;
+                }
+            }
+
+            // Sessão avulsa para paciente recorrente ou com pacote ativo: o ideal é pacote.
+            // Só na criação (não em edição) e só se "Usar pacote" não estiver marcado.
+            const isNovaAvulsa = !isEditing && !formData.package && !formData.crm?.usePackage
+                && formData.billingType === "particular" && formData.crm?.serviceType === "individual_session";
+            if (isNovaAvulsa && (activePackageSameSpecialty || packageSuggestion)) {
+                const primeiroNome = (formData.patient || "").trim().split(" ")[0] || "Este paciente";
+                const msg = activePackageSameSpecialty
+                    ? `${primeiroNome} tem pacote ativo nesta especialidade.\n\n` +
+                      `Se esta sessão faz parte do pacote, volte e marque "Usar pacote". ` +
+                      `Se for uma sessão extra, ela será cobrada à parte como avulsa.`
+                    : `${primeiroNome} já fez ${packageSuggestion.count} sessões avulsas nas últimas 5 semanas.\n\n` +
+                      `O ideal é fechar um pacote: 1x/semana sai R$ 180 por sessão (cerca de R$ 720/mês), contra R$ 220 da avulsa, ` +
+                      `e garante o horário fixo. O pacote é criado no ERP (Paciente → Pacotes).`;
+                const seguirAvulsa = await confirmToast(msg, {
+                    title: activePackageSameSpecialty ? "Paciente com pacote ativo" : "Paciente recorrente: o ideal é pacote",
+                    confirmText: "Criar como avulsa mesmo assim",
+                    confirmColor: "teal",
+                    cancelText: activePackageSameSpecialty ? "Voltar e usar o pacote" : "Voltar e oferecer pacote",
+                });
+                if (!seguirAvulsa) {
                     setIsLoading(false);
                     return;
                 }
